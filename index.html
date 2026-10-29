@@ -55,7 +55,8 @@ html.touch .kb{display:none}
 .sheet.top{justify-content:flex-start;padding-top:calc(5vh + env(safe-area-inset-top,0px))}
 .tonly{display:none}
 html.touch .tonly{display:inline}
-.ver{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));font-size:13px;color:var(--muted);letter-spacing:.08em}
+.dbg{color:#ff8a7a!important}
+.ver{cursor:default;position:fixed;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));font-size:13px;color:var(--muted);letter-spacing:.08em}
 
 /* ---------- character select: a turning carousel and a paper sheet ---------- */
 #select{justify-content:flex-start;gap:6px}
@@ -238,6 +239,8 @@ html.portrait-play #rotate{display:flex}
   </div>
   <p class="who">Giocatore: <b id="whoName">Ospite</b> <button type="button" class="link" id="whoChange">cambia</button></p>
   <p id="cloudNote"></p>
+  <p class="who" id="dbgOn" hidden><b class="dbg">MODALITÀ DEBUG</b> tutti i personaggi sbloccati, le partite non contano <button type="button" class="link" id="dbgOff">disattiva</button></p>
+  <form class="row" id="dbgForm" hidden><label class="seed" for="dbgKey">Parola chiave <input id="dbgKey" type="password" maxlength="32" autocomplete="off"></label><button type="submit" class="ghost">Debug</button></form>
   <p class="note"><span class="kb"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> muovi &middot; <kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> spara &middot; <kbd>Spazio</kbd> oggetto attivo &middot; <kbd>E</kbd> bomba &middot; <kbd>Q</kbd> pillola &middot; <kbd>Esc</kbd> pausa</span><span class="tonly">Pollice sinistro per muoverti, pollice destro per sparare</span></p>
   <span class="ver" id="ver"></span>
 </section>
@@ -392,7 +395,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v1.8';
+const VERSION = 'v1.8.4';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -579,30 +582,30 @@ function syncMusic() { $('pMusic').textContent = 'Musica: ' + (Music.on ? 'sì' 
 // Isaac-style base stats: red = heart containers, soul = soul hearts, delay = frames between tears
 const CHARS = [
   {id: 'vina', name: 'Vina', skin: '#f0c9a8', shirt: '#141417', pants: '#1c1c21', hair: '#0b0b0d', style: 'long',
-    red: 3, soul: 0, speed: 1, dmg: 3.5, delay: 16, range: 270, ss: 1, luck: 0, tear: 'nera', active: 'rallenty'},
+    red: 3, soul: 0, speed: 1, dmg: 3.5, delay: 16, range: 270, ss: 1, luck: 0, tear: 'nera', active: 'rallenty', flags: {coldblood: true}, perk: 'Sangue freddo: con un cuore rosso o meno il suo danno sale del 50%, anche se ha cuori anima o neri.'},
   // the inventor: weak tears made of bolts, but a drone that shoots with him and a 3D printer that makes items
   {id: 'raspo', name: 'Raspo', skin: '#d8a27c', shirt: '#e07a1e', shirt2: '#c9651a', pants: '#3a4a6b', hair: '#2e2620', style: 'inventor', beard: '#2e2620', goggles: true, toolbelt: true,
     red: 2, soul: 2, speed: 1, dmg: 2.9, delay: 15, range: 280, ss: 1.1, luck: 1, tear: 'bullone', active: 'stampante', drone: true, perk: 'Parte con un drone che spara con lui.'},
   {id: 'piero', name: 'Piero', skin: '#e2a878', shirt: '#f2f2f2', pants: '#1d3557', hair: '#2a1d14', style: 'band', muscle: true,
-    red: 4, soul: 0, speed: 0.85, dmg: 5, delay: 22, range: 240, ss: 0.9, luck: 0, tear: 'grossa', active: 'muscoli', flags: {big: true}},
+    red: 4, soul: 0, speed: 0.85, dmg: 5, delay: 22, range: 240, ss: 0.9, luck: 0, tear: 'grossa', active: 'muscoli', flags: {big: true}, perk: 'Lacrime grosse.'},
   {id: 'pinciu', name: 'Pinciu', skin: '#e3b48e', shirt: '#f5c400', shirt2: '#1d4fa3', pants: '#1d4fa3', hair: '#3a2a1e', style: 'short', mustache: true,
-    red: 3, soul: 0, speed: 1.2, dmg: 3.2, delay: 16, range: 270, ss: 1.05, luck: 0, tear: 'pallone', active: 'notifica', flags: {bounce: true}},
+    red: 3, soul: 0, speed: 1.2, dmg: 3.2, delay: 16, range: 270, ss: 1.05, luck: 0, tear: 'pallone', active: 'notifica', flags: {bounce: true}, perk: 'Le lacrime rimbalzano su muri e rocce.'},
   {id: 'alex', name: 'Alex', skin: '#e8bfa0', shirt: '#f4f4f4', pants: '#1b1b1f', hair: '#3a2a1e', style: 'fin', bowtie: true,
-    red: 2, soul: 2, speed: 1.3, dmg: 3.2, delay: 15, range: 260, ss: 1.05, luck: 0, tear: 'piatto', active: 'turbo', flags: {pierce: true}},
+    red: 2, soul: 2, speed: 1.3, dmg: 3.2, delay: 15, range: 260, ss: 1.05, luck: 0, tear: 'piatto', active: 'turbo', flags: {pierce: true}, perk: 'Le lacrime trapassano i nemici.'},
   {id: 'gumi', name: 'Gumi', skin: '#f0c4a0', shirt: '#2c2c34', pants: '#3b4a6b', hair: '#4a2c1a', style: 'curly', glasses: true, piercing: true,
-    red: 3, soul: 0, speed: 1, dmg: 2.2, delay: 9, range: 340, ss: 1.6, luck: 0, tear: 'proiettile', active: 'raffica'},
+    red: 3, soul: 0, speed: 1, dmg: 2.2, delay: 9, range: 340, ss: 1.6, luck: 0, tear: 'proiettile', active: 'raffica', flags: {crit: true}, perk: 'Mirino laser: un colpo su otto è critico e fa danno doppio.'},
   {id: 'capa', name: 'Capa', skin: '#d9a07a', shirt: '#d9a07a', pants: '#d2202a', hair: '#2a1a10', style: 'short', beard: '#2a1a10', size: 0.82, shirtless: true,
-    red: 2, soul: 0, speed: 1.15, dmg: 3.5, delay: 16, range: 260, ss: 1, luck: 2, tear: 'campari', active: 'campari'},
+    red: 2, soul: 0, speed: 1.15, dmg: 3.5, delay: 16, range: 260, ss: 1, luck: 2, tear: 'campari', active: 'campari', perk: 'Piccolo: è più difficile colpirlo. Fortuna +2.'},
   {id: 'davidone', name: 'Davidone', skin: '#e3b08a', shirt: '#5b7a3a', pants: '#a89470', hair: '#3a2618', style: 'curly', size: 1.15,
-    red: 4, soul: 0, speed: 0.9, dmg: 3.8, delay: 18, range: 260, ss: 1, luck: 0, tear: 'normale', active: 'fagioli'},
+    red: 4, soul: 0, speed: 0.9, dmg: 3.8, delay: 18, range: 260, ss: 1, luck: 0, tear: 'normale', active: 'fagioli', perk: 'Grosso: tanti cuori, ma è più facile colpirlo.'},
   {id: 'nuppobot', name: 'Nuppobot', skin: '#b8c0c8', shirt: '#9aa3ad', pants: '#6d747d', hair: '#3a3f46', style: 'robot', robot: true,
-    red: 0, soul: 6, speed: 1, dmg: 3.3, delay: 14, range: 290, ss: 1.3, luck: 0, tear: 'laser', active: 'postbruciatore', noRed: true},
+    red: 0, soul: 6, speed: 1, dmg: 3.3, delay: 14, range: 290, ss: 1.3, luck: 0, tear: 'laser', active: 'postbruciatore', noRed: true, perk: 'Niente cuori rossi: solo cuori anima.'},
   {id: 'pake', name: 'Pake', skin: '#e9bf9c', shirt: '#1f2a44', pants: '#1f2a44', hair: '#2a1d14', style: 'slick', beard: '#2a1d14', tie: true,
-    red: 3, soul: 0, speed: 1.05, dmg: 3.3, delay: 17, range: 300, ss: 1, luck: 1, tear: 'carta', active: 'busta', flags: {boomerang: true}},
+    red: 3, soul: 0, speed: 1.05, dmg: 3.3, delay: 17, range: 300, ss: 1, luck: 1, tear: 'carta', active: 'busta', flags: {boomerang: true}, perk: 'Le lacrime tornano indietro come un boomerang.'},
   {id: 'manfro', name: 'Manfro', skin: '#e8b48e', shirt: '#1a1a1e', pants: '#2e3140', hair: '#2a1a10', style: 'curly', muscle: true, hachimaki: true,
-    red: 3, soul: 0, speed: 1.1, dmg: 2.6, delay: 11, range: 250, ss: 1.2, luck: 0, tear: 'riso', active: 'moto'},
+    red: 3, soul: 0, speed: 1.1, dmg: 2.6, delay: 11, range: 250, ss: 1.2, luck: 0, tear: 'riso', active: 'moto', flags: {samurai: true}, perk: 'Disciplina del samurai: entrando in una stanza è intoccabile per un attimo e il primo colpo fa danno doppio.'},
   {id: 'faif', name: 'Faif', skin: '#e3b48e', shirt: '#d2202a', shirt2: '#141417', pants: '#141417', hair: '#3a2a1e', style: 'short', mustache: true,
-    red: 3, soul: 0, speed: 1.15, dmg: 3.4, delay: 16, range: 260, ss: 1, luck: 0, tear: 'birra', active: 'sprint'},
+    red: 3, soul: 0, speed: 1.15, dmg: 3.4, delay: 16, range: 260, ss: 1, luck: 0, tear: 'birra', active: 'sprint', flags: {kick: true}, perk: 'Gamba da calciatore: toccando una bomba accesa la calcia lontano.'},
   // the programmer: lines of code for tears, a trail of second-hand smoke, a joint that leaves everybody dazed
   {id: 'maiga', name: 'Maiga', skin: '#e6b892', shirt: '#3a3d44', pants: '#3b4a6b', hair: '#4a3020', style: 'messy', beard: '#4a3020', glasses: true, joint: true,
     red: 3, soul: 0, speed: 0.95, dmg: 3, delay: 15, range: 300, ss: 0.95, luck: 0, tear: 'codice', active: 'canna', flags: {smoke: true}, perk: 'Lascia una scia di fumo passivo che intossica e rallenta i nemici.'},
@@ -998,7 +1001,8 @@ function newPlayer(ch) {
   if (ch.drone) p.pets.push({kind: 'drone', x: p.x, y: p.y, cd: 0});
   return p;
 }
-const dmgOf = p => Math.max(0.5, p.dmg + (p.fx.diavolo ? 2 : 0) + (p.fx.imp ? 1.5 : 0) + (p.trinket === 'dente' ? 0.6 : 0)) * p.mult * (p.fx.muscoli ? 1.8 : 1) * (p.fx.campari ? 1.6 : 1) * (p.fx.forza ? 1.5 : 1);
+const coldBlood = p => p.flags.coldblood && p.red <= 2; // Vina: one red heart or less (soul and black hearts don't count), and she gets dangerous
+const dmgOf = p => Math.max(0.5, p.dmg + (p.fx.diavolo ? 2 : 0) + (p.fx.imp ? 1.5 : 0) + (p.trinket === 'dente' ? 0.6 : 0)) * p.mult * (coldBlood(p) ? 1.5 : 1) * (p.fx.muscoli ? 1.8 : 1) * (p.fx.campari ? 1.6 : 1) * (p.fx.forza ? 1.5 : 1);
 const delayOf = p => Math.max(4, p.delay - (p.trinket === 'petalo' ? 1.5 : 0)) / (p.fx.raffica ? 3 : 1) / (p.fx.sprint ? 1.5 : 1) / (p.fx.relax ? 1.3 : 1);
 const speedOf = p => clamp(p.speed + (p.fx.imp ? 0.3 : 0) + (p.trinket === 'tappo' ? 0.15 : 0), 0.5, 2) * (p.fx.campari ? 1.3 : 1) * (p.fx.moto ? 1.7 : 1) * (p.fx.sprint ? 1.9 : 1);
 const flying = p => !!(p.flags.flight || p.fx.volo);
@@ -1051,6 +1055,7 @@ function enterRoom(room, fromDir, slide = true) {
   for (const k of ['mago', 'forza', 'diavolo', 'imp', 'volo']) p.fx[k] = 0; // card and book effects last one room
   G.run.hitInBoss = false;
   if (p.flags.mantle) p.shield = true;
+  if (p.flags.samurai && !room.cleared) { p.inv = Math.max(p.inv, 45); p.focus = true; } // Manfro: a moment of calm, then one heavy blow
   if (fromDir) {
     const d = OPP[fromDir], pos = DOOR_POS[d];
     p.x = pos.x + (d === 'w' ? 34 : d === 'e' ? -34 : 0);
@@ -1484,10 +1489,13 @@ function fire(dx, dy, power = 1) {
       pierce: p.flags.pierce || p.fx.raffica > 0, spectral: !!p.flags.spectral, bounce: !!p.flags.bounce, homing: !!p.flags.homing, explode: !!p.flags.explode,
       slow: !!p.flags.slow, burn: !!p.flags.burn || p.fx.fire > 0, boom: !!p.flags.boomerang, poison: !!p.flags.poison, spin: rnd() * 6});
     if (p.fx.mago) G.tears[G.tears.length - 1].homing = true;
+    { const t = G.tears[G.tears.length - 1]; // Gumi's critical hits and Manfro's focused first blow
+      if ((p.flags.crit && rnd() < 0.125 + luckOf(p) * 0.01) || p.focus) { t.dmg *= 2; t.crit = true; t.r *= 1.25; } }
     if (p.flags.fetus) { const t = G.tears[G.tears.length - 1]; t.kind = 'bomba'; t.explode = true; t.r = 7; }
     if (p.trinket === 'fiammifero' && rnd() < 0.17) G.tears[G.tears.length - 1].burn = true;
     if (p.flags.orbit) { const t = G.tears[G.tears.length - 1]; t.orbit = {a: aa, r: 16}; t.life = t.max = life * 2.2; t.spectral = true; }
   }
+  p.focus = false;
   Snd.shoot();
 }
 function useActive() {
@@ -1861,7 +1869,19 @@ function splashTear(t) {
   if (t.from === 'p' && rnd() < 0.25) G.room.decals.push({kind: 'drop', x: t.x, y: t.y, a: 0, s: 0.5, col});
 }
 function updateBombs() {
-  for (const b of G.bombs) { b.t--; if (b.t % 12 === 0) Snd.fuse(); if (b.t <= 0) explode(b.x, b.y, b.mega ? 110 : 74, b.mega ? 90 : 50, true, b.troll || undefined, !b.troll); }
+  const p = G.p;
+  for (const b of G.bombs) {
+    if (p.flags.kick) { // Faif kicks a lit bomb that he walks into, like a ball
+      const d = Math.hypot(p.x - b.x, p.y - b.y), sp = Math.hypot(p.vx, p.vy);
+      if (d > p.r + 14) b.free = true;
+      if (b.free && d < p.r + 11 && sp > 0.6 && !b.vx) { b.vx = p.vx / sp * 8; b.vy = p.vy / sp * 8; b.free = false; Snd.tone(160, 0.08, 'square', 0.08); }
+    }
+    if (b.vx || b.vy) {
+      b.x += b.vx; b.y += b.vy; b.vx *= 0.96; b.vy *= 0.96;
+      const tmp = {x: b.x, y: b.y, r: 10}; if (collideGrid(tmp, false) || clampWalls(tmp)) { b.vx *= -0.4; b.vy *= -0.4; } b.x = tmp.x; b.y = tmp.y;
+      if (G.enemies.some(e => hittable(e) && Math.hypot(e.x - b.x, e.y - b.y) < e.r + 10) || Math.hypot(b.vx, b.vy) < 0.3) b.vx = b.vy = 0;
+    }
+    b.t--; if (b.t % 12 === 0) Snd.fuse(); if (b.t <= 0) explode(b.x, b.y, b.mega ? 110 : 74, b.mega ? 90 : 50, true, b.troll || undefined, !b.troll); }
   G.bombs = G.bombs.filter(b => b.t > 0);
 }
 function updateFx() {
@@ -1900,6 +1920,7 @@ function tearMods(c, t, r) { // and wears a sign of each one on top of its own l
   if (t.slow) { c.fillStyle = 'rgba(220,250,255,.9)'; for (const a of [0.4, 2.5, 4.4]) { c.beginPath(); c.moveTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9); c.lineTo(Math.cos(a) * (r + 3), Math.sin(a) * (r + 3)); c.lineTo(Math.cos(a + 0.3) * r * 0.9, Math.sin(a + 0.3) * r * 0.9); c.fill(); } }
   if (t.homing) { c.save(); c.globalCompositeOperation = 'lighter'; circ(c, 0, 0, r * 1.5, 'rgba(176,122,214,.22)'); c.restore(); }
   if (t.explode && t.kind !== 'bomba') { c.strokeStyle = '#a88'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, -r); c.lineTo(1.5, -r - 3); c.stroke(); circ(c, 1.5, -r - 3.5, 1.3, G.tick % 4 < 2 ? '#ffcf40' : '#ff7a1a'); }
+  if (t.crit) { c.strokeStyle = G.tick % 4 < 2 ? '#ff3b3b' : '#ffd34a'; c.lineWidth = 1.6; c.beginPath(); c.arc(0, 0, r + 2.5, 0, 7); c.stroke(); }
   if (t.pierce && !t.boom) { c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-t.vx * 1.4, -t.vy * 1.4); c.lineTo(t.vx * 0.6, t.vy * 0.6); c.stroke(); }
 }
 const hash = (a, b = 0) => { let h = Math.imul(a * 374761393 + b * 668265263, 1274126177); h ^= h >>> 13; h = Math.imul(h, 1103515245); return ((h ^ h >>> 16) >>> 0) / 4294967296; };
@@ -2865,6 +2886,7 @@ function drawPlayer(c) {
   if (p.fx.carro > 0) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.3 + Math.sin(G.tick * 0.4) * 0.15; circ(c, p.x, p.y - 6, 24, '#e8b64a'); c.restore(); }
   if (flying(p)) { for (const s of [-1, 1]) ell(c, p.x + s * 12, p.y - 2 + fly, 9, 5, 'rgba(240,240,240,.75)', s * (0.4 + Math.sin(G.tick * 0.3) * 0.3)); }
   if (p.shield) { c.save(); c.globalAlpha = 0.25; circ(c, p.x, p.y - 6, 22, '#fff6d8'); c.restore(); }
+  if (coldBlood(p) && !p.dead) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.18 + Math.sin(G.tick * 0.12) * 0.08; circ(c, p.x, p.y - 8, 24, '#7fb8ff'); c.restore(); } // cold blood: a pale blue glow
   const ps = (p.fx.forza ? 1.3 : 1) * (p.ch.size || 1);
   if (!p.dead) ell(c, p.x, p.y + 9, 12 * ps, 4 * ps, 'rgba(0,0,0,.35)');
   outlined(c, p.x, p.y - 10, 44 * ps, cc => drawChar(cc, p.ch, p.x, p.y - 4 + fly, {face: p.hold ? 's' : p.face, walk: p.walk, shoot: p.cd > delayOf(p) - 4, hurt: p.inv > 50, dead: p.dead, breath: true, scale: p.fx.forza ? 1.3 : 1, shadow: !!p.dead, items: p.items}));
@@ -3540,7 +3562,7 @@ function dailySeed() { const k = dailyKey(); return ('D' + k.slice(2)).padEnd(8,
 function dailyChar() { return CHARS[seedNum(dailySeed()) % CHARS.length]; }
 function dailyScore(run, won) { return (won ? 100 : run.depth * 10) * 10000 - Math.min(9999, Math.round(run.frames / 60)); }
 function submitDaily(won) {
-  const run = G.run; if (!run.daily || !PROF) return;
+  const run = G.run; if (!run.daily || !PROF || DEBUG.on) return;
   if (!PROF.daily) PROF.daily = {};
   if (PROF.daily[run.daily]) return; // only the first try of the day counts
   const rec = {name: PROF.display, c: run.ch.id, score: dailyScore(run, won), depth: run.depth, t: Math.round(run.frames / 6) / 10, won, d: Date.now()};
@@ -4317,7 +4339,9 @@ const UNLOCKS = {
   maiga: {cond: 'Prendi 15 pillole (anche in partite diverse).', test: P => (P.stats.pillsUsed || 0) >= 15, v: 1},
 };
 const winners = P => CHARS.filter(c => (P.stats.winsBy[c.id] || 0) > 0).length;
-const isUnlocked = id => !UNLOCKS[id] || (PROF && PROF.unlocked.includes(id));
+// debug mode (for the author): every character is playable, and nothing played counts for progress or boards
+var DEBUG = {on: store('bs-debug') === true};
+const isUnlocked = id => !UNLOCKS[id] || DEBUG.on || (PROF && PROF.unlocked.includes(id));
 
 /* ---------- what every item really does, for the collection page ---------- */
 const INFO = {
@@ -4453,7 +4477,7 @@ const profScore = P => Object.keys(P.ach).length * 10 + P.unlocked.length * 20 +
 
 /* ---------- events from the game ---------- */
 function meta(ev, data) {
-  const P = PROF; if (!P || !G.run) return;
+  const P = PROF; if (!P || !G.run || DEBUG.on) return;
   const st = P.stats, run = G.run;
   switch (ev) {
     case 'run': st.runs++; markSeen('a_' + run.ch.active); break;
@@ -4852,7 +4876,8 @@ function selectChar(i) {
   st.append(Object.assign(document.createElement('dt'), {textContent: 'Gittata'}), pips(ch.range, 210, 340));
   const A = ACTIVES[ch.active];
   $('selAct').innerHTML = '';
-  $('selAct').append('Oggetto attivo: ', Object.assign(document.createElement('b'), {textContent: A.name}), ', ' + A.sub.toLowerCase() + '. Si ricarica in ' + A.charge + (A.charge === 1 ? ' stanza.' : ' stanze.') + (ch.perk ? ' ' + ch.perk : ''));
+  $('selAct').append('Oggetto attivo: ', Object.assign(document.createElement('b'), {textContent: A.name}), ', ' + A.sub.toLowerCase() + '. Si ricarica in ' + A.charge + (A.charge === 1 ? ' stanza.' : ' stanze.'));
+  if (ch.perk) $('selAct').append(document.createElement('br'), Object.assign(document.createElement('b'), {textContent: 'Passiva'}), ': ' + ch.perk.charAt(0).toLowerCase() + ch.perk.slice(1));
   const s = PROF.stats, wins = s.winsBy[ch.id] || 0, fl = s.floorsBy[ch.id] || 0;
   $('selRec').textContent = locked ? '' : wins ? `Vittorie: ${wins}.` : fl ? `Boss più profondo battuto: piano ${fl}.` : 'Non è ancora mai sceso in cantina.';
 }
@@ -5076,7 +5101,7 @@ const FEED_CATS = {bug: 'Bug', bilanciamento: 'Bilanciamento', idea: 'Idea', alt
 
 function feedInfo() { // everything useful the game knows right now, in plain words
   const lines = [
-    'Versione: ' + VERSION,
+    'Versione: ' + VERSION + (DEBUG.on ? ' [DEBUG]' : ''),
     'Giocatore: ' + (PROF ? PROF.display + (PROF.guest ? ' (ospite)' : '') : '?'),
     'Data: ' + new Date().toLocaleString('it-IT'),
     'Dispositivo: ' + (LITE.on ? '[grafica leggera] ' : '') + (TOUCH ? 'touch' : 'tastiera') + (Pad.on ? ' + gamepad' : '') + ', schermo ' + W + '×' + H + ' @' + (window.devicePixelRatio || 1) + 'x, ' + FEED.fps + ' fps',
@@ -5223,6 +5248,29 @@ $('flKey').value = store('bs-fb-key') || '';
 $('feedRead').addEventListener('click', openFeedList);
 $('flBack').addEventListener('click', () => { if (FEED.inPause) { $('feedlist').hidden = true; openFeed(); } else openFeed(); });
 flushFeedQueue();
+
+/* ---------- debug mode: five taps on the version number, then the key ---------- */
+// only the hash of the key is in the page, so reading the source doesn't give it away
+const DEBUG_HASH = 'f286c5804f46d06d5f8296171a2d5ebbba60aa414bf7e70de7d4a5a995b8d873';
+let verTaps = [];
+$('ver').addEventListener('click', () => {
+  const now = performance.now(); verTaps = verTaps.filter(t => now - t < 3000); verTaps.push(now);
+  if (verTaps.length >= 5 && G.state === 'title') { verTaps = []; $('dbgForm').hidden = false; $('dbgKey').value = ''; $('dbgKey').focus(); }
+});
+$('dbgForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  let hex = '';
+  try { const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode($('dbgKey').value.trim())); hex = [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''); } catch (err) {}
+  if (hex !== DEBUG_HASH) { $('dbgKey').value = ''; $('dbgKey').placeholder = 'sbagliata'; return; }
+  setDebug(true);
+});
+$('dbgOff').addEventListener('click', () => setDebug(false));
+function setDebug(on) {
+  DEBUG.on = on; store('bs-debug', on); $('dbgForm').hidden = true;
+  Car.sprites.clear(); syncDebug(); if (G.state === 'title') showTitle();
+}
+function syncDebug() { $('dbgOn').hidden = !DEBUG.on; }
+syncDebug();
 if (location.hash.includes('feedback')) openFeedList();
 /* ================= save and continue: like Isaac, a run is kept when you quit and picked up later ================= */
 // the run is saved on this device every time you walk into a room, and when you quit from the pause menu;
