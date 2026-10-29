@@ -432,7 +432,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v1.10.2';
+const VERSION = 'v2.0.2';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -511,6 +511,26 @@ const Snd = {
     s.connect(f); f.connect(g); g.connect(this.out); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
   },
   shoot() { this.tone(rr(520, 600), 0.07, 'sine', 0.07, 260); },
+  shootKind(kind) { // every kind of tear has its own sound
+    switch (kind) {
+      case 'riso': this.noise(0.03, 0.08, 6000, 2); this.tone(rr(1800, 2200), 0.03, 'square', 0.03); break;
+      case 'birra': this.tone(rr(260, 300), 0.12, 'sine', 0.08, 520); this.noise(0.08, 0.04, 900, 3, 0.03); break;
+      case 'bullone': this.tone(rr(1700, 1900), 0.05, 'square', 0.035); this.tone(2600, 0.06, 'triangle', 0.03, null, 0.02); break;
+      case 'codice': this.tone(880, 0.04, 'square', 0.035); this.tone(1320, 0.05, 'square', 0.03, null, 0.04); break;
+      case 'carta': this.noise(0.06, 0.07, 5000, 1, 0, 2500); break;
+      case 'pallone': this.tone(150, 0.1, 'sine', 0.12, 80); break;
+      case 'piatto': this.tone(rr(1400, 1600), 0.08, 'triangle', 0.05); break;
+      case 'proiettile': this.noise(0.09, 0.14, 2600, 1, 0, 400); this.tone(120, 0.08, 'square', 0.05, 60); break;
+      case 'laser': this.tone(1200, 0.1, 'sawtooth', 0.04, 300); break;
+      case 'scarica': this.noise(0.06, 0.08, 4000, 4); this.tone(900, 0.06, 'square', 0.03, 1400); break;
+      case 'campari': this.tone(rr(1900, 2100), 0.06, 'triangle', 0.04); this.tone(rr(500, 560), 0.07, 'sine', 0.05, 280); break;
+      case 'grossa': this.tone(rr(260, 300), 0.1, 'sine', 0.1, 150); break;
+      case 'bomba': this.tone(200, 0.08, 'square', 0.05, 120); break;
+      default: this.shoot();
+    }
+  },
+  thud() { this.noise(0.07, 0.1, 500, 1); this.tone(110, 0.06, 'sine', 0.06, 70); },     // a tear on stone
+  squelch() { this.noise(0.12, 0.08, 400, 3, 0, 150); this.tone(140, 0.1, 'sine', 0.05, 90); }, // a tear in the poop
   splash() { this.noise(0.08, 0.06, 2600, 1); },
   hit() { this.tone(170, 0.08, 'square', 0.05, 90); this.noise(0.06, 0.08, 900); },
   kill() { this.noise(0.25, 0.22, 700, 1, 0, 120); this.tone(120, 0.18, 'sawtooth', 0.06, 50); },
@@ -1100,6 +1120,7 @@ function openSecretDoors(room) { // x-ray glasses: the hollow wall opens by itse
 function enterRoom(room, fromDir, slide = true) {
   const prev = G.room;
   G.room = room; room.visited = true; room.seen = true;
+  for (const link of Object.values(room.doors)) if (link.locked && (room.type === 'shop' || room.type === 'treasure')) link.locked = false; // the lock is on the outside: from in here the door always opens, even after a teleport
   if (G.p && G.p.flags.xray) openSecretDoors(room);
   for (const [dir, link] of Object.entries(room.doors)) if (!link.hidden) other(link, room).seen = true;
   G.tears = []; G.bombs = []; G.enemies = []; G.rings = []; G.beams = [];
@@ -1140,6 +1161,7 @@ function roomCleared() {
   const room = G.room, p = G.p;
   room.cleared = true;
   Snd.door(true);
+  for (const dir of Object.keys(room.doors)) { const dp = DOOR_POS[dir]; for (let k = 0; k < 5; k++) G.fx.push({kind: 'smoke', x: dp.x + rr(-14, 14), y: dp.y + rr(-4, 4), vx: rr(-0.3, 0.3), vy: rr(-0.3, 0.1), life: 40, max: 40, size: rr(5, 9), dust: true}); } // dust as the doors slide open
   const a = p.active, A = ACTIVES[a.id];
   if (a.charge < A.charge) a.charge = Math.min(A.charge, a.charge + (p.flags.ninevolt ? 2 : 1));
   if (room.type === 'boss') {
@@ -1477,7 +1499,7 @@ function bossAI(e, dx, dy, d, k) {
 
 function damageEnemy(e, dmg, kx, ky, quiet) {
   if (e.appear > 0 || e.hp <= 0 || e.ghost) return;
-  e.hp -= dmg; e.flash = 6;
+  e.hp -= dmg; e.flash = 6; e.hitT = 6; // a little squash when hit
   if (!e.boss && !EN[e.type].still) { e.vx += kx; e.vy += ky; }
   if (!quiet) { Snd.hit(); burst(e.x, e.y - 6, e.type === 'raviolone' || e.type === 'raviolino' ? '#c0392b' : '#9b111e', 3, 2.2); }
   if (e.hp <= 0) killEnemy(e);
@@ -1551,7 +1573,7 @@ function fire(dx, dy, power = 1) {
     if (p.flags.orbit) { const t = G.tears[G.tears.length - 1]; t.orbit = {a: aa, r: 16}; t.life = t.max = life * 2.2; t.spectral = true; }
   }
   p.focus = false;
-  Snd.shoot();
+  Snd.shootKind(p.flags.fetus ? 'bomba' : p.ch.tear);
 }
 function useActive() {
   const p = G.p, a = p.active, A = ACTIVES[a.id];
@@ -1762,7 +1784,7 @@ function update() {
     p.vx = lerp(p.vx, mx * top, 0.22); p.vy = lerp(p.vy, my * top, 0.22);
   }
   p.x += p.vx; p.y += p.vy;
-  if (Math.hypot(p.vx, p.vy) > 0.4) p.walk += Math.hypot(p.vx, p.vy) * 0.12;
+  if (Math.hypot(p.vx, p.vy) > 0.4) { p.walk += Math.hypot(p.vx, p.vy) * 0.12; if (G.tick % 14 === 0 && !flying(p)) G.fx.push({kind: 'smoke', x: p.x + rr(-4, 4), y: p.y + 12, vx: -p.vx * 0.1, vy: -0.15, life: 22, max: 22, size: 3.5, dust: true}); } // little puffs of dust under the feet
   if (mx || my) p.face = Math.abs(mx) > Math.abs(my) ? (mx > 0 ? 'e' : 'w') : (my > 0 ? 's' : 'n');
   if (sx || sy) p.face = sx > 0 ? 'e' : sx < 0 ? 'w' : sy > 0 ? 's' : 'n';
   const fly = flying(p);
@@ -1825,7 +1847,7 @@ function update() {
     const reach = pk.ped ? p.r + 16 : p.r + 11;
     if (pk.wait) { if (Math.hypot(p.x - pk.x, p.y - pk.y) > reach + 10) pk.wait = false; else continue; }
     if (pk.kind === 'trapdoor' || pk.kind === 'trofeo') { if (room.cleared) touchPickup(pk); continue; }
-    if (Math.hypot(p.x - pk.x, p.y - pk.y) < reach && touchPickup(pk)) pk.taken = true;
+    if (Math.hypot(p.x - pk.x, p.y - pk.y) < reach && touchPickup(pk)) { pk.taken = true; burst(pk.x, pk.y - 6, '#fff2c0', 6, 1.8); } // a sparkle as it's picked up
     else if (NUDGE.has(pk.kind) && !pk.price && Math.hypot(p.x - pk.x, p.y - pk.y) < reach) { // a full heart you can't take gets nudged
       const d = Math.hypot(pk.x - p.x, pk.y - p.y) || 1; pk.vx = (pk.x - p.x) / d * 1.5; pk.vy = (pk.y - p.y) / d * 1.5;
     }
@@ -1837,17 +1859,22 @@ function update() {
   updateFx();
   if (G.banner && --G.banner.t <= 0) G.banner = null;
 }
+// a door lets you through when the room is clear and it isn't locked; a challenge door also wants full health, like Isaac's
+function doorOpen(room, link) {
+  const p = G.p, fullHp = p.ch.noRed ? p.soul >= 6 : p.red >= p.maxRed;
+  return room.cleared && !link.locked && !(link.kind === 'sfida' && room.type !== 'sfida' && !fullHp);
+}
 function doorsAndWalls(p) {
   const room = G.room;
   for (const [dir, link] of Object.entries(room.doors)) {
     if (link.hidden) continue;
-    const fullHp = p.ch.noRed ? p.soul >= 6 : p.red >= p.maxRed;
-    const open = room.cleared && !link.locked && !(link.kind === 'sfida' && room.type !== 'sfida' && !fullHp);
+    const open = doorOpen(room, link);
     const dp = DOOR_POS[dir];
     const along = dir === 'n' || dir === 's' ? Math.abs(p.x - dp.x) : Math.abs(p.y - dp.y);
     const toward = dir === 'n' ? -p.vy : dir === 's' ? p.vy : dir === 'w' ? -p.vx : p.vx;
     const edge = dir === 'n' ? p.y - p.r - T : dir === 's' ? RH - T - (p.y + p.r) : dir === 'w' ? p.x - p.r - T : RW - T - (p.x + p.r);
     if (link.locked && room.cleared && along < 24 && edge < 4 && toward > 0.2 && p.keys > 0) { p.keys--; link.locked = false; Snd.unlock(); }
+    if (!open && room.cleared && link.kind === 'sfida' && !link.locked && along < 24 && edge < 4 && toward > 0.2 && (!G.banner || G.banner.title !== 'Porta della sfida')) G.banner = {title: 'Porta della sfida', sub: 'Ti serve la salute piena per entrare', t: 110, small: true};
     if (open && along < 22 && edge < 3 && toward > 0.3) {
       const next = other(link, room);
       if (link.kind === 'maledetta' && !(flying(p) && next.type === 'maledetta')) { p.inv = 0; hurtPlayer(2, 'la porta maledetta', true, true); if (p.dead) return; }
@@ -1893,6 +1920,7 @@ function updateTears() {
         if (!t.tiles.has(at(c, r))) { t.tiles.add(at(c, r)); hitTile(c, r, t); if (t.spectral || t.pierce || t.boom || t.orbit) splashTear({...t, life: 0}); }
       }
       if (TEARSTOP(v) && !t.spectral && !(t.from === 'p' && SOFT(v) && room.grid[at(c, r)] === 0)) {
+        if (t.from === 'p' && !t.bounce) { (v === 2 || v === 10 ? Snd.squelch() : Snd.thud()); burst(t.x, t.y, v === 2 ? '#6b4626' : v === 10 ? '#e8b64a' : '#8a8078', 4, 1.6); } // what it hits, it sounds like
         if (t.bounce && t.bounces < 3) { t.bounces++; const pc = Math.floor((t.x - t.vx - T) / T); if (pc !== c) t.vx *= -1; else t.vy *= -1; t.x += t.vx; t.y += t.vy; }
         else if (!t.back) t.life = 0;
       }
@@ -1944,7 +1972,7 @@ function updateFx() {
   for (const f of G.fx) {
     f.life--;
     if (f.kind === 'p') { f.x += f.vx; f.y += f.vy; f.vx *= 0.9; f.vy = f.vy * 0.9 + 0.08; }
-    else if (f.kind === 'smoke') { f.x += f.vx; f.y += f.vy; f.vx *= 0.95; f.vy *= 0.95; f.size += 0.35; }
+    else if (f.kind === 'smoke') { f.x += f.vx; f.y += f.vy; f.vx *= 0.95; f.vy *= 0.95; f.size += f.dust ? 0.12 : 0.35; }
     else if (f.kind === 'gib') {
       f.x = clamp(f.x + f.vx, T + 4, RW - T - 4); f.y = clamp(f.y + f.vy, T + 4, RH - T - 4); f.z += f.vz; f.vz -= 0.35; f.rot += f.spin;
       if (f.z <= 0) {
@@ -2013,7 +2041,7 @@ function outlined(c, x, y, R, fn, glow) {
   a.save(); a.setTransform(sc, 0, 0, sc, size / 2 - x * sc, size / 2 - y * sc); fn(a); a.restore(); // the sprite's own alpha or colours never leak into the next one
   b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over'; b.clearRect(0, 0, pad, pad); b.drawImage(OL.a, 0, 0, size, size, 0, 0, size, size);
   b.globalCompositeOperation = 'source-in'; b.fillStyle = '#0b0706'; b.fillRect(0, 0, size, size); b.globalCompositeOperation = 'source-over';
-  const dx = Math.round(m.a * x + m.c * y + m.e - size / 2), dy = Math.round(m.b * x + m.d * y + m.f - size / 2), w = Math.max(1.5, sc * 1.6), d = w * 0.72;
+  const dx = Math.round(m.a * x + m.c * y + m.e - size / 2), dy = Math.round(m.b * x + m.d * y + m.f - size / 2), w = sc < 1.2 ? 1 : Math.max(1.5, sc * 1.6), d = sc < 1.2 ? 1 : w * 0.72; // one crisp pixel on the low-res canvas
   c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
   if (glow) { c.shadowColor = glow; c.shadowBlur = 12 * sc; }
   for (const [ox, oy] of [[w, 0], [-w, 0], [0, w], [0, -w], [d, d], [-d, d], [d, -d], [-d, -d]]) c.drawImage(OL.b, 0, 0, size, size, dx + ox, dy + oy, size, size);
@@ -2033,99 +2061,17 @@ function resize() {
   DPR = Math.min(TOUCH ? 1.75 : 2, window.devicePixelRatio || 1);
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
-  S = Math.min(W / RW, H / RH);
+  S = Math.min(W / (RW + 2 * MARG), H / (RH + 2 * MARG)); // the thick walls are drawn in a margin around the room
   OX = (W - RW * S) / 2; OY = (H - RH * S) / 2;
   G.portrait = TOUCH && H > W;
   document.documentElement.classList.toggle('portrait-play', !!(G.portrait && G.state === 'play'));
 }
 
 /* ---------- room ---------- */
-const ROCK = ['#7d6e62', '#77746c', '#71818a', '#5f6f68'];
 const DEAL_THEME = {
   devil: {floor: '#2a0e0e', alt: '#331212', wall: '#140606', brick: '#4a1010'},
   angel: {floor: '#c9c4b8', alt: '#d6d1c4', wall: '#8a8478', brick: '#b8b2a4'},
 };
-function drawRoomBase(c, room) {
-  const th = DEAL_THEME[room.type] || floorTheme(room.depth), d = DEAL_THEME[room.type] ? 0 : chap(room.depth);
-  // walls
-  c.fillStyle = th.wall; c.fillRect(0, 0, RW, RH);
-  const bw = 20, bh = 10;
-  c.fillStyle = th.brick;
-  for (let y = 0; y < RH; y += bh) for (let x = (y / bh) % 2 ? -bw / 2 : 0; x < RW; x += bw) {
-    if (x > T - 4 && x < RW - T && y > T - 4 && y < RH - T) continue;
-    const h = hash(x + room.gx * 97, y + room.gy * 53);
-    c.globalAlpha = 0.35 + h * 0.4;
-    c.fillRect(x + 1, y + 1, bw - 2, bh - 2);
-  }
-  c.globalAlpha = 1;
-  // floor tiles
-  for (let col = 0; col < COLS; col++) for (let r = 0; r < ROWS; r++) {
-    const h = hash(col + room.gx * 31, r + room.gy * 17);
-    c.fillStyle = (col + r) % 2 ? th.floor : th.alt;
-    c.fillRect(T + col * T, T + r * T, T, T);
-    if (h < 0.18) { c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(T + col * T + 4, T + r * T + 4, T - 8, T - 8); }
-    if (d === 3) { c.strokeStyle = 'rgba(255,255,255,.06)'; c.strokeRect(T + col * T + 0.5, T + r * T + 0.5, T - 1, T - 1); }
-  }
-  c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 1;
-  for (let col = 1; col < COLS; col++) { c.beginPath(); c.moveTo(T + col * T, T); c.lineTo(T + col * T, RH - T); c.stroke(); }
-  for (let r = 1; r < ROWS; r++) { c.beginPath(); c.moveTo(T, T + r * T); c.lineTo(RW - T, T + r * T); c.stroke(); }
-  // decoration that belongs to the place
-  for (let i = 0; i < 6; i++) {
-    const h1 = hash(room.gx * 7 + i, room.gy * 13 + d), h2 = hash(room.gy * 5 + i, room.gx * 11 + 3);
-    const x = T + 20 + h1 * (RW - 2 * T - 40), y = T + 20 + h2 * (RH - 2 * T - 40);
-    if (d === 4 && i < 3) { ell(c, x, y, 30 + h1 * 30, 10 + h2 * 10, 'rgba(110,170,190,.16)'); continue; }
-    if (d === 3 && i < 3) { ell(c, x, y, 18 + h1 * 20, 10 + h2 * 8, 'rgba(240,235,220,.10)'); continue; }  // flour
-    c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, y);
-    for (let k = 0; k < 4; k++) c.lineTo(x + (hash(i, k + d) - 0.5) * 30 * (k + 1) / 2, y + (hash(k, i + 9) - 0.5) * 22 * (k + 1) / 2);
-    c.stroke();
-  }
-  // inner shadow along the walls
-  const sh = (x, y, w, h, x2, y2) => { const g = c.createLinearGradient(x, y, x2, y2); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x, y, w, h); };
-  sh(T, T, RW - 2 * T, 26, T, T + 26); sh(T, RH - T - 18, RW - 2 * T, 18, T, RH - T); sh(T, T, 22, RH - 2 * T, T + 22, T); sh(RW - T - 22, T, 22, RH - 2 * T, RW - T, T);
-  c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 3; c.strokeRect(T - 1.5, T - 1.5, RW - 2 * T + 3, RH - 2 * T + 3);
-  drawWallDecor(c, room);
-  if (room.hint) drawHint(c);
-  if (room.type === 'shop') drawShopkeeper(c, tileX(6), tileY(1) - 4);
-  if (room.type === 'devil') drawStatue(c, true);
-  if (room.type === 'angel') drawStatue(c, false);
-}
-function drawWallDecor(c, room) {
-  const d = chap(room.depth);
-  for (let i = 0; i < 4; i++) {
-    const h = hash(room.gx * 3 + i, room.gy * 7 + d);
-    const top = i < 2, x = top ? T * 2 + h * (RW - T * 6) + (h > 0.4 && h < 0.6 ? 80 : 0) : (i === 2 ? T * 0.5 : RW - T * 0.5), y = top ? T * 0.5 : T * 2 + h * (RH - T * 5);
-    if (Math.abs(x - CX) < 50 || Math.abs(y - CY) < 40) continue; // keep clear of the doors
-    c.save(); c.translate(x, y);
-    if (d === 1) { // wine bottles in a niche
-      c.fillStyle = '#140c08'; rrect(c, -14, -12, 28, 24, [10, 10, 2, 2]); c.fill();
-      for (let k = -1; k <= 1; k++) { c.fillStyle = k ? '#2c4a24' : '#5a1020'; c.fillRect(k * 8 - 2.5, -4, 5, 12); c.fillRect(k * 8 - 1, -8, 2, 4); }
-    } else if (d === 2) { // chains
-      c.strokeStyle = '#6f6a60'; c.lineWidth = 2;
-      for (let k = 0; k < 4; k++) { c.beginPath(); c.ellipse(0, -12 + k * 7, 2.5, 4, 0, 0, Math.PI * 2); c.stroke(); }
-    } else if (d === 3) { // pipes and a sack of flour
-      c.fillStyle = '#56656c'; c.fillRect(-18, -4, 36, 7); c.fillStyle = '#3f4b51'; c.fillRect(-4, -8, 8, 15);
-    } else { // dripping moss
-      c.fillStyle = 'rgba(70,120,80,.55)'; c.beginPath(); c.ellipse(0, 0, 16, 8, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = 'rgba(140,200,220,.5)'; c.fillRect(-1, 6, 2, 6 + (G.tick / 6 + i * 5) % 10);
-    }
-    c.restore();
-  }
-}
-const TORCH = [[T * 3.5, T * 0.45], [RW - T * 3.5, T * 0.45], [T * 3.5, RH - T * 0.45], [RW - T * 3.5, RH - T * 0.45]];
-function drawTorches(c, room, glow) {
-  for (const [x, y] of TORCH) {
-    const fl = Math.sin(G.tick * 0.3 + x) * 0.15 + Math.sin(G.tick * 0.83 + y) * 0.1;
-    if (glow) { // light thrown on the floor
-      const g = c.createRadialGradient(x, y + 10, 4, x, y + 10, 150 + fl * 30);
-      g.addColorStop(0, 'rgba(255,170,80,.22)'); g.addColorStop(1, 'rgba(255,170,80,0)');
-      c.fillStyle = g; c.fillRect(x - 180, y - 180, 360, 360);
-      continue;
-    }
-    c.fillStyle = '#2a1a10'; c.fillRect(x - 4, y - 2, 8, 9); c.fillStyle = '#5a3a20'; c.fillRect(x - 6, y - 4, 12, 3);
-    c.beginPath(); c.moveTo(x - 4.5, y - 4); c.quadraticCurveTo(x - 6, y - 14 - fl * 8, x, y - 20 - fl * 10); c.quadraticCurveTo(x + 6, y - 14 + fl * 8, x + 4.5, y - 4); c.fillStyle = '#ff9a2a'; c.fill();
-    c.beginPath(); c.moveTo(x - 2, y - 4); c.quadraticCurveTo(x - 2.5, y - 10, x, y - 13 - fl * 6); c.quadraticCurveTo(x + 2.5, y - 10, x + 2, y - 4); c.fillStyle = '#ffe07a'; c.fill();
-  }
-}
 function drawStatue(c, devil) {
   const x = CX, y = tileY(1);
   c.save(); c.translate(x, y);
@@ -2145,136 +2091,27 @@ function drawStatue(c, devil) {
   c.restore();
   if (devil) { c.save(); c.globalAlpha = 0.25; c.strokeStyle = '#b3121b'; c.lineWidth = 2; c.beginPath(); for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 4 / 5; c.lineTo(CX + Math.cos(a) * 70, CY + 30 + Math.sin(a) * 50); } c.stroke(); c.beginPath(); c.ellipse(CX, CY + 30, 74, 54, 0, 0, Math.PI * 2); c.stroke(); c.restore(); }
 }
-function drawHint(c) {
-  c.save(); c.globalAlpha = 0.28; c.fillStyle = '#efe3cf'; c.textAlign = 'center';
-  c.font = '700 15px ' + BODY_FONT;
+function drawHint() { // written at full resolution, over the pixels
   const lines = TOUCH ? ['Pollice sinistro: muoviti', 'Pollice destro: spara', 'Fulmine: oggetto attivo · Bomba · Pillola'] : ['W A S D  muoviti', 'Frecce  spara', 'Spazio oggetto · E bomba · Q pillola'];
-  lines.forEach((l, i) => c.fillText(l, CX, CY - 60 + i * 22));
-  c.restore();
+  lines.forEach((l, i) => label(CX, CY - 60 + i * 22, l, 15, 'rgba(239,227,207,.45)'));
 }
-function drawDoors(c, room) {
-  for (const [dir, link] of Object.entries(room.doors)) {
-    const p = DOOR_POS[dir], rot = {n: 0, s: Math.PI, w: -Math.PI / 2, e: Math.PI / 2}[dir];
-    c.save(); c.translate(p.x, p.y); c.rotate(rot);
-    if (link.hidden) { c.restore(); continue; }
-    const open = room.cleared && !link.locked;
-    link.op = link.op === undefined ? (open ? 1 : 0) : lerp(link.op, open ? 1 : 0, 0.18);
-    if (link.kind === 'secret') {
-      ell(c, 0, -10, 22, 24, '#0a0706'); c.strokeStyle = '#3a2b23'; c.lineWidth = 3; c.stroke();
-      c.restore(); continue;
-    }
-    const frame = {normal: '#6b4a2a', treasure: '#e8b64a', shop: '#7a8a96', boss: '#7a1010', devil: '#3a0a0a', angel: '#f4f0e6', sfida: '#8a8f96', maledetta: '#2a0808'}[link.kind];
-    // opening
-    c.fillStyle = '#0a0706'; rrect(c, -20, -T + 2, 40, T + 2, [14, 14, 0, 0]); c.fill();
-    if (link.op < 0.98) { // leaves slide into the wall
-      const sl = link.op * 19;
-      c.save(); rrect(c, -20, -T + 2, 40, T + 2, [14, 14, 0, 0]); c.clip();
-      c.fillStyle = link.locked ? '#5a4030' : '#4a3424';
-      c.fillRect(-19 - sl, -T + 10, 19, T - 8); c.fillRect(sl, -T + 10, 19, T - 8);
-      c.fillStyle = 'rgba(255,255,255,.06)'; c.fillRect(-15 - sl, -T + 12, 3, T - 12); c.fillRect(4 + sl, -T + 12, 3, T - 12);
-      c.restore();
-      if (!open) { c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -T + 10); c.lineTo(0, 2); c.stroke(); }
-      if (link.locked) { c.fillStyle = '#e8b64a'; rrect(c, -7, -16, 14, 11, 2); c.fill(); c.strokeStyle = '#e8b64a'; c.lineWidth = 2.5; c.beginPath(); c.arc(0, -17, 5, Math.PI, 0); c.stroke(); circ(c, 0, -11, 1.8, '#2a1d14'); }
-    }
-    // frame
-    c.strokeStyle = frame; c.lineWidth = 6;
-    c.beginPath(); c.moveTo(-23, 2); c.lineTo(-23, -T + 14); c.quadraticCurveTo(-23, -T - 2, 0, -T - 2); c.quadraticCurveTo(23, -T - 2, 23, -T + 14); c.lineTo(23, 2); c.stroke();
-    if (link.kind === 'devil' || link.kind === 'angel') { c.globalAlpha = 0.5 + Math.sin(G.tick * 0.1) * 0.2; circ(c, 0, -T / 2, 14, link.kind === 'devil' ? '#ff3b1a' : '#fff6d0'); c.globalAlpha = 1; }
-    if (link.kind === 'boss' || link.kind === 'devil') { // horns
-      c.fillStyle = '#d9c8a8';
-      for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 20, -T + 2); c.quadraticCurveTo(s * 36, -T - 4, s * 34, -T - 16); c.quadraticCurveTo(s * 30, -T - 4, s * 14, -T - 2); c.fill(); }
-    }
-    if (link.kind === 'maledetta') { c.fillStyle = '#c9cdd2'; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(i * 9 - 3, -T - 2); c.lineTo(i * 9, -T - 12); c.lineTo(i * 9 + 3, -T - 2); c.fill(); } }
-    if (link.kind === 'sfida') { c.strokeStyle = '#c9cdd2'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(-8, -T - 12); c.lineTo(8, -T + 2); c.moveTo(8, -T - 12); c.lineTo(-8, -T + 2); c.stroke(); }
-    if (link.kind === 'treasure') { c.fillStyle = '#e8b64a'; c.beginPath(); c.moveTo(-9, -T - 4); c.lineTo(-9, -T - 12); c.lineTo(-4, -T - 7); c.lineTo(0, -T - 14); c.lineTo(4, -T - 7); c.lineTo(9, -T - 12); c.lineTo(9, -T - 4); c.fill(); }
-    if (link.kind === 'shop') { circ(c, 0, -T - 6, 6, '#e8b64a'); c.fillStyle = '#5a4a1a'; c.font = '700 9px sans-serif'; c.textAlign = 'center'; c.fillText('€', 0, -T - 3); }
-    c.restore();
-  }
+function drawDecals(c, room) { // pixel splats on the low-res canvas
+  room.decals.forEach((d, n) => {
+    if (d.kind === 'gib') { c.save(); c.translate(d.x, d.y); c.rotate(d.a); c.globalAlpha = 0.9; c.fillStyle = d.col; c.fillRect(-d.size, -d.size * 0.6, d.size * 2, d.size * 1.2); c.fillStyle = '#5e0a0f'; c.fillRect(0, 0, d.size * 0.8, d.size * 0.5); c.restore(); return; }
+    const kind = d.kind === 'drop' ? 'drop' : d.kind;
+    blit(c, stainSpr(kind, Math.floor(d.x * 7 + d.y * 13) % 997, Math.round(d.s * 4) / 4), d.x, d.y, 0.5, 0.5);
+  });
 }
-function drawTile(c, v, col, r, room) {
-  const x = T + col * T, y = T + r * T, th = chap(room.depth) - 1, h = hash(col * 13 + room.gx, r * 7 + room.gy);
-  if (v === 1 || v === 5) {
-    const base = ROCK[th];
-    ell(c, x + T / 2, y + T - 6, 17, 6, 'rgba(0,0,0,.35)');
-    c.beginPath();
-    for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, rad = 15 + hash(i + col, r + i) * 4; c.lineTo(x + T / 2 + Math.cos(a) * rad, y + T / 2 + Math.sin(a) * rad * 0.9); }
-    c.closePath(); c.fillStyle = v === 5 ? shade(base, 0.12) : base; c.fill();
-    c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 2; c.stroke();
-    ell(c, x + T / 2 - 4, y + T / 2 - 6, 8, 5, 'rgba(255,255,255,.14)');
-    if (v === 5) { c.strokeStyle = '#9fe3ff'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x + 13, y + 13); c.lineTo(x + 27, y + 27); c.moveTo(x + 27, y + 13); c.lineTo(x + 13, y + 27); c.stroke(); }
-    else if (h < 0.5) { c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x + 12, y + 20); c.lineTo(x + 20, y + 24); c.lineTo(x + 26, y + 18); c.stroke(); }
-  } else if (v === 2) {
-    const hp = room.hp[at(col, r)], k = 0.55 + hp * 0.11;
-    const cx = x + T / 2, cy = y + T / 2 + 6;
-    ell(c, cx, cy + 6, 15 * k, 5, 'rgba(0,0,0,.3)');
-    ell(c, cx, cy, 15 * k, 8 * k, '#5a3a1e'); ell(c, cx, cy - 7 * k, 11 * k, 6 * k, '#6b4626'); ell(c, cx, cy - 13 * k, 6 * k, 4.5 * k, '#7a5230');
-    circ(c, cx + 1, cy - 18 * k, 2.5 * k, '#7a5230');
-    ell(c, cx - 4 * k, cy - 9 * k, 3 * k, 1.5 * k, 'rgba(255,255,255,.18)');
-  } else if (v === 3) {
-    const g = c.createRadialGradient(x + T / 2, y + T / 2, 4, x + T / 2, y + T / 2, T * 0.75);
-    g.addColorStop(0, '#000'); g.addColorStop(0.7, '#050403'); g.addColorStop(1, 'rgba(0,0,0,.2)');
-    c.fillStyle = g; c.fillRect(x, y, T, T);
-  } else if (v === 4) {
-    c.fillStyle = '#3a3a3e'; c.fillRect(x + 3, y + 3, T - 6, T - 6);
-    c.fillStyle = '#b8bcc4';
-    for (const [sx, sy] of [[12, 12], [28, 12], [12, 28], [28, 28], [20, 20]]) { c.beginPath(); c.moveTo(x + sx - 5, y + sy + 4); c.lineTo(x + sx, y + sy - 7); c.lineTo(x + sx + 5, y + sy + 4); c.fill(); }
-  } else if (v === 7) { // a fireplace: logs and a flame that dies down as you shoot it
-    const cx = x + T / 2, cy = y + T / 2 + 6, hp = room.hp[at(col, r)], f = hp / 3, fl = Math.sin(G.tick * 0.4 + col) * 1.5;
-    ell(c, cx, cy + 7, 15, 5, 'rgba(0,0,0,.35)');
-    for (const s2 of [-1, 1]) { c.save(); c.translate(cx, cy + 4); c.rotate(s2 * 0.35); c.fillStyle = '#5a3a1e'; rrect(c, -14, -3, 28, 7, 3); c.fill(); ell(c, s2 * 13, 0, 3, 3.5, '#c9965a'); c.restore(); }
-    c.fillStyle = '#6b6058'; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; circ(c, cx + Math.cos(a) * 14, cy + 6 + Math.sin(a) * 4, 3.5, '#6b6058'); }
-    if (hp > 0) {
-      c.save(); c.translate(cx, cy); c.scale(0.5 + f * 0.6, 0.5 + f * 0.6);
-      c.fillStyle = '#e23b1e'; c.beginPath(); c.moveTo(0, -24 + fl); c.quadraticCurveTo(15, -6, 9, 4); c.quadraticCurveTo(0, 9, -9, 4); c.quadraticCurveTo(-15, -6, 0, -24 + fl); c.fill();
-      c.fillStyle = '#ff9a2a'; c.beginPath(); c.moveTo(1, -16 - fl); c.quadraticCurveTo(9, -3, 5, 3); c.quadraticCurveTo(0, 6, -5, 3); c.quadraticCurveTo(-8, -3, 1, -16 - fl); c.fill();
-      c.fillStyle = '#ffe07a'; c.beginPath(); c.moveTo(0, -8); c.quadraticCurveTo(4, 0, 2, 3); c.quadraticCurveTo(0, 4, -2, 3); c.quadraticCurveTo(-4, 0, 0, -8); c.fill();
-      c.restore();
-    }
-  } else if (v === 8) { // a barrel of powder: shoot it and stand back
-    const cx = x + T / 2, cy = y + T / 2, dmg = room.hp[at(col, r)] < 2;
-    ell(c, cx, cy + 15, 14, 4, 'rgba(0,0,0,.35)');
-    c.fillStyle = '#8a5a2b'; rrect(c, cx - 13, cy - 15, 26, 30, 6); c.fill();
-    c.fillStyle = '#6b4220'; for (const yy of [-6, 6]) c.fillRect(cx - 13, cy + yy - 1.5, 26, 3);
-    c.fillStyle = '#3a3a3e'; c.fillRect(cx - 13, cy - 13, 26, 2.5); c.fillRect(cx - 13, cy + 11, 26, 2.5);
-    ell(c, cx, cy - 15, 12, 3.5, '#a87240'); c.fillStyle = '#d2202a'; c.font = '800 11px ' + BODY_FONT; c.textAlign = 'center'; c.fillText('TNT', cx, cy + 4);
-    if (dmg) { c.strokeStyle = '#2a1a0a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(cx - 6, cy - 12); c.lineTo(cx - 2, cy - 4); c.lineTo(cx - 7, cy + 2); c.stroke(); }
-  } else if (v === 9) { // a cobweb that slows you down
-    const cx = x + T / 2, cy = y + T / 2;
-    c.save(); c.globalAlpha = 0.55; c.strokeStyle = '#e8e8e8'; c.lineWidth = 1;
-    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + h; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * 19, cy + Math.sin(a) * 19); c.stroke(); }
-    for (const rad of [6, 11, 16]) { c.beginPath(); for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI * 2 + h, rr2 = rad * (i % 2 ? 0.9 : 1); c.lineTo(cx + Math.cos(a) * rr2, cy + Math.sin(a) * rr2); } c.stroke(); }
-    c.restore();
-  } else if (v === 10) { // golden poop: coins inside
-    const hp = room.hp[at(col, r)], k = 0.55 + hp * 0.09;
-    const cx = x + T / 2, cy = y + T / 2 + 6;
-    ell(c, cx, cy + 6, 15 * k, 5, 'rgba(0,0,0,.3)');
-    ell(c, cx, cy, 15 * k, 8 * k, '#b8862a'); ell(c, cx, cy - 7 * k, 11 * k, 6 * k, '#d9a43a'); ell(c, cx, cy - 13 * k, 6 * k, 4.5 * k, '#e8b64a');
-    circ(c, cx + 1, cy - 18 * k, 2.5 * k, '#e8b64a');
-    if ((G.tick + col * 7) % 90 < 10) { c.fillStyle = '#fff6c0'; c.fillRect(cx - 5, cy - 12 * k, 2, 2); c.fillRect(cx + 4, cy - 4 * k, 2, 2); }
-  } else if (v === 6) {
-    c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(x + 3, y + 7, T - 4, T - 4);
-    c.fillStyle = '#5c636b'; c.fillRect(x + 1, y + 1, T - 2, T - 2);
-    c.fillStyle = '#737b84'; c.fillRect(x + 1, y + 1, T - 2, 8);
-    for (const [sx, sy] of [[7, 13], [T - 7, 13], [7, T - 7], [T - 7, T - 7]]) circ(c, x + sx, y + sy, 2, '#9aa3ad');
-  }
-}
-function drawDecals(c, room) {
-  for (const d of room.decals) {
-    c.save(); c.translate(d.x, d.y); c.rotate(d.a); c.scale(d.s, d.s);
-    if (d.kind === 'blood') { c.globalAlpha = 0.75; for (let i = 0; i < 7; i++) ell(c, (hash(i, d.x | 0) - 0.5) * 30, (hash(d.y | 0, i) - 0.5) * 22, 4 + hash(i, 3) * 9, 3 + hash(3, i) * 6, '#5e0a0f'); }
-    else if (d.kind === 'scorch') { const g = c.createRadialGradient(0, 0, 4, 0, 0, 55); g.addColorStop(0, 'rgba(0,0,0,.6)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.beginPath(); c.arc(0, 0, 55, 0, 7); c.fill(); }
-    else if (d.kind === 'rubble') { c.globalAlpha = 0.6; for (let i = 0; i < 5; i++) circ(c, (hash(i, 9) - 0.5) * 26, (hash(9, i) - 0.5) * 20, 2 + hash(i, i) * 2.5, '#5c5048'); }
-    else if (d.kind === 'drop') { c.globalAlpha = 0.18; circ(c, 0, 0, 7, d.col); }
-    else if (d.kind === 'gib') { c.globalAlpha = 0.9; ell(c, 0, 0, d.size, d.size * 0.7, d.col); ell(c, d.size * 0.3, d.size * 0.2, d.size * 0.5, d.size * 0.35, '#5e0a0f'); }
-    c.restore();
-  }
-}
-function drawRoom(c, room, live) {
-  drawRoomBase(c, room);
+function drawRoom(c, room, live, ox = 0, oy = 0) { // on the low-res canvas; ox and oy shift it in whole pixels
+  c.setTransform(1, 0, 0, 1, ox, oy); c.drawImage(roomBg(room), 0, 0);
+  c.setTransform(PIXK, 0, 0, PIXK, MARG * PIXK + ox, MARG * PIXK + oy);
   drawDecals(c, room);
-  for (let col = 0; col < COLS; col++) for (let r = 0; r < ROWS; r++) { const v = room.grid[at(col, r)]; if (v) drawTile(c, v, col, r, room); }
-  drawDoors(c, room);
-  drawTorches(c, room, false);
+  if (room.hint && live) drawHint();
+  if (room.type === 'shop') drawShopkeeper(c, tileX(6), tileY(1) - 4);
+  if (room.type === 'devil') drawStatue(c, true);
+  if (room.type === 'angel') drawStatue(c, false);
+  for (const [dir, link] of Object.entries(room.doors)) if (!link.hidden) drawDoorPix(c, room, dir, link);
+  for (let r = 0; r < ROWS; r++) for (let col = 0; col < COLS; col++) { const v = room.grid[at(col, r)]; if (v && v !== 3 && v !== 4) drawTilePix(c, v, col, r, room); }
   for (const pk of room.pickups) drawPickup(c, pk, live);
 }
 
@@ -2305,7 +2142,7 @@ function drawPickup(c, pk, live) {
     const yy = y + bob * 0.5 - 2;
     switch (pk.kind) {
       case 'coin': { const sq = Math.abs(Math.cos(G.tick * 0.06 + x)); c.save(); c.translate(x, yy); c.scale(0.35 + sq * 0.65, 1); circ(c, 0, 0, 7, '#c9952a'); circ(c, 0, 0, 5.5, '#e8b64a'); c.fillStyle = '#fff3c4'; c.fillRect(-1, -4, 2, 5); c.restore(); break; }
-      case 'nickel': circ(c, x, yy, 8.5, '#8a8f96'); circ(c, x, yy, 7, '#c9cdd2'); c.fillStyle = '#5a5f66'; c.font = '700 9px sans-serif'; c.textAlign = 'center'; c.fillText('5', x, yy + 3); break;
+      case 'nickel': circ(c, x, yy, 8.5, '#8a8f96'); circ(c, x, yy, 7, '#c9cdd2'); c.fillStyle = '#5a5f66'; c.fillRect(x - 2, yy - 3, 4, 6); break;
       case 'heart': heartPath(c, x, yy, 9); c.fillStyle = '#d2202a'; c.fill(); c.strokeStyle = '#5e0a0f'; c.lineWidth = 1.5; c.stroke(); break;
       case 'half': c.save(); heartPath(c, x, yy, 9); c.clip(); c.fillStyle = '#d2202a'; c.fillRect(x - 12, yy - 12, 12, 24); c.restore(); heartPath(c, x, yy, 9); c.strokeStyle = '#5e0a0f'; c.lineWidth = 1.5; c.stroke(); break;
       case 'soul': heartPath(c, x, yy, 9); c.fillStyle = 'rgba(120,170,255,.85)'; c.fill(); c.strokeStyle = '#2b4f9a'; c.lineWidth = 1.5; c.stroke(); break;
@@ -2316,10 +2153,7 @@ function drawPickup(c, pk, live) {
     }
   }
   if (pk.hearts) { for (let i = 0; i < pk.hearts; i++) { heartPath(c, x + (i - (pk.hearts - 1) / 2) * 16, y + 26, 6); c.fillStyle = '#d2202a'; c.fill(); c.strokeStyle = '#1a0606'; c.lineWidth = 1.2; c.stroke(); } }
-  if (pk.price) {
-    c.fillStyle = '#efe3cf'; c.font = '700 13px sans-serif'; c.textAlign = 'center';
-    c.fillText(priceOf(pk) + ' ¢', x, y + 26);
-  }
+  if (pk.price && live) label(x, y + 30, priceOf(pk) + ' ¢', 14);
 }
 function drawPill(c, x, y, ci, s) {
   const [a, b] = PILL_COLS[ci % PILL_COLS.length];
@@ -2438,174 +2272,15 @@ function drawIcon(c, icon, col, x, y, s) {
 }
 
 /* ---------- characters, seen from above-front like the Isaac sprites ---------- */
-function drawChar(c, ch, x, y, o = {}) {
-  const s = (o.scale || 1) * (ch.size || 1), face = o.face || 's', w = o.walk || 0;
-  const breath = o.breath ? Math.sin(G.tick * 0.08) * 0.025 : 0, sq = o.shoot ? 0.08 : 0;
-  c.save(); c.translate(x, y); c.scale(s * (1 + sq), s * (1 - sq + breath));
-  if (o.shadow !== false) ell(c, 0, 13, 12, 4, 'rgba(0,0,0,.35)');
-  if (o.dead) { c.rotate(Math.PI / 2); }
-  const step = Math.sin(w) * 2.5;
-  const items = o.items || [], wear = layer => { for (const id of items) { const k = COSTUME[id]; if (k && k[0] === layer) k[1](c, -12, 12.5, face, face === 'e' ? 4 : face === 'w' ? -4 : 0, o); } };
-  wear('back');
-  // legs
-  ell(c, -4, 9 + step * 0.5, 3.5, 4.5, ch.pants); ell(c, 4, 9 - step * 0.5, 3.5, 4.5, ch.pants);
-  // body
-  const bodyW = ch.muscle ? 12 : 9;
-  c.fillStyle = ch.shirtless ? ch.skin : ch.shirt; rrect(c, -bodyW, -3, bodyW * 2, 12, 5); c.fill();
-  if (ch.shirtless) { c.fillStyle = ch.pants; rrect(c, -9, 5, 18, 5, 2); c.fill(); }
-  if (ch.shirt2) { c.fillStyle = ch.shirt2; c.fillRect(-2, -3, 4, 12); }
-  if (ch.muscle) { ell(c, -12, 1, 4.5, 5.5, ch.skin); ell(c, 12, 1, 4.5, 5.5, ch.skin); }
-  else { ell(c, -bodyW - 1, 2 + step * 0.4, 3, 4.5, ch.shirtless ? ch.skin : ch.shirt); ell(c, bodyW + 1, 2 - step * 0.4, 3, 4.5, ch.shirtless ? ch.skin : ch.shirt); }
-  if (ch.tie) { c.fillStyle = '#f4f4f4'; c.beginPath(); c.moveTo(-3, -3); c.lineTo(3, -3); c.lineTo(0, 3); c.fill(); c.fillStyle = '#8e1b3c'; c.fillRect(-1.2, -2, 2.4, 8); }
-  if (ch.bowtie) { c.fillStyle = '#141417'; c.beginPath(); c.moveTo(0, -2); c.lineTo(-4, -4); c.lineTo(-4, 0); c.closePath(); c.moveTo(0, -2); c.lineTo(4, -4); c.lineTo(4, 0); c.fill(); }
-  if (ch.robot) { c.fillStyle = '#22c3d6'; c.fillRect(-3, 1, 6, 3); }
-  if (ch.toolbelt) { c.fillStyle = '#5a3a1e'; c.fillRect(-bodyW, 5, bodyW * 2, 2.5); c.fillStyle = '#9aa3ad'; c.fillRect(-bodyW + 2, 6, 2, 5); c.fillRect(bodyW - 5, 5.5, 3, 4); circ(c, -bodyW + 3, 5.5, 1.6, '#9aa3ad'); }
-  wear('body');
-  // head
-  const hy = -12, R = 12.5;
-  if (ch.robot) {
-    c.fillStyle = ch.skin; rrect(c, -12, hy - 11, 24, 21, 6); c.fill();
-    c.strokeStyle = '#6d747d'; c.lineWidth = 1.5; c.stroke();
-    c.strokeStyle = '#6d747d'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, hy - 11); c.lineTo(2, hy - 18); c.stroke(); circ(c, 2, hy - 19, 2.5, '#e23b2e');
-    if (face !== 'n') { const ex = face === 'e' ? 3 : face === 'w' ? -3 : 0; c.fillStyle = '#16323a'; rrect(c, -9 + ex, hy - 5, 18, 7, 3); c.fill(); c.fillStyle = '#5ff2ff'; c.fillRect(-6 + ex, hy - 3, 4, 3); c.fillRect(2 + ex, hy - 3, 4, 3); }
-    wear('top'); c.restore(); return;
-  }
-  // hair behind the head
-  if (ch.style === 'long') { c.fillStyle = ch.hair; rrect(c, -14, hy - 6, 28, 22, 6); c.fill(); }
-  if (ch.style === 'curly' && face === 'n') { for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; circ(c, Math.cos(a) * 10, hy + Math.sin(a) * 10, 6, ch.hair); } }
-  circ(c, 0, hy, R, ch.skin);
-  c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 1; c.beginPath(); c.arc(0, hy, R, 0, 7); c.stroke();
-  const ex = face === 'e' ? 4 : face === 'w' ? -4 : 0;
-  if (face !== 'n') {
-    // ears
-    if (face === 's') { ell(c, -R + 0.5, hy + 1, 2.5, 3.5, ch.skin); ell(c, R - 0.5, hy + 1, 2.5, 3.5, ch.skin); }
-    if (ch.piercing) { circ(c, R - 1, hy + 4, 1.4, '#d8dde3'); circ(c, ex + 5.5, hy - 6, 1.1, '#d8dde3'); circ(c, ex + 1.5, hy + 3.5, 1, '#d8dde3'); }
-    // eyes, big and wet like Isaac's
-    const ey = hy - 1;
-    const eyesX = face === 's' ? [-4.5, 4.5] : [ex - 1.5 + (face === 'e' ? 2 : -2), ex + (face === 'e' ? 6 : -6)];
-    for (const e of eyesX) { ell(c, e, ey, 3.2, 3.6, '#fff'); circ(c, e + (face === 'e' ? 0.8 : face === 'w' ? -0.8 : 0), ey + 0.6, 2, o.hurt ? '#a01010' : '#1a1418'); circ(c, e - 0.7, ey - 0.6, 0.7, '#fff'); }
-    if (ch.glasses) { c.strokeStyle = '#141417'; c.lineWidth = 1.6; for (const e of eyesX) { c.beginPath(); c.arc(e, ey, 4.4, 0, 7); c.stroke(); } c.beginPath(); c.moveTo(eyesX[0] + 4.4, ey); c.lineTo(eyesX[1] - 4.4, ey); c.stroke(); }
-    // mouth / beard
-    if (ch.beard) { c.fillStyle = ch.beard; c.beginPath(); c.arc(ex * 0.5, hy + 2, R - 1, 0.15, Math.PI - 0.15); c.fill(); }
-    else if (ch.mustache) { ell(c, ex * 0.6, hy + 5.5, 4.5, 1.6, ch.hair); }
-    if (!ch.beard) { c.strokeStyle = '#7a3a2a'; c.lineWidth = 1.3; c.beginPath(); o.shoot ? c.arc(ex * 0.6, hy + 7.5, 1.8, 0, 7) : c.arc(ex * 0.6, hy + 6.2, 2.4, 0.2, Math.PI - 0.2); c.stroke(); }
-    else if (o.shoot) circ(c, ex * 0.5, hy + 7, 1.8, '#3a1a10');
-    if (ch.joint && !o.dead) { // the joint at the corner of the mouth, smoking
-      const jx = ex * 0.6 + (face === 'w' ? -3 : 3), sgn = face === 'w' ? -1 : 1;
-      c.save(); c.translate(jx, hy + 6.5); c.rotate(sgn * 0.25); c.fillStyle = '#efe8d8'; c.fillRect(sgn < 0 ? -7 : 0, -0.9, 7, 1.8); circ(c, sgn * 7.2, 0, 1.3, G.tick % 20 < 10 ? '#ff6a1a' : '#ffb02a'); c.restore();
-      c.globalAlpha *= 0.45; circ(c, jx + sgn * 8, hy + 2 - (G.tick % 40) * 0.15, 1.8 + (G.tick % 40) * 0.05, '#c8ccc0'); c.globalAlpha /= 0.45;
-    }
-  }
-  // hair on top
-  c.fillStyle = ch.hair;
-  const cap = (a0, a1, rr2 = R + 0.5, dy = 0) => { c.beginPath(); c.arc(0, hy + dy, rr2, a0, a1); c.fill(); };
-  switch (ch.style) {
-    case 'long': cap(Math.PI * 1.05, Math.PI * 1.95); if (face === 's') { c.fillRect(-R, hy - 6, 4, 18); c.fillRect(R - 4, hy - 6, 4, 18); } if (face === 'n') circ(c, 0, hy, R + 0.5, ch.hair); break;
-    case 'short': case 'slick': case 'band':
-      if (face === 'n') circ(c, 0, hy, R + 0.5, ch.hair); else cap(Math.PI * 1.08, Math.PI * 1.92);
-      if (ch.style === 'slick' && face !== 'n') { c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1.2; c.beginPath(); c.arc(-2, hy - 4, 8, Math.PI * 1.2, Math.PI * 1.6); c.stroke(); }
-      if (ch.style === 'band') { c.fillStyle = '#e94b3c'; c.fillRect(-R, hy - 8, R * 2, 3.5); }
-      break;
-    case 'messy': // hair everywhere, never combed
-      if (face === 'n') circ(c, 0, hy, R + 0.5, ch.hair); else cap(Math.PI * 1.05, Math.PI * 1.95);
-      for (const [a, l, wdt] of [[1.1, 5, 0.22], [1.3, 7, 0.2], [1.5, 6, 0.24], [1.68, 8, 0.2], [1.85, 5, 0.22], [1.98, 4, 0.18]]) { const aa = Math.PI * a; c.beginPath(); c.moveTo(Math.cos(aa - wdt) * R, hy + Math.sin(aa - wdt) * R); c.lineTo(Math.cos(aa + 0.08) * (R + l), hy + Math.sin(aa + 0.08) * (R + l)); c.lineTo(Math.cos(aa + wdt) * R, hy + Math.sin(aa + wdt) * R); c.fill(); }
-      if (face !== 'n') { c.beginPath(); c.moveTo(-3, hy - R + 2); c.quadraticCurveTo(2, hy - 5, 7, hy - R + 3); c.lineTo(5, hy - R + 1); c.fill(); }
-      break;
-    case 'inventor': // wild hair sticking up, and welding goggles on the forehead
-      if (face === 'n') circ(c, 0, hy, R + 0.5, ch.hair); else cap(Math.PI * 1.08, Math.PI * 1.92);
-      for (let i = 0; i < 5; i++) { const a = Math.PI * (1.15 + i * 0.175); c.beginPath(); c.moveTo(Math.cos(a - 0.2) * R, hy + Math.sin(a - 0.2) * R); c.lineTo(Math.cos(a) * (R + 6), hy + Math.sin(a) * (R + 6) - 1); c.lineTo(Math.cos(a + 0.2) * R, hy + Math.sin(a + 0.2) * R); c.fill(); }
-      if (ch.goggles) {
-        c.fillStyle = '#3a3a3e'; c.fillRect(-R, hy - 8, R * 2, 3);
-        if (face !== 'n') for (const gx of face === 's' ? [-5, 5] : [ex - 1, ex + (face === 'e' ? 5 : -5)]) { circ(c, gx, hy - 7, 4, '#5a5f66'); circ(c, gx, hy - 7, 2.8, '#7fd3ff'); circ(c, gx - 1, hy - 8, 1, '#e8fbff'); }
-      }
-      break;
-    case 'beanie':
-      c.fillStyle = '#22c3d6'; cap(Math.PI, Math.PI * 2, R + 1.5, -2); c.fillStyle = ch.shirt; c.fillRect(-R - 1.5, hy - 4, R * 2 + 3, 4); circ(c, 0, hy - R - 3, 3.5, '#22c3d6');
-      if (face === 'n') { c.fillStyle = '#22c3d6'; circ(c, 0, hy - 2, R + 1, '#22c3d6'); }
-      break;
-    case 'fin':
-      c.fillStyle = shade(ch.hair, 0.35); c.globalAlpha = 0.5; cap(Math.PI * 1.1, Math.PI * 1.9); c.globalAlpha = 1;
-      c.fillStyle = ch.hair; c.beginPath(); c.moveTo(-4, hy - R + 3); c.lineTo(0, hy - R - 11); c.lineTo(4, hy - R + 3); c.fill();
-      break;
-    case 'curly':
-      if (ch.hachimaki) { c.save(); c.fillStyle = '#f4f4f4'; c.fillRect(-R, hy - 7, R * 2, 4); if (face === 's') circ(c, 0, hy - 5, 2, '#d2202a'); c.restore(); }
-      if (face !== 'n') { // seen from the side the curls move to the back of the head, so the face stays clear
-        const a0 = face === 'e' ? 0.82 : face === 'w' ? 1.38 : 1.02;
-        for (let i = 0; i < 7; i++) { const a = Math.PI * (a0 + i * 0.13 * (face === 's' ? 16 / 13 : 1)); circ(c, Math.cos(a) * (R - 1), hy + Math.sin(a) * (R - 1) - 1, 5, ch.hair); }
-      }
-      else circ(c, 0, hy, R + 1, ch.hair);
-      break;
-  }
-  wear('top');
-  c.restore();
+function drawChar(c, ch, x, y, o = {}) { // the pixel sprite; y is the middle of the body, the feet sit 13.5 units lower
+  const s = (o.scale || 1) * (ch.size || 1), u = s / PIXK, w = Math.sin(o.walk || 0);
+  const sp = heroSpr(ch, o.dead ? 's' : (o.face || 's'), o.walk ? (w > 0.3 ? 1 : w < -0.3 ? 2 : 0) : 0, {shoot: o.shoot, hurt: o.hurt, items: o.items});
+  const feet = y + 13.5 * s;
+  if (o.shadow !== false && !o.dead) { if (c === BUF.c) pixShadow(c, x, feet - 1, 11 * s); else ell(c, x, feet - 1, 11 * s, 3.5 * s, 'rgba(0,0,0,.35)'); }
+  if (o.dead) { c.save(); c.translate(x, feet - 6 * s); c.rotate(Math.PI / 2); c.imageSmoothingEnabled = false; c.drawImage(sp, -13 * u, -24 * u, 26 * u, 34 * u); c.restore(); return; }
+  if (c === BUF.c) { blit(c, sp, x, feet, 0.5, 31 / 34, s); return; } // snapped to whole pixels in the room
+  c.save(); c.imageSmoothingEnabled = false; c.drawImage(sp, x - 13 * u, feet - 31 * u, 26 * u, 34 * u); c.restore();
 }
-
-/* ---------- costumes: what you pick up shows on you, like Isaac ---------- */
-// [layer, draw(c, hy, R, face, ex)]: back is behind the body, body over the shirt, top over head and hair
-const front = face => face !== 'n';
-const COSTUME = {
-  bistecca: ['top', (c, hy, R, f, ex) => { if (front(f)) { ell(c, ex - 6, hy + 4, 2.6, 2, 'rgba(168,50,58,.75)'); ell(c, ex + 6, hy + 5, 2, 1.6, 'rgba(168,50,58,.75)'); } }],
-  ciaccia: ['body', c => { ell(c, -3, 3, 3, 2, '#d9a556'); circ(c, 3, 6, 1, '#d9a556'); }],
-  cipolla: ['top', (c, hy, R, f, ex) => { if (front(f)) { c.strokeStyle = 'rgba(100,180,255,.85)'; c.lineWidth = 1.4; for (const e of [-4.5, 4.5]) { c.beginPath(); c.moveTo(ex * 0.6 + e, hy + 2); c.lineTo(ex * 0.6 + e - 0.5, hy + 7); c.stroke(); } } }],
-  caffe: ['top', (c, hy, R, f, ex) => { if (front(f)) for (const e of [-4.5, 4.5]) ell(c, ex * 0.6 + e, hy + 3.5, 2.6, 0.9, 'rgba(70,40,30,.45)'); }],
-  campari: ['top', (c, hy, R, f, ex) => { if (front(f)) for (const e of [-7, 7]) ell(c, ex * 0.6 + e, hy + 4, 2.4, 1.6, 'rgba(226,40,50,.45)'); }],
-  fiasco: ['top', (c, hy, R, f, ex) => { if (front(f)) circ(c, ex * 0.7, hy + 2.5, 2.1, '#c8323a'); }],
-  scarpe: ['body', c => { ell(c, -4, 12, 4, 2.2, '#e94b3c'); ell(c, 4, 12, 4, 2.2, '#e94b3c'); c.fillStyle = '#f4f4f4'; c.fillRect(-8, 12.5, 16, 1.2); }],
-  occhiali: ['top', (c, hy, R, f, ex, o) => { if (!front(f)) return; c.strokeStyle = '#4a4a52'; c.lineWidth = 1.5; for (const e of f === 's' ? [-4.5, 4.5] : [ex - 1.5 + (f === 'e' ? 2 : -2), ex + (f === 'e' ? 6 : -6)]) { c.beginPath(); c.arc(e, hy - 1, 4.2, 0, 7); c.stroke(); } }],
-  prospettiva: ['top', (c, hy, R) => { ell(c, 2, hy - R + 1, 9, 3.2, '#b3121b', -0.15); circ(c, 6, hy - R - 1.5, 1.6, '#b3121b'); }],
-  forchettone: ['body', c => { c.strokeStyle = '#c9cdd2'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(13, 8); c.lineTo(13, -10); c.moveTo(11, -10); c.lineTo(11, -6); c.moveTo(15, -10); c.lineTo(15, -6); c.moveTo(11, -6); c.lineTo(15, -6); c.stroke(); }],
-  balestra: ['back', c => { c.save(); c.rotate(-0.5); c.strokeStyle = '#8a5a2b'; c.lineWidth = 2; c.beginPath(); c.moveTo(-14, -6); c.quadraticCurveTo(0, -14, 14, -6); c.stroke(); c.fillStyle = '#5a3a1e'; c.fillRect(-1.5, -12, 3, 22); c.restore(); }],
-  pallone: ['body', c => { circ(c, -12, 6, 4.2, '#f4f4f4'); circ(c, -12, 6, 1.4, '#222'); circ(c, -14.5, 4.5, 0.9, '#222'); circ(c, -9.5, 7.5, 0.9, '#222'); }],
-  bussola: ['body', c => { c.strokeStyle = '#8a6a2a'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-4, -3); c.lineTo(0, 2); c.lineTo(4, -3); c.stroke(); circ(c, 0, 3, 2.6, '#d9c49a'); c.fillStyle = '#d2202a'; c.fillRect(-0.5, 1, 1, 2); }],
-  pasta: ['top', (c, hy, R) => { c.strokeStyle = '#f0cf6b'; c.lineWidth = 1.4; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(i * 4, hy - R + 1); c.quadraticCurveTo(i * 4 + 3, hy - R + 6, i * 4 - 1, hy - R + 10); c.stroke(); } }],
-  petardo: ['top', (c, hy, R) => { c.strokeStyle = '#a88'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(0, hy - R); c.quadraticCurveTo(4, hy - R - 5, 2, hy - R - 8); c.stroke(); circ(c, 2, hy - R - 8.5, 1.6 + (G.tick % 6 < 3 ? 0.8 : 0), '#ffcf40'); }],
-  ghiacciolo: ['top', (c, hy, R, f, ex) => { if (!front(f)) return; c.fillStyle = '#c9a26b'; c.fillRect(ex * 0.6 + 3, hy + 6, 1.5, 4); c.fillStyle = '#9fe3ff'; rrect(c, ex * 0.6 + 1.5, hy + 9, 4.5, 5, 2); c.fill(); }],
-  peperoncino: ['top', (c, hy, R) => { for (const x of [-5, 0, 5]) { const fl = Math.sin(G.tick * 0.4 + x) * 1.2; c.fillStyle = x ? '#ff7a1a' : '#ffcf40'; c.beginPath(); c.moveTo(x - 2.5, hy - R + 2); c.quadraticCurveTo(x, hy - R - 7 + fl, x + 2.5, hy - R + 2); c.fill(); } }],
-  reliquia: ['body', c => { c.fillStyle = '#f0d27a'; c.fillRect(-0.8, -1, 1.6, 7); c.fillRect(-2.5, 1, 5, 1.4); }],
-  rosario: ['body', c => { c.strokeStyle = '#d6c9b0'; c.setLineDash([1.2, 1.4]); c.lineWidth = 1.2; c.beginPath(); c.arc(0, -4, 6, 0.3, Math.PI - 0.3); c.stroke(); c.setLineDash([]); c.fillStyle = '#d6c9b0'; c.fillRect(-0.6, 1.5, 1.2, 4); }],
-  portafoglio: ['body', c => { c.fillStyle = '#6b4a2a'; c.fillRect(4, 6, 5, 3.5); }],
-  chiavi: ['body', c => { c.strokeStyle = '#d9b24a'; c.lineWidth = 1; c.beginPath(); c.arc(-6, 7, 1.8, 0, 7); c.stroke(); c.fillStyle = '#d9b24a'; c.fillRect(-6.5, 8.5, 1, 3); c.fillRect(-5, 8, 1, 3.5); }],
-  petardi: ['body', c => { c.strokeStyle = '#5a4a3a'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(-8, -3); c.lineTo(8, 8); c.stroke(); for (let i = 0; i < 4; i++) circ(c, -6 + i * 4, -1.5 + i * 2.8, 1.5, '#222'); }],
-  ferro: ['body', c => { c.strokeStyle = '#9aa3ad'; c.lineWidth = 1.6; c.beginPath(); c.arc(0, 3, 2.6, Math.PI * 0.9, Math.PI * 2.1); c.stroke(); }],
-  mantello: ['back', c => { c.fillStyle = '#f4f0e0'; c.beginPath(); c.moveTo(-9, -4); c.lineTo(9, -4); c.lineTo(12, 13); c.lineTo(-12, 13); c.closePath(); c.fill(); c.fillStyle = '#e8b64a'; c.fillRect(-9, -4, 18, 1.5); }],
-  mappa: ['body', c => { c.fillStyle = '#d9c49a'; c.save(); c.translate(-6, 5); c.rotate(-0.4); c.fillRect(-2, -4, 4, 6); c.restore(); }],
-  medaglia: ['body', c => { c.fillStyle = '#d2202a'; c.beginPath(); c.moveTo(-2, -3); c.lineTo(0, 1); c.lineTo(2, -3); c.fill(); circ(c, 0, 2.5, 2.4, '#e8b64a'); }],
-  energy: ['body', c => { c.fillStyle = '#3a7bd5'; rrect(c, 11, -1, 4, 7, 1); c.fill(); c.fillStyle = '#c9cdd2'; c.fillRect(11, -1, 4, 1.2); }],
-  latte: ['top', (c, hy, R, f, ex) => { if (front(f)) ell(c, ex * 0.6, hy + 4.6, 4, 1.4, '#f8f8f8'); }],
-  cuore: ['body', c => { heartPath(c, -4, 1, 2.6); c.fillStyle = '#d2202a'; c.fill(); }],
-  olografica: ['top', (c, hy, R) => { c.fillStyle = '#e94b3c'; c.fillRect(-R + 1, hy - 7, R * 2 - 2, 2.2); c.save(); c.translate(R - 3, hy - 10); c.rotate(0.3); c.fillStyle = '#f5c400'; c.fillRect(-2, -3.5, 4, 6); c.fillStyle = '#2b5aa8'; c.fillRect(-1.3, -2.8, 2.6, 4.6); c.restore(); }],
-  santino: ['body', c => { c.fillStyle = '#efe3cf'; c.fillRect(-5, -1, 3.5, 4.5); circ(c, -3.25, 0.5, 0.9, '#e2a878'); }],
-  zolfo: ['top', (c, hy, R, f, ex) => { c.fillStyle = '#7a0a10'; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 5, hy - R + 3); c.quadraticCurveTo(s * 10, hy - R - 5, s * 6, hy - R - 8); c.lineTo(s * 3, hy - R + 2); c.fill(); } if (front(f)) for (const e of f === 's' ? [-4.5, 4.5] : [ex - 1.5 + (f === 'e' ? 2 : -2), ex + (f === 'e' ? 6 : -6)]) { c.globalAlpha *= 0.5; circ(c, e, hy - 1, 3.4, '#ff2a1a'); c.globalAlpha *= 2; } }],
-  pentagramma: ['top', (c, hy, R, f, ex) => { if (!front(f)) return; c.strokeStyle = '#b3121b'; c.lineWidth = 0.9; c.beginPath(); for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 4 / 5; c.lineTo(ex * 0.6 + Math.cos(a) * 2.6, hy - 6 + Math.sin(a) * 2.6); } c.stroke(); }],
-  caprone: ['top', (c, hy, R) => { c.strokeStyle = '#d9c8a8'; c.lineWidth = 2.4; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 6, hy - R + 3); c.quadraticCurveTo(s * 15, hy - R - 4, s * 12, hy - R + 6); c.stroke(); } }],
-  patto: ['back', c => { c.strokeStyle = '#7a0a10'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, 8); c.quadraticCurveTo(12, 12, 13, 2 + Math.sin(G.tick * 0.1) * 2); c.stroke(); c.fillStyle = '#7a0a10'; c.beginPath(); c.moveTo(13, 2); c.lineTo(10, -1); c.lineTo(16, -1); c.fill(); }],
-  pece: ['top', (c, hy, R, f, ex) => { if (front(f)) { c.strokeStyle = '#1a1a1e'; c.lineWidth = 1.4; for (const e of [-4.5, 4.5]) { c.beginPath(); c.moveTo(ex * 0.6 + e, hy + 2); c.lineTo(ex * 0.6 + e, hy + 6); c.stroke(); } } }],
-  contratto: ['top', (c, hy, R) => { c.save(); c.translate(R - 1, hy - 3); c.rotate(-0.8); c.fillStyle = '#3a1010'; c.fillRect(-0.8, -6, 1.6, 9); c.fillStyle = '#e8b64a'; c.fillRect(-0.8, 2, 1.6, 1.5); c.restore(); }],
-  aureola: ['top', (c, hy, R) => { c.strokeStyle = '#f0d27a'; c.lineWidth = 2; c.beginPath(); c.ellipse(0, hy - R - 6, 8, 2.6, 0, 0, Math.PI * 2); c.stroke(); }],
-  sacrocuore: ['body', c => { heartPath(c, 0, 1, 3.2); c.fillStyle = '#e23b2e'; c.fill(); c.fillStyle = '#ffd34a'; c.beginPath(); c.moveTo(-1, -1.5); c.quadraticCurveTo(0, -5, 1, -1.5); c.fill(); }],
-  acquasanta: ['top', (c, hy, R, f, ex) => { if (front(f)) { c.fillStyle = '#9fd3ff'; c.beginPath(); c.moveTo(ex * 0.6, hy - 9); c.quadraticCurveTo(ex * 0.6 + 2.2, hy - 5.5, ex * 0.6, hy - 5); c.quadraticCurveTo(ex * 0.6 - 2.2, hy - 5.5, ex * 0.6, hy - 9); c.fill(); } }],
-  colomba: ['body', c => { ell(c, -11, -5, 4, 2.6, '#f4f4f4'); circ(c, -8, -7, 2, '#f4f4f4'); c.fillStyle = '#e8a03a'; c.fillRect(-6.5, -7.3, 1.6, 0.8); }],
-  ragno: ['top', (c, hy, R) => { const y = hy - R + 2; for (let i = 0; i < 3; i++) for (const s of [-1, 1]) { c.strokeStyle = '#1a1a1e'; c.lineWidth = 1; c.beginPath(); c.moveTo(4, y); c.lineTo(4 + s * 5, y - 2 + i * 2); c.stroke(); } circ(c, 4, y, 2.6, '#2a2a2e'); }],
-  calamita: ['body', c => { c.strokeStyle = '#d2202a'; c.lineWidth = 2.2; c.beginPath(); c.arc(13, 2, 3, Math.PI, 0); c.stroke(); c.fillStyle = '#c9cdd2'; c.fillRect(9, 2, 2.2, 2.5); c.fillRect(14.8, 2, 2.2, 2.5); }],
-  cioccolata: ['top', (c, hy, R, f, ex) => { if (front(f)) ell(c, ex * 0.6, hy + 7.5, 3.5, 1.3, '#4a2a14'); }],
-  funghi: ['top', (c, hy, R) => { c.fillStyle = '#b3121b'; c.beginPath(); c.arc(0, hy - R + 4, R - 1, Math.PI, 0); c.fill(); for (const [a, b] of [[-6, -1], [0, -6], [6, -2]]) circ(c, a, hy - R + 4 + b, 1.6, '#f4f4f4'); }],
-  specchio: ['body', c => { ell(c, 12, 4, 2.6, 3.6, '#9fd3ff'); c.strokeStyle = '#8a6a4a'; c.lineWidth = 1; c.beginPath(); c.ellipse(12, 4, 2.6, 3.6, 0, 0, 7); c.stroke(); }],
-  pianetino: ['top', (c, hy, R) => { const a = G.tick * 0.06; circ(c, Math.cos(a) * 14, hy - 4 + Math.sin(a) * 5, 2.6, '#7a9ad6'); }],
-  ragu: ['top', (c, hy, R, f, ex) => { if (front(f)) { ell(c, ex * 0.6 - 3, hy + 7, 2, 1.3, '#b3121b'); circ(c, ex * 0.6 + 4, hy + 8, 0.9, '#b3121b'); } }],
-  campanile: ['body', c => { c.fillStyle = '#e8b64a'; c.fillRect(6, 4, 1.4, 6); circ(c, 6.7, 3.5, 1.6, '#e8b64a'); }],
-  banconota: ['body', c => { c.fillStyle = '#3a7a4a'; c.save(); c.translate(-7, 6); c.rotate(0.3); c.fillRect(-3, -2, 6, 3.2); c.restore(); }],
-  lardo: ['body', c => { ell(c, 0, 5, 9, 5, 'rgba(244,234,214,.55)'); }],
-  candela: ['top', (c, hy, R) => { c.fillStyle = '#2a2a30'; c.fillRect(-1.6, hy - R - 6, 3.2, 7); c.fillStyle = '#b07ad6'; c.beginPath(); c.moveTo(0, hy - R - 11 + Math.sin(G.tick * 0.3)); c.quadraticCurveTo(2.5, hy - R - 7, 0, hy - R - 6); c.quadraticCurveTo(-2.5, hy - R - 7, 0, hy - R - 11); c.fill(); }],
-  tech: ['top', (c, hy, R, f, ex) => { c.fillStyle = '#2a3a4a'; c.fillRect(-R, hy - 4.5, R * 2, 2); if (front(f)) { c.fillStyle = '#22c3d6'; c.fillRect(ex * 0.6 - 7, hy - 3, 14, 1.4); } }],
-  coltello: ['body', c => { c.save(); c.translate(13, 3); c.rotate(-0.3); c.fillStyle = '#c9cdd2'; c.beginPath(); c.moveTo(-1, -9); c.quadraticCurveTo(3, -4, 1, 0); c.lineTo(-1, 0); c.fill(); c.fillStyle = '#6b4a2a'; c.fillRect(-1.2, 0, 2.4, 4); c.restore(); }],
-  fuochi: ['back', c => { c.save(); c.rotate(0.35); c.fillStyle = '#e8b64a'; c.fillRect(-2, -16, 4, 14); c.fillStyle = '#d2202a'; c.beginPath(); c.moveTo(-2, -16); c.lineTo(0, -20); c.lineTo(2, -16); c.fill(); c.restore(); }],
-  pila: ['back', c => { c.fillStyle = '#3a3a3e'; rrect(c, 6, -6, 6, 10, 1); c.fill(); c.fillStyle = '#d9a556'; c.fillRect(6, -6, 6, 4); }],
-  pergamena: ['back', c => { c.fillStyle = '#5a8ad6'; c.save(); c.rotate(-0.6); c.fillRect(-2.5, -15, 5, 14); c.fillStyle = '#3a5aa6'; c.fillRect(-3, -15, 6, 1.6); c.restore(); }],
-  astrolabio: ['body', c => { circ(c, 0, 2, 3, '#c9952a'); c.strokeStyle = '#6b4a10'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-3, 2); c.lineTo(3, 2); c.moveTo(0, -1); c.lineTo(0, 5); c.stroke(); }],
-  sfera: ['top', (c, hy, R, f, ex) => { if (front(f)) { circ(c, ex * 0.6, hy - 7, 2.2, '#b07ad6'); circ(c, ex * 0.6, hy - 7, 1, '#2a1a3a'); } }],
-  raggix: ['top', (c, hy, R, f, ex) => { if (!front(f)) return; for (const e of f === 's' ? [-4.5, 4.5] : [ex - 1.5 + (f === 'e' ? 2 : -2), ex + (f === 'e' ? 6 : -6)]) { c.globalAlpha *= 0.55; circ(c, e, hy - 1, 3.8, '#9fe3ff'); c.globalAlpha /= 0.55; } c.strokeStyle = '#3a3a3e'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-R, hy - 1); c.lineTo(R, hy - 1); c.stroke(); }],
-};
-
 function drawShopkeeper(c, x, y) {
   c.save(); c.translate(x, y);
   ell(c, 0, 14, 14, 4, 'rgba(0,0,0,.35)');
@@ -2632,8 +2307,10 @@ function drawEnemy(c, e) {
   if (e.z > 0) { ell(c, e.x, e.y + e.r * 0.6, e.r * (1 - e.z / 600), e.r * 0.35, 'rgba(0,0,0,.4)'); if (e.type === 'mostro' && (e.st === 'fall' || e.st2 <= 24) && G.tick % 8 < 4) { c.save(); c.strokeStyle = '#ff3b1a'; c.lineWidth = 2; c.beginPath(); c.ellipse(e.x, e.y + e.r * 0.6, e.r, e.r * 0.4, 0, 0, Math.PI * 2); c.stroke(); c.restore(); } }
   c.translate(e.x, e.y - e.z);
   const flip = G.p.x < e.x ? -1 : 1;
-  if (e.z <= 0 && !e.fly && !e.ghost) ell(c, 0, e.r * 0.75, e.r * 0.9, e.r * 0.3, 'rgba(0,0,0,.33)');
-  outlined(c, 0, 0, EN[e.type].span || Math.max(36, e.r * 3.4), cc => drawEnemyBody(cc, e, flip, t), e.champ && e.champ.col);
+  if (e.z <= 0 && !e.fly && !e.ghost) pixShadow(c, 0, e.r * 0.75, e.r * 0.9);
+  if (e.hitT > 0) { const q = e.hitT / 6 * 0.14; c.translate(0, e.r * 0.7); c.scale(1 + q, 1 - q); c.translate(0, -e.r * 0.7); if (G.state === 'play') e.hitT--; }
+  if (PIXBOSS[e.type]) { if (e.type === 'biscia') drawBisciaBody(c, e); drawPixBoss(c, e, flip, t); } // the bosses are pixel sprites now
+  else outlined(c, 0, 0, EN[e.type].span || Math.max(36, e.r * 3.4), cc => drawEnemyBody(cc, e, flip, t), e.champ && e.champ.col);
   c.restore();
   if (e.conf > 0) { c.save(); for (let i = 0; i < 3; i++) { const a = G.tick * 0.12 + i * 2.1; circ(c, e.x + Math.cos(a) * e.r * 0.8, e.y - e.z - e.r * 1.4 + Math.sin(a) * 3, 2.2, i % 2 ? '#b8e05a' : '#f5e04a'); } c.restore(); }
   if (e.poison > 0 && G.tick % 8 < 4) { c.save(); c.globalAlpha = 0.3; circ(c, e.x, e.y - 4, e.r, '#3ad16b'); c.restore(); }
@@ -2845,21 +2522,28 @@ function drawTear(c, t) {
 function render() {
   const c = ctx;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
-  c.fillStyle = '#070504'; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
   if (!G.room) return;
-  const shake = G.shake > 0.5 ? [(rnd() - 0.5) * G.shake, (rnd() - 0.5) * G.shake] : [0, 0];
-  c.save();
-  c.translate(OX + shake[0], OY + shake[1]); c.scale(S, S);
-  c.beginPath(); c.rect(0, 0, RW, RH); c.clip();
+  // the room, its walls and everything in it go on the small canvas first
+  const B = BUF.c; LABELS.length = 0;
+  B.setTransform(1, 0, 0, 1, 0, 0); B.globalAlpha = 1; B.globalCompositeOperation = 'source-over'; B.fillStyle = '#000'; B.fillRect(0, 0, BUF.w, BUF.h);
+  const sx = G.shake > 0.5 ? Math.round((rnd() - 0.5) * G.shake * PIXK) : 0, sy = G.shake > 0.5 ? Math.round((rnd() - 0.5) * G.shake * PIXK) : 0;
   if (G.trans) {
     const tr = G.trans, f = tr.t / 16, e = f * f * (3 - 2 * f), [dx, dy] = DIRS[tr.dir];
-    c.save(); c.translate(-dx * RW * e, -dy * RH * e); drawRoom(c, tr.from, false); c.restore();
-    c.save(); c.translate(dx * RW * (1 - e), dy * RH * (1 - e)); drawRoom(c, tr.to, false); c.restore();
+    drawRoom(B, tr.from, false, Math.round(-dx * BUF.w * e), Math.round(-dy * BUF.h * e));
+    drawRoom(B, tr.to, false, Math.round(dx * BUF.w * (1 - e)), Math.round(dy * BUF.h * (1 - e)));
   } else {
-    drawRoom(c, G.room, true);
-    drawLive(c);
+    drawRoom(B, G.room, true, sx, sy);
+    B.setTransform(PIXK, 0, 0, PIXK, MARG * PIXK + sx, MARG * PIXK + sy);
+    drawLive(B);
   }
+  // then blown up with no smoothing: every pixel stays sharp
+  c.save(); c.imageSmoothingEnabled = false;
+  c.drawImage(BUF.cv, OX - MARG * S, OY - MARG * S, BUF.w / PIXK * S, BUF.h / PIXK * S);
   c.restore();
+  c.textAlign = 'center';
+  for (const l of LABELS) { c.font = `${l.weight} ${Math.round(l.size * S)}px ${l.font}`; c.fillStyle = 'rgba(0,0,0,.65)'; c.fillText(l.text, OX + l.x * S + 1.5, OY + l.y * S + 1.5); c.fillStyle = l.col; c.fillText(l.text, OX + l.x * S, OY + l.y * S); }
+  c.textAlign = 'left';
   // flashes on the whole screen
   if (G.hurtFlash > 0) { c.fillStyle = 'rgba(160,0,0,' + G.hurtFlash * 0.35 + ')'; c.fillRect(0, 0, W, H); G.hurtFlash = Math.max(0, G.hurtFlash - 0.06); }
   if (G.flash > 0) { c.fillStyle = 'rgba(255,245,225,' + G.flash * 0.5 + ')'; c.fillRect(0, 0, W, H); G.flash = Math.max(0, G.flash - 0.05); }
@@ -2897,7 +2581,7 @@ function drawLive(c) {
     else if (f.kind === 'boom') { const k = 1 - f.life / f.max; c.globalAlpha = 1 - k; circ(c, f.x, f.y, f.r * (0.4 + k * 0.8), '#ffcf6a'); circ(c, f.x, f.y, f.r * (0.2 + k * 0.5), '#fff6d8'); c.globalAlpha = 1; }
     else if (f.kind === 'bolt') { c.strokeStyle = '#bff8ff'; c.lineWidth = 3; c.globalAlpha = f.life / 14; c.beginPath(); c.moveTo(f.x, f.y); for (let i = 1; i < 8; i++) c.lineTo(lerp(f.x, f.x2, i / 8) + rr(-10, 10), lerp(f.y, f.y2, i / 8) + rr(-10, 10)); c.lineTo(f.x2, f.y2); c.stroke(); c.globalAlpha = 1; }
     else if (f.kind === 'gib') { ell(c, f.x, f.y + 2, f.size, f.size * 0.4, 'rgba(0,0,0,.3)'); c.save(); c.translate(f.x, f.y - f.z); c.rotate(f.rot); ell(c, 0, 0, f.size, f.size * 0.7, f.col); c.restore(); }
-    else if (f.kind === 'smoke') { c.globalAlpha = Math.min(1, f.life / f.max) * 0.45; circ(c, f.x, f.y, f.size, '#3a332e'); c.globalAlpha = 1; }
+    else if (f.kind === 'smoke') { c.globalAlpha = Math.min(1, f.life / f.max) * (f.dust ? 0.5 : 0.45); circ(c, f.x, f.y, f.size, f.dust ? '#8a7a6a' : '#3a332e'); c.globalAlpha = 1; }
     else if (f.kind === 'shock') { const k = 1 - f.life / f.max; c.strokeStyle = 'rgba(255,240,200,' + (1 - k) * 0.7 + ')'; c.lineWidth = 6 * (1 - k) + 1; c.beginPath(); c.arc(f.x, f.y, f.r * k, 0, 7); c.stroke(); }
     else if (f.kind === 'spark') { f.y += f.vy; c.globalAlpha = f.life / 40; c.fillStyle = f.col; c.fillRect(f.x - 1, f.y - 1, f.size, f.size); c.globalAlpha = 1; }
     else if (f.kind === 'smog') { const k = 1 - f.life / f.max, rad = f.r * (0.6 + k * (f.big ? 0.8 : 0.6)); c.globalAlpha = Math.min(1, f.life / 30) * (f.big ? 0.35 : 0.28); circ(c, f.x + Math.sin(f.life * 0.05) * 3, f.y - k * 10, rad, '#9aa58a'); circ(c, f.x - rad * 0.3, f.y - k * 12 - rad * 0.2, rad * 0.6, '#b8c0a8'); c.globalAlpha = 1; }
@@ -2913,7 +2597,7 @@ function drawLive(c) {
 }
 function drawLighting(c, p) {
   // warm torch light on top of everything, then the dark creeping in from the corners
-  c.save(); c.globalCompositeOperation = 'lighter'; drawTorches(c, G.room, true);
+  c.save(); c.globalCompositeOperation = 'lighter';
   for (let i = 0; i < COLS * ROWS; i++) if (G.room.grid[i] === 7 && G.room.hp[i] > 0) { // fireplaces light the room
     const x = tileX(i % COLS), y = tileY(Math.floor(i / COLS)), rad = 70 + Math.sin(G.tick * 0.2 + i) * 6, g = c.createRadialGradient(x, y, 2, x, y, rad);
     g.addColorStop(0, 'rgba(255,140,50,.32)'); g.addColorStop(1, 'rgba(255,140,50,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2);
@@ -2925,7 +2609,7 @@ function drawLighting(c, p) {
   const dark = curse('buio');
   const g = c.createRadialGradient(p.x, p.y - 10, dark ? 50 : 140, p.x, p.y - 10, dark ? 230 : 520);
   g.addColorStop(0, 'rgba(8,4,3,0)'); g.addColorStop(1, dark ? 'rgba(4,2,2,.93)' : 'rgba(8,4,3,.38)');
-  c.fillStyle = g; c.fillRect(0, 0, RW, RH);
+  c.fillStyle = g; c.fillRect(-MARG, -MARG, RW + 2 * MARG, RH + 2 * MARG);
   // dust drifting through the light
   c.fillStyle = 'rgba(255,230,190,.35)';
   for (let i = 0; i < (LITE.on ? 0 : 26); i++) {
@@ -2949,7 +2633,7 @@ function drawPlayer(c) {
   if (coldBlood(p) && !p.dead) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.18 + Math.sin(G.tick * 0.12) * 0.08; circ(c, p.x, p.y - 8, 24, '#7fb8ff'); c.restore(); } // cold blood: a pale blue glow
   const ps = (p.fx.forza ? 1.3 : 1) * (p.ch.size || 1);
   if (!p.dead) ell(c, p.x, p.y + 9, 12 * ps, 4 * ps, 'rgba(0,0,0,.35)');
-  outlined(c, p.x, p.y - 10, 44 * ps, cc => drawChar(cc, p.ch, p.x, p.y - 4 + fly, {face: p.hold ? 's' : p.face, walk: p.walk, shoot: p.cd > delayOf(p) - 4, hurt: p.inv > 50, dead: p.dead, breath: true, scale: p.fx.forza ? 1.3 : 1, shadow: !!p.dead, items: p.items}));
+  drawChar(c, p.ch, p.x, p.y - 4 + fly, {face: p.hold ? 's' : p.face, walk: Math.hypot(p.vx, p.vy) > 0.4 ? p.walk : 0, shoot: p.cd > delayOf(p) - 4, hurt: p.inv > 50, dead: p.dead, scale: p.fx.forza ? 1.3 : 1, shadow: !!p.dead, items: p.items});
   if (p.trans.includes('diavolo')) { c.fillStyle = '#3a0a0a'; for (const sg of [-1, 1]) { c.beginPath(); c.moveTo(p.x + sg * 6, p.y - 26 + fly); c.lineTo(p.x + sg * 11, p.y - 36 + fly); c.lineTo(p.x + sg * 2, p.y - 28 + fly); c.fill(); } }
   if (p.trans.includes('campione')) { c.fillStyle = '#e8b64a'; c.beginPath(); c.arc(p.x, p.y + 2, 3, 0, 7); c.fill(); }
   if (p.trans.includes('sciame') && G.tick % 3 === 0) G.fx.push({kind: 'p', x: p.x + rr(-14, 14), y: p.y - 20 + rr(-8, 8), vx: rr(-0.5, 0.5), vy: -0.3, life: 14, col: '#2a2a2e', size: 2});
@@ -2974,40 +2658,34 @@ function drawHUD(c) {
     c.fillStyle = i < p.active.charge ? (p.active.charge >= segs ? '#e8b64a' : '#c9cdd2') : 'rgba(255,255,255,.12)';
     c.fillRect(x0 + box + 1 * u, sy + 1, 5 * u, bh / segs - 2);
   }
-  // hearts
-  const hx = x0 + box + 14 * u, hs = 7 * u;
+  // hearts, in pixels: red containers first, then soul and black ones; gold rims on the rightmost
+  const z = S / PIXK * 0.9, hx = x0 + box + 12 * u, hw = 10 * z; // HUD pixels as big as the room's
   const nRed = Math.ceil(p.maxRed / 2), nSoul = Math.ceil(p.soul / 2), total = nRed + nSoul + Math.ceil(p.black / 2);
-  if (curse('ignoto')) { c.fillStyle = '#e8b64a'; c.font = `800 ${Math.round(18 * u)}px ${DISPLAY_FONT}`; c.fillText('? ? ?', hx, y0 + 9 * u); c.font = `700 ${Math.round(14 * u)}px ${BODY_FONT}`; }
+  c.save(); c.imageSmoothingEnabled = false;
+  if (curse('ignoto')) { c.fillStyle = '#e8b64a'; c.font = `800 ${Math.round(18 * u)}px ${DISPLAY_FONT}`; c.fillText('? ? ?', hx, y0 + 9 * u); }
   else for (let i = 0; i < total; i++) {
-    const cx = hx + (i % 6) * 17 * u + hs, cy = y0 + 8 * u + Math.floor(i / 6) * 16 * u;
-    if (i < p.maxRed / 2) {
-      heartPath(c, cx, cy, hs); c.fillStyle = 'rgba(0,0,0,.55)'; c.fill();
-      const fill = clamp(p.red - i * 2, 0, 2);
-      if (fill) { c.save(); heartPath(c, cx, cy, hs); c.clip(); c.fillStyle = '#d2202a'; c.fillRect(cx - hs * 1.4, cy - hs * 1.2, fill === 2 ? hs * 2.8 : hs * 1.4, hs * 2.4); c.restore(); }
-      const gold = i >= total - p.gold; // golden hearts sit on the rightmost hearts of any kind, like Isaac
-      heartPath(c, cx, cy, hs); c.strokeStyle = gold ? '#e8b64a' : '#1a0606'; c.lineWidth = (gold ? 2.4 : 1.4) * u; c.stroke();
-      if (p.eternal && i === nRed - 1) { c.save(); heartPath(c, cx, cy, hs * 0.6); c.clip(); c.fillStyle = '#f4f4f4'; c.fillRect(cx - hs, cy - hs, hs, hs * 2); c.restore(); }
-    } else {
-      const soul = i < nRed + nSoul, si = soul ? i - nRed : i - nRed - nSoul, fill = clamp((soul ? p.soul : p.black) - si * 2, 0, 2);
-      c.save(); heartPath(c, cx, cy, hs); c.clip(); c.fillStyle = soul ? 'rgba(120,170,255,.9)' : '#141418'; c.fillRect(cx - hs * 1.4, cy - hs * 1.2, fill === 2 ? hs * 2.8 : hs * 1.4, hs * 2.4); c.restore();
-      const gold = i >= total - p.gold;
-      heartPath(c, cx, cy, hs); c.strokeStyle = gold ? '#e8b64a' : soul ? '#13285a' : '#c9b8e0'; c.lineWidth = (gold ? 2.4 : soul ? 1.4 : 1.8) * u; c.stroke();
-      if (!soul && fill) circ(c, cx - hs * 0.35, cy - hs * 0.25, hs * 0.18, 'rgba(201,184,224,.7)'); // a glint so black hearts don't read as empty
-    }
+    const hxx = hx + (i % 6) * hw, hy = y0 + Math.floor(i / 6) * 9 * z;
+    let kind, fill;
+    if (i < nRed) { const f = clamp(p.red - i * 2, 0, 2); kind = f ? 'red' : 'empty'; fill = f === 1 ? 1 : 0; }
+    else { const soul = i < nRed + nSoul, si = soul ? i - nRed : i - nRed - nSoul, f = clamp((soul ? p.soul : p.black) - si * 2, 0, 2); kind = soul ? 'soul' : 'black'; fill = f === 1 ? 1 : 0; }
+    if (i >= total - p.gold) c.drawImage(heartPix('gold', 0), hxx - z, hy - z, 13 * z, 12 * z); // the golden rim behind
+    c.drawImage(heartPix(kind, fill), hxx, hy, 11 * z, 10 * z);
+    if (p.eternal && i === nRed - 1) { c.fillStyle = '#f4f4f4'; c.fillRect(hxx + 3 * z, hy + 3 * z, 3 * z, 3 * z); }
   }
-  if (p.eternal && !nRed && !curse('ignoto')) { const cx = hx + Math.min(total, 6) * 17 * u + hs; heartPath(c, cx, y0 + 8 * u, hs); c.fillStyle = '#f4f4f4'; c.fill(); }
-  if (p.shield) { c.fillStyle = 'rgba(255,246,216,.8)'; c.fillText('✝', hx + Math.min(total, 6) * 17 * u + 4 * u, y0 + 8 * u); }
-  // consumables
-  const cy0 = y0 + box + 12 * u;
+  if (p.eternal && !nRed && !curse('ignoto')) c.drawImage(heartPix('empty', 0), hx + Math.min(total, 6) * hw, y0, 11 * z, 10 * z);
+  if (p.shield) { c.fillStyle = 'rgba(255,246,216,.8)'; c.fillText('✝', hx + Math.min(total, 6) * hw + 4 * u, y0 + 8 * u); }
+  // coins, bombs and keys, with pixel digits
+  const cy0 = y0 + box + 8 * u;
   [['coin', p.coins], ['bomb', p.bombs], ['key', p.keys]].forEach(([k, n], i) => {
-    const yy = cy0 + i * 18 * u;
-    if (k === 'coin') { circ(c, x0 + 8 * u, yy, 6 * u, '#e8b64a'); } else drawIcon(c, k, k === 'key' ? '#d9b24a' : '#222', x0 + 8 * u, yy, 17 * u);
-    c.fillStyle = '#efe3cf'; c.fillText(String(n).padStart(2, '0'), x0 + 18 * u, yy + 1);
+    const yy = cy0 + i * 14 * z;
+    c.drawImage(iconPix(k), x0, yy, 12 * z, 12 * z);
+    digitsPix(c, n, x0 + 14 * z, yy + 3 * z, z);
   });
+  c.restore();
   // stats with Isaac's little icons: speed, tears, damage, range, shot speed, luck
   {
     const st = [['shoe', '#e94b3c', speedOf(p).toFixed(2)], ['drop', '#8fd3ff', (60 / delayOf(p)).toFixed(2)], ['fist', '#e2a878', dmgOf(p).toFixed(2)], ['target', '#d2202a', (rangeOf(p) / 40).toFixed(1)], ['arrow', '#c9cdd2', ssOf(p).toFixed(2)], ['clover', '#3e8a3a', luckOf(p)]];
-    const side = OX > 96, sx = side ? OX - 78 : x0 + 2 * u, sy = side ? OY + RH * S * 0.3 : cy0 + 3 * 18 * u + 6 * u, gap = 16 * u;
+    const side = false, sx = x0 + 2 * u, sy = cy0 + 3 * 14 * z + 8 * u, gap = 15 * u;
     c.font = `600 ${Math.round(12.5 * u)}px ${BODY_FONT}`; c.globalAlpha = side ? 1 : 0.85;
     st.forEach(([ic, col, v], i) => { const yy = sy + i * gap; drawIcon(c, ic, col, sx + 6 * u, yy, 12 * u); c.fillStyle = '#efe3cf'; c.fillText(String(v), sx + 15 * u, yy + 1); });
     c.globalAlpha = 1;
@@ -3504,7 +3182,7 @@ EXTRA_DRAW.beggar = (c, x, y, pk) => {
   circ(c, x, y - 12 + b, 9, '#d9b08a'); ell(c, x, y - 6 + b, 6, 4, '#8a7a6a');
   circ(c, x - 3, y - 13 + b, 1.4, '#1a1418'); circ(c, x + 3, y - 13 + b, 1.4, '#1a1418');
   c.fillStyle = '#8a8f96'; c.fillRect(x + 7, y + 2, 7, 5);
-  if (pk.got) { c.fillStyle = '#e8b64a'; c.font = '700 10px sans-serif'; c.textAlign = 'center'; c.fillText(pk.got + '/' + (pk.need || 6), x, y - 26); }
+  if (pk.got) label(x, y - 26, pk.got + '/' + (pk.need || 6), 11, '#e8b64a');
 };
 
 /* ---------- the seven deadly sins as mini-bosses ---------- */
@@ -4363,6 +4041,630 @@ function hitTile(c, r, t) { // a tear hit something on the floor: poop, fire and
   if (--room.hp[i] > 0) { if (v === 7) Snd.noise(0.1, 0.05, 2400); return; }
   breakTile(c, r);
 }
+/* ================= pixel art, the way Isaac does it ================= */
+// The room is drawn on a small canvas — 0.65 pixels per room unit — and blown up with no smoothing, so every
+// pixel stays sharp. The walls are thick like Rebirth's: they're painted in a margin outside the room, so the
+// playing field and all the collisions stay exactly as they were.
+const PIXK = 0.65, MARG = 26;
+const BUF = {cv: document.createElement('canvas')};
+BUF.cv.width = Math.round((RW + 2 * MARG) * PIXK); BUF.cv.height = Math.round((RH + 2 * MARG) * PIXK);
+BUF.c = BUF.cv.getContext('2d'); BUF.w = BUF.cv.width; BUF.h = BUF.cv.height;
+const pxX = x => Math.round((x + MARG) * PIXK), pxY = y => Math.round((y + MARG) * PIXK);
+const LABELS = []; // text in the room is written afterwards at full resolution, so it stays readable
+function label(x, y, text, size = 12, col = '#efe3cf', font = BODY_FONT, weight = 700) { LABELS.push({x, y, text, size, col, font, weight}); }
+
+/* ---------- drawing pixel by pixel ---------- */
+function mkc(w, h) { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; return [cv, cv.getContext('2d')]; }
+const PR = (x, px, py, w, h, col) => { x.fillStyle = col; x.fillRect(px, py, w, h); };
+function PE(x, cx, cy, rx, ry, col, dark, light) { // a crisp ellipse, shaded on the lower right with a light spot on the upper left
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let i = Math.floor(cx - rx); i <= Math.ceil(cx + rx); i++) {
+    const dx = (i + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry;
+    if (dx * dx + dy * dy > 1) continue;
+    let c2 = col;
+    if (dark && dx * 0.6 + dy * 0.8 > 0.5) c2 = dark;
+    if (light && dx * 0.6 + dy * 0.8 < -0.55 && dx * dx + dy * dy < 0.75) c2 = light;
+    x.fillStyle = c2; x.fillRect(i, y, 1, 1);
+  }
+}
+function pixOutline(cv, col = [18, 7, 7]) { // a one-pixel dark border around everything drawn
+  const x = cv.getContext('2d'), W2 = cv.width, H2 = cv.height, d = x.getImageData(0, 0, W2, H2), a = d.data, o = new Uint8Array(W2 * H2);
+  for (let i = 0; i < W2 * H2; i++) o[i] = a[i * 4 + 3] > 40 ? 1 : 0;
+  for (let y = 0; y < H2; y++) for (let i = 0; i < W2; i++) {
+    const k = y * W2 + i; if (o[k]) continue;
+    if ((i > 0 && o[k - 1]) || (i < W2 - 1 && o[k + 1]) || (y > 0 && o[k - W2]) || (y < H2 - 1 && o[k + W2])) { a[k * 4] = col[0]; a[k * 4 + 1] = col[1]; a[k * 4 + 2] = col[2]; a[k * 4 + 3] = 255; }
+  }
+  x.putImageData(d, 0, 0); return cv;
+}
+function tinted(cv, col, alpha) { const [c2, x] = mkc(cv.width, cv.height); x.drawImage(cv, 0, 0); x.globalCompositeOperation = 'source-atop'; x.globalAlpha = alpha; x.fillStyle = col; x.fillRect(0, 0, cv.width, cv.height); return c2; }
+const SPR = new Map(); // every sprite is built once
+function spr(key, build) { let s = SPR.get(key); if (!s) { s = build(); SPR.set(key, s); if (SPR.size > 900) SPR.delete(SPR.keys().next().value); } return s; }
+let pixSeed = 1; const prnd = () => (pixSeed = (pixSeed * 16807) % 2147483647) / 2147483647;
+function blit(c, s, x, y, ax = 0.5, ay = 1, scale = 1) { // a sprite on the low-res canvas, snapped to whole pixels; x and y in room units
+  c.save(); const m = c.getTransform(); c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false;
+  const sx = m.a * x + m.c * y + m.e, sy = m.b * x + m.d * y + m.f, w = s.width * scale, h = s.height * scale;
+  c.drawImage(s, Math.round(sx - w * ax), Math.round(sy - h * ay), Math.round(w), Math.round(h));
+  c.restore();
+}
+
+/* ---------- palettes for the places ---------- */
+const PIXTHEME = {
+  1: {wall: '#4e3428', floor: '#5c3e32', deco: 'roots'},
+  2: {wall: '#47443e', floor: '#57544c', deco: 'chains'},
+  3: {wall: '#3a464c', floor: '#4c5a60', deco: 'pipes'},
+  4: {wall: '#2f413b', floor: '#3e5650', deco: 'moss'},
+  devil: {wall: '#2a0e0e', floor: '#3a1414', deco: 'none'},
+  angel: {wall: '#a8a294', floor: '#cfc9bc', deco: 'none'},
+};
+const themeOf = room => PIXTHEME[room.type] || PIXTHEME[chap(room.depth)];
+
+/* ---------- the room's backdrop: thick slab walls in perspective, the floor, pits and spikes ---------- */
+function roomBg(room) {
+  if (room._pix) return room._pix;
+  const [cv, x] = mkc(BUF.w, BUF.h), th = themeOf(room), W2 = BUF.w, H2 = BUF.h;
+  const ix = pxX(T), iy = pxY(T), ix2 = pxX(RW - T), iy2 = pxY(RH - T);
+  pixSeed = room.gx * 97 + room.gy * 31 + room.depth * 7 + 1;
+  PR(x, 0, 0, W2, H2, th.wall);
+  // big carved slabs, low contrast
+  const slab = (sx, sy, w, h) => { const col = shade(th.wall, (prnd() - 0.5) * 0.09); PR(x, sx, sy, w, h, col); PR(x, sx, sy, w, 1, shade(col, .1)); PR(x, sx, sy + h - 1, w, 1, shade(th.wall, -.28)); PR(x, sx + w - 1, sy, 1, h, shade(th.wall, -.28)); };
+  for (let sx = -6; sx < W2; sx += 34 + Math.floor(prnd() * 14)) { slab(sx, 0, 40, 20); slab(sx + 12, 20, 40, iy - 20); slab(sx, H2 - 20, 40, 20); slab(sx + 12, iy2, 40, H2 - 20 - iy2); }
+  for (let sy = iy; sy < iy2; sy += 30 + Math.floor(prnd() * 10)) { slab(0, sy, 22, 30); slab(22, sy + 14, ix - 22, 30); slab(W2 - 22, sy, 22, 30); slab(ix2, sy + 14, W2 - 22 - ix2, 30); }
+  // perspective seams in the corners, a lit bevel where wall meets floor
+  x.strokeStyle = shade(th.wall, -.45); x.lineWidth = 1;
+  for (const [a, b] of [[[0, 0], [ix, iy]], [[W2, 0], [ix2, iy]], [[0, H2], [ix, iy2]], [[W2, H2], [ix2, iy2]]]) { x.beginPath(); x.moveTo(a[0] + .5, a[1] + .5); x.lineTo(b[0] + .5, b[1] + .5); x.stroke(); }
+  PR(x, ix - 6, iy - 6, ix2 - ix + 12, 6, shade(th.wall, .1)); PR(x, ix - 6, iy2, ix2 - ix + 12, 5, shade(th.wall, -.15));
+  PR(x, ix - 6, iy - 6, 6, iy2 - iy + 11, shade(th.wall, .02)); PR(x, ix2, iy - 6, 6, iy2 - iy + 11, shade(th.wall, -.08)); PR(x, ix - 6, iy - 6, ix2 - ix + 12, 1, shade(th.wall, .2));
+  PR(x, 0, 0, W2, 2, '#0a0505'); PR(x, 0, H2 - 2, W2, 2, '#0a0505'); PR(x, 0, 0, 2, H2, '#0a0505'); PR(x, W2 - 2, 0, 2, H2, '#0a0505');
+  // carved marks, and what belongs to each place
+  const mk = shade(th.wall, -.3);
+  for (let k = 0; k < 6; k++) {
+    const top = k < 3, mx = top ? ix + 20 + Math.floor(prnd() * (ix2 - ix - 40)) : (k % 2 ? 10 + Math.floor(prnd() * 20) : W2 - 30 + Math.floor(prnd() * 20)), my = top ? 8 + Math.floor(prnd() * 24) : iy + 10 + Math.floor(prnd() * (iy2 - iy - 20));
+    if (Math.abs(mx - W2 / 2) < 40 || Math.abs(my - H2 / 2) < 30) continue; // clear of the doors
+    const kind = Math.floor(prnd() * 3);
+    if (kind === 0) for (let a = 0; a < 6.28; a += 0.5) PR(x, Math.round(mx + Math.cos(a) * 3), Math.round(my + Math.sin(a) * 3), 1, 1, mk);
+    else if (kind === 1) { PR(x, mx - 3, my, 7, 1, mk); PR(x, mx, my - 3, 1, 7, mk); for (const [a, b] of [[-2, -2], [2, 2], [2, -2], [-2, 2]]) PR(x, mx + a, my + b, 1, 1, mk); }
+    else for (let i = 0; i < 4; i++) PR(x, mx + i * 2, my, 1, 5, mk);
+  }
+  const deco = th.deco;
+  for (let k = 0; k < 2; k++) {
+    const dx = ix + 30 + Math.floor(prnd() * (ix2 - ix - 60)); if (Math.abs(dx - W2 / 2) < 36) continue;
+    if (deco === 'roots') { let px = dx; const len = 24 + Math.floor(prnd() * 22); for (let y = 0; y < len; y++) { PR(x, px, y, 2, 1, '#2a1a12'); PR(x, px - 1, y, 1, 1, '#3e2a1e'); if (prnd() < 0.25) px += prnd() < 0.5 ? -1 : 1; } }
+    if (deco === 'chains') for (let y = 2; y < iy - 4; y += 4) { PR(x, dx, y, 3, 3, '#5a5a62'); PR(x, dx + 1, y + 1, 1, 1, th.wall); PR(x, dx, y, 1, 1, '#8a8a96'); }
+    if (deco === 'pipes') { PR(x, dx - 14, 10, 28, 6, '#56656c'); PR(x, dx - 14, 10, 28, 1, '#7a8a92'); PR(x, dx - 3, 6, 6, 14, '#3f4b51'); PR(x, dx - 3, 6, 1, 14, '#6a7a82'); }
+    if (deco === 'moss') { for (let i = 0; i < 18; i++) PR(x, dx - 9 + Math.floor(prnd() * 18), iy - 8 + Math.floor(prnd() * 6), 2, 1, prnd() < 0.5 ? '#3e6a3a' : '#2e5a2e'); PR(x, dx, iy - 3, 1, 4, '#7ab0c8'); }
+  }
+  // the floor: earth worn in uneven patches, posterised with dithering like hand-made pixel art
+  PR(x, ix, iy, ix2 - ix, iy2 - iy, th.floor);
+  {
+    const gx = room.gx * 31 + room.depth * 7, gy = room.gy * 17, sm = t => t * t * (3 - 2 * t);
+    const vn = (px, py, sc) => { const xi = Math.floor(px / sc), yi = Math.floor(py / sc), fx = sm(px / sc - xi), fy = sm(py / sc - yi), h = (a2, b) => hash(a2 + gx, b + gy); return lerp(lerp(h(xi, yi), h(xi + 1, yi), fx), lerp(h(xi, yi + 1), h(xi + 1, yi + 1), fx), fy); };
+    const B4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+    const hex = col => { const n = parseInt(shade(col, 0).slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; };
+    const levels = [shade(th.floor, -.13), shade(th.floor, -.06), shade(th.floor, 0), shade(th.floor, .06)].map(hex);
+    const img = x.getImageData(ix, iy, ix2 - ix, iy2 - iy), d = img.data, wd = ix2 - ix;
+    for (let py = 0; py < iy2 - iy; py++) for (let px = 0; px < wd; px++) {
+      const n = vn(px, py, 26) * 0.6 + vn(px + 400, py, 9) * 0.3 + vn(px, py + 300, 4) * 0.1 + (B4[(py % 4) * 4 + px % 4] / 16 - 0.5) * 0.09;
+      const lv = n < 0.3 ? 0 : n < 0.44 ? 1 : n > 0.68 ? 3 : 2, k = (py * wd + px) * 4;
+      d[k] = levels[lv][0]; d[k + 1] = levels[lv][1]; d[k + 2] = levels[lv][2]; d[k + 3] = 255;
+    }
+    x.putImageData(img, ix, iy);
+    // pebbles and clods: a lit pixel over a dark one
+    for (let i = 0; i < 70; i++) { const px = ix + 2 + Math.floor(prnd() * (wd - 4)), py = iy + 2 + Math.floor(prnd() * (iy2 - iy - 4)), big = prnd() < 0.3; PR(x, px, py, big ? 2 : 1, 1, shade(th.floor, .18)); PR(x, px, py + 1, big ? 2 : 1, 1, shade(th.floor, -.3)); }
+  }
+  if (chap(room.depth) === 3 && !DEAL_THEME[room.type]) for (let r = 0; r <= ROWS; r++) for (let col = 0; col <= COLS; col++) { PR(x, pxX(T + col * T), iy, 1, iy2 - iy, shade(th.floor, -.08)); PR(x, ix, pxY(T + r * T), ix2 - ix, 1, shade(th.floor, -.08)); } // factory tiles
+  for (let i = 0; i < 50; i++) { const px = ix + Math.floor(prnd() * (ix2 - ix)), py = iy + Math.floor(prnd() * (iy2 - iy)); PR(x, px, py, 1, 1, shade(th.floor, -.25)); if (i % 3 === 0) PR(x, px, py - 1, 1, 1, shade(th.floor, .15)); }
+  for (let i = 0; i < 4; i++) { let px = ix + 10 + Math.floor(prnd() * (ix2 - ix - 20)), py = iy + 10 + Math.floor(prnd() * (iy2 - iy - 20)); for (let k = 0; k < 9; k++) { PR(x, px, py, 1, 1, shade(th.floor, -.3)); PR(x, px, py + 1, 1, 1, shade(th.floor, .12)); px++; py += Math.round(prnd() * 2 - 1); } }
+  for (let k = 0; k < 10; k++) { x.globalAlpha = 0.22 - k * 0.02; PR(x, ix, iy + k, ix2 - ix, 1, '#000'); PR(x, ix, iy2 - 1 - k, ix2 - ix, 1, '#000'); PR(x, ix + k, iy, 1, iy2 - iy, '#000'); PR(x, ix2 - 1 - k, iy, 1, iy2 - iy, '#000'); }
+  x.globalAlpha = 1;
+  // cobwebs in the top corners
+  x.globalAlpha = 0.4;
+  for (const [cx, fx] of [[ix, 1], [ix2 - 1, -1]]) { for (let k = 0; k < 5; k++) { const a = k / 4 * Math.PI / 2; for (let d = 0; d < 18; d++) PR(x, cx + Math.round(Math.cos(a) * d) * fx, iy + Math.round(Math.sin(a) * d), 1, 1, '#d8d8d8'); } for (const r2 of [6, 11, 16]) for (let k = 0; k <= 10; k++) { const a = k / 10 * Math.PI / 2; PR(x, cx + Math.round(Math.cos(a) * r2) * fx, iy + Math.round(Math.sin(a) * r2), 1, 1, '#c8c8c8'); } }
+  x.globalAlpha = 1;
+  // pits and spikes never change: they're painted into the backdrop
+  const g = room.grid, pit = (c2, r) => c2 >= 0 && r >= 0 && c2 < COLS && r < ROWS && g[at(c2, r)] === 3;
+  for (let c2 = 0; c2 < COLS; c2++) for (let r = 0; r < ROWS; r++) {
+    const v = g[at(c2, r)], x0 = pxX(T + c2 * T), y0 = pxY(T + r * T), x1 = pxX(T + (c2 + 1) * T), y1 = pxY(T + (r + 1) * T), w = x1 - x0, h = y1 - y0;
+    if (v === 3) {
+      PR(x, x0, y0, w, h, '#030102');
+      if (!pit(c2, r - 1)) { for (let k = 0; k < 11; k++) PR(x, x0, y0 + k, w, 1, shade('#4a2e1e', -k * 0.085)); for (let k = 0; k < w; k += 2) { PR(x, x0 + k, y0 + 3, 1, 2 + Math.floor(prnd() * 6), shade('#4a2e1e', -.45)); if (prnd() < 0.25) PR(x, x0 + k, y0 + 11, 1, 2 + Math.floor(prnd() * 4), '#2a1810'); } for (let k = 0; k < w; k++) if (prnd() < 0.5) PR(x, x0 + k, y0 - 1, 1, 1, '#2a1810'); PR(x, x0, y0, w, 1, '#7a5440'); }
+      if (!pit(c2 - 1, r)) { PR(x, x0, y0, 2, h, '#1a0e08'); PR(x, x0 - 1, y0, 1, h, shade(th.floor, -.35)); }
+      if (!pit(c2 + 1, r)) { PR(x, x1 - 2, y0, 2, h, '#1a0e08'); PR(x, x1, y0, 1, h, shade(th.floor, -.35)); }
+      if (!pit(c2, r + 1)) { PR(x, x0, y1 - 1, w, 1, shade(th.floor, .2)); PR(x, x0, y1, w, 1, shade(th.floor, -.3)); }
+    }
+    if (v === 4) { // a plate of spikes: cones lit on one side, dark holes at their feet
+      PR(x, x0 + 1, y0 + 1, w - 2, h - 2, '#1c1a20'); PR(x, x0 + 2, y0 + 2, w - 4, h - 4, '#2e2c34'); PR(x, x0 + 2, y0 + 2, w - 4, 1, '#46444e');
+      for (let i = 0; i < 3; i++) for (let k = 0; k < 3; k++) {
+        const sx = x0 + 5 + k * 8, sy = y0 + 9 + i * 7;
+        PR(x, sx - 1, sy + 1, 6, 1, '#0c0a0e');
+        for (let j = 0; j < 6; j++) { const hw = Math.floor(j / 2); PR(x, sx + 2 - hw, sy - 5 + j, hw + 1, 1, '#d8dce2'); PR(x, sx + 3, sy - 5 + j, hw, 1, '#7a7e88'); }
+        PR(x, sx + 2, sy - 6, 1, 1, '#ffffff');
+      }
+    }
+  }
+  room._pix = cv;
+  return cv;
+}
+
+/* ---------- doors: wooden frames in perspective, wide at the wall and narrowing into the room ---------- */
+const DOOR_STONE = {normal: '#7a6a5c', shop: '#7a6a5c', treasure: '#c9952a', boss: '#6a2a24', devil: '#3a1616', angel: '#e8e2d4', sfida: '#7a7a84', maledetta: '#5a1a1a'};
+const DOOR_LEAF = {normal: '#7a4e2c', shop: '#7a4e2c', treasure: '#d8a838', boss: '#6a1610', devil: '#2a0a0a', angel: '#f4f0e6', sfida: '#5a5a62', maledetta: '#3a0e0e'};
+function drawDoorPix(c, room, dir, link) {
+  const ap = DOOR_POS[dir], rot = {n: 0, e: 1, s: 2, w: 3}[dir], depth = Math.round((T + MARG) * PIXK);
+  c.save(); const m = c.getTransform(); c.setTransform(1, 0, 0, 1, Math.round(m.a * ap.x + m.e), Math.round(m.d * ap.y + m.f)); c.rotate(rot * Math.PI / 2);
+  if (link.kind === 'secret') { // a hole blown in the wall
+    pixSeed = room.gx * 13 + room.gy;
+    for (let y = -depth + 8; y < 0; y++) { const hw = 10 + Math.floor(Math.sin(y * 0.7) * 2 + prnd() * 3); PR(c, -hw, y, hw * 2, 1, '#050208'); }
+    for (let k = 0; k < 12; k++) { const px = -15 + Math.floor(prnd() * 30), py = -6 + Math.floor(prnd() * 8); PR(c, px, py, 3, 2, '#7a6a5c'); PR(c, px, py, 3, 1, '#9a8a7c'); }
+    c.restore(); return;
+  }
+  const open = doorOpen(room, link);
+  link.op = link.op === undefined ? (open ? 1 : 0) : lerp(link.op, open ? 1 : 0, 0.16);
+  const kind = DOOR_STONE[link.kind] ? link.kind : 'normal', st = DOOR_STONE[kind], lf = DOOR_LEAF[kind];
+  const stL = shade(st, .22), stD = shade(st, -.38), stDD = shade(st, -.6), lfL = shade(lf, .2), lfD = shade(lf, -.4);
+  const archH = 11, archY = -depth + 6;                       // the arch's springing line
+  const ow = y => 15 - 4 * (y + depth) / depth;                  // half width of the passage: wide at the wall, narrower at the floor
+  const pw = y => 8 - 2 * (y + depth) / depth;                   // the pillars, in the same perspective
+  const inArch = (y, hw) => y >= archY + archH ? hw : hw * Math.sqrt(Math.max(0, 1 - ((archY + archH - y) / archH) ** 2));
+  const cover = 1 - link.op, seamOff = Math.round(cover * 0);
+  for (let y = -depth; y < 0; y++) {
+    const o = ow(y), p = pw(y), hwOpen = Math.round(inArch(y, o)), outer = Math.round(o + p);
+    // the stone around: pillars and, above the springing line, the voussoirs of the arch
+    PR(c, -outer, y, outer * 2, 1, st);
+    const blockRow = (y + depth) % 6;
+    if (blockRow === 0) { PR(c, -outer, y, outer * 2, 1, stL); }
+    if (blockRow === 5) { PR(c, -outer, y, outer * 2, 1, stD); }
+    PR(c, -outer, y, 1, 1, stL); PR(c, outer - 1, y, 1, 1, stDD);
+    // joints between blocks, staggered
+    for (const sx of (Math.floor((y + depth) / 6) % 2 ? [-1, 1] : [-1, 1])) { const jx = sx * Math.round(o + p * 0.5 + ((Math.floor((y + depth) / 6) % 2) ? 1 : -1)); PR(c, jx, y, 1, 1, stD); }
+    // the passage, black and deeper at the back
+    if (hwOpen > 0) {
+      const f = (y + depth) / depth;
+      PR(c, -hwOpen, y, hwOpen * 2, 1, shade('#120a08', f * 0.6 - 0.3));
+      PR(c, -hwOpen, y, 1, 1, stDD); PR(c, hwOpen - 1, y, 1, 1, stD);
+      // the two wooden leaves, sliding into the pillars as the door opens
+      const leaf = Math.round(hwOpen * cover);
+      if (leaf > 0) {
+        PR(c, -hwOpen, y, leaf, 1, lf); PR(c, hwOpen - leaf, y, leaf, 1, lf);
+        for (let px = -hwOpen + 2; px < -hwOpen + leaf; px += 3) PR(c, px, y, 1, 1, lfD);
+        for (let px = hwOpen - 3; px > hwOpen - leaf; px -= 3) PR(c, px, y, 1, 1, lfD);
+        PR(c, -hwOpen + leaf - 1, y, 1, 1, lfD); PR(c, hwOpen - leaf, y, 1, 1, lfL);
+        if (y === archY + archH + 3 || y === -9) { PR(c, -hwOpen, y, leaf, 1, '#4a4a52'); PR(c, hwOpen - leaf, y, leaf, 1, '#4a4a52'); PR(c, -hwOpen + 1, y, 1, 1, '#c9cdd2'); PR(c, hwOpen - 2, y, 1, 1, '#c9cdd2'); }
+      }
+    }
+  }
+  // the keystone on top of the arch
+  const ky = archY - 2;
+  PR(c, -3, ky, 6, 6, st); PR(c, -3, ky, 6, 1, stL); PR(c, 2, ky, 1, 6, stD); PR(c, -3, ky + 5, 6, 1, stDD);
+  // the stone step at the threshold
+  const so = Math.round(ow(-1)) + 2;
+  PR(c, -so, -3, so * 2, 3, shade(st, -.08)); PR(c, -so, -3, so * 2, 1, stL); PR(c, -so, 0, so * 2, 1, '#0a0606');
+  // what each kind of door wears
+  if (link.locked) { PR(c, -4, -17, 8, 7, '#e8b64a'); PR(c, -4, -17, 8, 1, '#fff0a0'); PR(c, -3, -21, 1, 4, '#c9cdd2'); PR(c, 2, -21, 1, 4, '#c9cdd2'); PR(c, -2, -22, 4, 1, '#c9cdd2'); PR(c, -1, -15, 2, 3, '#3a200c'); for (let k = -12; k <= 12; k += 3) PR(c, k, -14 + Math.abs(k) / 4 | 0, 2, 1, '#8a8a96'); }
+  if (kind === 'boss' || kind === 'devil') { // horns curling out of the frame, a skull on the keystone
+    for (const sx of [-1, 1]) for (let k = 0; k < 9; k++) PR(c, sx * (15 + k) - (sx < 0 ? 2 : 0), ky - Math.round(k * 0.9) + Math.round((k / 8) ** 2 * 6), 2, 2, k > 6 ? '#f4ecd8' : '#d8ccb4');
+    PR(c, -2, ky + 1, 4, 3, '#e8e0cc'); PR(c, -1, ky + 2, 1, 1, '#1a0606'); PR(c, 1, ky + 2, 1, 1, '#1a0606');
+  }
+  if (kind === 'treasure') { PR(c, -2, ky + 1, 4, 4, '#ff3a5a'); PR(c, -1, ky + 1, 1, 1, '#ffb0c0'); for (const px of [-5, -1, 3]) PR(c, px, ky - 3, 2, 3, '#f0c848'); }
+  if (kind === 'shop') { PE(c, 0, ky + 2.5, 2.5, 2.5, '#e8b64a', '#a87a20', '#fff0a0'); }
+  if (kind === 'sfida') for (let k = 0; k < 7; k++) { PR(c, -3 + k, ky - 4 + k, 1, 1, '#e8ecf2'); PR(c, 3 - k, ky - 4 + k, 1, 1, '#e8ecf2'); }
+  if (kind === 'maledetta') for (let k = -4; k <= 4; k++) { const px = k * 4, base = ky + 1; PR(c, px, base - 4, 1, 4, '#c9cdd2'); PR(c, px, base - 5, 1, 1, '#ffffff'); }
+  if (kind === 'devil' || kind === 'angel') { c.globalAlpha = 0.3 + Math.sin(G.tick * 0.1) * 0.12; PE(c, 0, -depth / 2 + 4, 9, 13, kind === 'devil' ? '#ff3b1a' : '#fff6d0'); c.globalAlpha = 1; }
+  c.restore();
+}
+
+/* ---------- things on the floor ---------- */
+function shapeSpr(w, h, inside, color) { // light on the upper rim, shadow on the lower one, like hand-drawn sprites
+  const [cv, x] = mkc(w, h), ins = (i, j) => i >= 0 && j >= 0 && i < w && j < h && inside(i, j);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    if (!inside(i, j)) continue;
+    let col = color(i, j);
+    if (!ins(i, j - 1)) col = shade(col, .28); else if (!ins(i, j + 1) || !ins(i, j + 2)) col = shade(col, -.32); else if (!ins(i + 1, j)) col = shade(col, -.18);
+    x.fillStyle = col; x.fillRect(i, j, 1, 1);
+  }
+  return cv;
+}
+const ROCKPAL = {1: ['#857870', '#6e625c', '#574b46', '#463c38', '#352c2a', '#2e2624'], 2: ['#8a8a86', '#706f6a', '#5a5954', '#46453f', '#34332e', '#2a2925'], 3: ['#7e8a90', '#66727a', '#505c62', '#40494e', '#30383c', '#262c30'], 4: ['#7a8a80', '#626e66', '#4c5850', '#3c4640', '#2c3430', '#222a26']};
+function rockSpr(seed, ch, tinted) { // dark and chunky, in six shapes like Isaac's: a lit top, shaded sides, a dark foot
+  return spr('rock' + seed + ch + (tinted ? 't' : ''), () => {
+    pixSeed = seed * 31 + 7; prnd();
+    const P2 = ROCKPAL[ch] || ROCKPAL[1], w = 32, h = 28, type = seed % 6;
+    const blob = (cx, cy, rx, ry, sides, jag) => { const pts = [...Array(sides)].map((_, k) => { const a = k / sides * Math.PI * 2 - Math.PI / 2, r = 1 - jag + prnd() * jag; return [cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r]; }); return {pts, cx, cy, ry}; };
+    const parts = // each shape is one or more stones
+      type === 0 ? [blob(15, 16, 12, 10, 8, 0.2)] :                                       // the classic boulder
+      type === 1 ? [blob(15, 18, 14, 7, 7, 0.15)] :                                       // a wide flat slab
+      type === 2 ? [blob(12, 16, 9, 8, 7, 0.2), blob(23, 20, 6, 5, 6, 0.2), blob(7, 22, 4, 3.5, 6, 0.2)] : // a cluster of stones
+      type === 3 ? [blob(15, 14, 9, 12, 5, 0.25)] :                                       // a tall jagged one
+      type === 4 ? [blob(10, 16, 8, 9, 6, 0.15), blob(21, 17, 8, 8, 6, 0.15)] :            // split in two
+      [blob(15, 16, 12, 10, 9, 0.12)];                                                     // a round one with moss
+    const inPoly = (pts, px, py) => { let c2 = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) c2 = !c2; } return c2; };
+    const partAt = (i, j) => { for (let k = parts.length - 1; k >= 0; k--) if (inPoly(parts[k].pts, i + .5, j + .5)) return parts[k]; return null; };
+    const [cv, x] = mkc(w, h);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const pt = partAt(i, j); if (!pt) continue;
+      const top = j < pt.cy - pt.ry * 0.25 + (i - pt.cx) * 0.15, same = (a, b) => partAt(a, b) === pt;
+      let col = top ? P2[1] : i < pt.cx ? P2[2] : P2[3];
+      if (top && !same(i, j - 2)) col = P2[0];
+      if (!top && j > 0 && same(i, j - 1) && j - 1 < pt.cy - pt.ry * 0.25 + (i - pt.cx) * 0.15) col = P2[4];
+      if (!same(i, j + 1) || !same(i, j + 2)) col = P2[5];
+      if (Math.abs(i - pt.cx - 1) < 1 && !top && j % 3) col = P2[4];
+      x.fillStyle = col; x.fillRect(i, j, 1, 1);
+    }
+    for (const pt of parts) for (let k = 0; k < 3; k++) PR(x, Math.round(pt.cx - 4 + k * 3), Math.round(pt.cy - pt.ry * 0.6 + (k % 2)), 2, 1, shade(P2[0], .15));
+    if (type === 4) for (let j = 6; j < 24; j++) PR(x, 16 + (j % 3 === 0 ? 1 : 0), j, 1, 1, P2[5]); // the crack between the halves
+    if (type === 5) for (let k = 0; k < 9; k++) { const px = 7 + Math.floor(prnd() * 16), py = 6 + Math.floor(prnd() * 4); if (partAt(px, py)) PR(x, px, py, 2, 1, k % 2 ? '#5a7a3a' : '#3e5a2a'); }
+    if (type === 0 && prnd() < 0.5) for (let j = 0; j < 7; j++) PR(x, 13 + Math.floor(j / 2), 13 + j, 1, 1, P2[5]);
+    if (tinted) for (let k = -4; k <= 4; k++) { PR(x, 15 + k, 17 + k * 0.6 | 0, 1, 1, '#9fe3ff'); PR(x, 15 + k, 17 - k * 0.6 | 0, 1, 1, '#9fe3ff'); }
+    return pixOutline(cv);
+  });
+}
+function metalSpr() { return spr('metal', () => { const [cv, x] = mkc(26, 28); PR(x, 1, 3, 24, 24, '#4a5058'); PR(x, 1, 3, 24, 4, '#7a828c'); PR(x, 1, 3, 1, 24, '#8a929c'); PR(x, 24, 3, 1, 24, '#2e3238'); PR(x, 1, 26, 24, 1, '#2e3238'); for (const [a, b] of [[4, 9], [20, 9], [4, 22], [20, 22]]) { PR(x, a, b, 2, 2, '#a8b0ba'); PR(x, a + 1, b + 1, 1, 1, '#2e3238'); } PR(x, 8, 13, 10, 1, '#3a4048'); PR(x, 8, 17, 10, 1, '#3a4048'); return pixOutline(cv); }); }
+function poopSpr(size, gold) { // three tiers with dark creases, a curl on top
+  return spr('poop' + size + (gold ? 'g' : ''), () => {
+    const s = [0.55, 0.7, 0.85, 1, 1][size] || 1, tiers = [[13, 17, 11, 4.2], [13, 12, 8.5, 3.6], [13, 7.5, 5.5, 3], [14, 3.5, 2.6, 2.2]].map(([a, b, c2, d]) => [13 + (a - 13) * s, 21 - (21 - b) * s, c2 * s, d * s]);
+    const inside = (i, j) => tiers.some(([cx, cy, rx, ry]) => ((i + .5 - cx) / rx) ** 2 + ((j + .5 - cy) / ry) ** 2 < 1);
+    const tierOf = (i, j) => { for (let k = tiers.length - 1; k >= 0; k--) { const [cx, cy, rx, ry] = tiers[k]; if (((i + .5 - cx) / rx) ** 2 + ((j + .5 - cy) / ry) ** 2 < 1) return k; } return 0; };
+    const pal = gold ? ['#9a7418', '#b88a20', '#d8a830', '#f0c848'] : ['#5a3418', '#6b4222', '#7a4e2a', '#8a5a32'];
+    const cv = shapeSpr(26, 22, inside, (i, j) => { const t = tierOf(i, j), above = j > 0 && tierOf(i, j - 1) > t && inside(i, j - 1); return above ? (gold ? '#6a4a08' : '#3a200c') : shade(pal[t], i < 11 ? .08 : -.08); });
+    const x = cv.getContext('2d'); PR(x, 9, Math.round(21 - 13 * s), 2, 1, gold ? '#fff0a0' : '#c9a070'); PR(x, 6, Math.round(21 - 4 * s), 3, 1, gold ? '#fff0a0' : '#c9a070');
+    return pixOutline(cv);
+  });
+}
+function fireSpr(level, frame) { // Isaac's fireplace: a ring of grey stones, ash, and a broad glowing flame with no outline
+  return spr('fire' + level + frame, () => {
+    const [base, bx] = mkc(32, 38);
+    for (const [cx, cy, rx, ry] of [[7, 31, 5, 3.5], [25, 31, 5, 3.5], [16, 34, 6, 3.5], [11, 34, 4, 3], [21, 34, 4, 3], [16, 29, 5, 2.6]]) PE(bx, cx, cy, rx, ry, '#8a8682', '#5a5654', '#b4b0aa');
+    PE(bx, 16, 30, 7, 2.4, '#2a2420'); PR(bx, 12, 29, 2, 1, '#ff7a2a'); PR(bx, 18, 30, 2, 1, '#ff9a3a');
+    pixOutline(base);
+    if (level <= 0) return base;
+    const [cv, x] = mkc(32, 38); x.drawImage(base, 0, 0);
+    const k = Math.min(1, level / 3), H2 = Math.round(26 * (0.55 + 0.45 * k)), baseY = 30;
+    const sway = [0, 1, -1, 0][frame % 4], tongue = [[0, 0], [2, -1], [-2, 1], [1, 2]][frame % 4];
+    const layer = (scale, col, lift) => { // a teardrop of flame: round below, tongues licking up top
+      const h = Math.round(H2 * scale);
+      for (let j = 0; j < h; j++) {
+        const f = j / h, w = Math.round((scale * 10 * k + 2) * (f < 0.35 ? Math.sqrt(f / 0.35) * 0.9 + 0.1 : 1 - Math.pow((f - 0.35) / 0.65, 1.4)));
+        if (w <= 0) continue;
+        const off = Math.round(sway * f * 2);
+        PR(x, 16 - w + off, baseY - lift - j, w * 2, 1, col);
+      }
+      // tongues of flame above the body
+      for (const [tx, th] of [[-4 + tongue[0], 4], [3 + tongue[1], 6], [0, 3]]) for (let j = 0; j < Math.round(th * scale * k); j++) PR(x, 16 + tx + Math.round(sway * 1.5), baseY - lift - h - j + 2, 1 + (j < 2 ? 1 : 0), 1, col);
+    };
+    layer(1, '#d8461a', 0); layer(0.8, '#ff8a1e', 1); layer(0.6, '#ffc83a', 2); layer(0.36, '#fff2b0', 2);
+    PR(x, 13 + sway, baseY - 4, 6, 2, '#fffbe6');                                   // the white-hot heart at the bottom
+    if (frame % 2) PR(x, 9, baseY - H2 - 4, 1, 1, '#ffb04a'); else PR(x, 22, baseY - H2 - 6, 1, 1, '#ffd84a'); // embers floating up
+    return cv;
+  });
+}
+function tntSpr(cracked) { return spr('tnt' + cracked, () => { const [cv, x] = mkc(24, 28); PR(x, 2, 4, 20, 22, '#8a2a1a'); PR(x, 2, 4, 4, 22, '#aa3a24'); PR(x, 18, 4, 4, 22, '#5a1a10'); for (const y of [8, 20]) { PR(x, 2, y, 20, 2, '#3a3a3e'); PR(x, 2, y, 20, 1, '#6a6a72'); } PR(x, 2, 2, 20, 3, '#a87240'); PR(x, 2, 2, 20, 1, '#c9965a'); PE(x, 12, 15, 3.5, 3.5, '#f4e8c8'); PR(x, 11, 10, 2, 3, '#f4e8c8'); PR(x, 12, 9, 2, 1, '#ffcf40'); PR(x, 10, 14, 1, 2, '#8a2a1a'); PR(x, 13, 14, 1, 2, '#8a2a1a'); if (cracked) { PR(x, 5, 6, 1, 3, '#2a0a0a'); PR(x, 6, 9, 1, 3, '#2a0a0a'); PR(x, 5, 12, 1, 3, '#2a0a0a'); } return pixOutline(cv); }); }
+function webSpr() { return spr('web', () => { const [cv, x] = mkc(26, 26); x.globalAlpha = 0.6; for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; for (let d = 0; d < 12; d++) PR(x, 13 + Math.round(Math.cos(a) * d), 13 + Math.round(Math.sin(a) * d), 1, 1, '#e8e8e8'); } for (const r2 of [4, 8, 11]) for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; PR(x, 13 + Math.round(Math.cos(a) * r2), 13 + Math.round(Math.sin(a) * r2 * (k % 2 ? 0.9 : 1)), 1, 1, '#d0d0d0'); } return cv; }); }
+function drawTilePix(c, v, col, r, room) {
+  const cx = tileX(col), by = tileY(r) + T / 2, ch = DEAL_THEME[room.type] ? 1 : chap(room.depth), seed = col * 13 + r * 7 + room.gx * 5 + room.gy * 3;
+  const shadow = w => pixShadow(c, cx, by - 6, w);
+  if (v === 1 || v === 5) { shadow(17); blit(c, rockSpr(seed, ch, v === 5), cx, by + 2); }
+  else if (v === 6) blit(c, metalSpr(), cx, by + 2);
+  else if (v === 2 || v === 10) { shadow(14); blit(c, poopSpr(Math.min(4, room.hp[at(col, r)]), v === 10), cx, by); }
+  else if (v === 7) { const hp = room.hp[at(col, r)]; if (hp > 0) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.16 + Math.sin(G.tick * 0.3 + col) * 0.03; circ(c, cx, by - 22, 26, '#ffb050'); c.globalAlpha = 0.12; circ(c, cx, by - 22, 14, '#fff0b0'); c.restore(); } blit(c, fireSpr(hp, Math.floor(G.tick / 5 + col) % 4), cx, by + 4); }
+  else if (v === 8) { shadow(13); blit(c, tntSpr(room.hp[at(col, r)] < 2), cx, by + 2); }
+  else if (v === 9) blit(c, webSpr(), cx, by - 4);
+}
+
+/* ================= the friends in pixels: a big round head on a little body, like Isaac ================= */
+// 26×34 sprites; the feet sit at row 31. Four facings, three steps, and every item worn.
+// the shine on the hair: a few thin strands, not a round spot (that read as a bald patch)
+function shine(x, cx, h) { PR(x, cx - 6, 4, 3, 1, h.l); PR(x, cx - 4, 3, 4, 1, h.l); PR(x, cx + 2, 3, 2, 1, h.l); PR(x, cx - 7, 5, 1, 1, h.l); }
+// hair sits on top of the head (rows 1–10), leaving the forehead and the eyes clear, as in the approved sketches
+const HAIR_STYLES = {
+  long(x, cx, f, h) { if (f !== 'n') { PR(x, cx - 9, 6, 3, 6, h.c); PR(x, cx + 6, 6, 3, 6, h.c); } PE(x, cx, 6, 9, 4.5, h.c, h.d); shine(x, cx, h); if (f === 's') PR(x, cx - 2, 7, 5, 2, h.c); if (f === 'e') PR(x, cx - 9, 7, 5, 8, h.c); if (f === 'w') PR(x, cx + 4, 7, 5, 8, h.c); if (f === 'n') PE(x, cx, 10, 9.5, 8.5, h.c, h.d); },
+  short(x, cx, f, h) { PE(x, cx, 6, 9, 4.5, h.c, h.d); shine(x, cx, h); if (f !== 'e') PR(x, cx - 9, 7, 2, 4, h.c); if (f !== 'w') PR(x, cx + 7, 7, 2, 4, h.c); if (f === 'n') PE(x, cx, 9, 9, 7, h.c, h.d); },
+  slick(x, cx, f, h) { HAIR_STYLES.short(x, cx, f, h); PR(x, cx - 5, 5, 7, 1, h.l); },
+  band(x, cx, f, h) { HAIR_STYLES.short(x, cx, f, h); PR(x, cx - 9, 6, 18, 2, '#e94b3c'); },
+  fin(x, cx, f, h) { PE(x, cx, 6, 8.5, 4, shade(h.c, .3)); PR(x, cx - 2, -2, 4, 9, h.c); PR(x, cx - 1, -3, 2, 2, h.c); PR(x, cx - 2, -1, 1, 6, h.l); if (f === 'n') PE(x, cx, 9, 8.5, 6, shade(h.c, .3)); },
+  curly(x, cx, f, h, ch) { if (f === 'n') PE(x, cx, 10, 8.5, 8, h.c, h.d); const a0 = f === 'e' ? 0.82 : f === 'w' ? 1.38 : 1.0, n = f === 'n' ? 12 : 9; for (let k = 0; k < n; k++) { const a = Math.PI * (f === 'n' ? k / 6 : a0 + k * (f === 's' ? 0.125 : 0.11)); PE(x, cx + Math.cos(a) * 8, 10 + Math.sin(a) * 7.5, 3, 3, h.c, h.d, h.l); } if (ch.hachimaki) { PR(x, cx - 9, 6, 18, 2, '#f4f4f4'); if (f === 's') PR(x, cx, 6, 2, 2, '#d2202a'); if (f !== 's') PR(x, f === 'e' ? cx - 12 : cx + 9, 7, 3, 1, '#f4f4f4'); } },
+  inventor(x, cx, f, h, ch) { PE(x, cx, 6, 9, 4, h.c, h.d); for (const sx of [-7, -3, 1, 5]) { PR(x, cx + sx, 0, 2, 3, h.c); PR(x, cx + sx + 1, 0, 1, 1, h.l); } if (ch.goggles) { PR(x, cx - 9, 6, 18, 2, '#3a3a3e'); if (f !== 'n') for (const gx of f === 's' ? [-4, 4] : f === 'e' ? [1, 6] : [-6, -1]) PE(x, cx + gx, 6, 2, 2, '#7fd3ff', '#2a6a8a', '#e8fbff'); } if (f === 'n') PE(x, cx, 9, 9, 7, h.c, h.d); },
+  messy(x, cx, f, h) { PE(x, cx, 6, 9, 4.5, h.c, h.d); shine(x, cx, h); for (const [sx, sy] of [[-9, 2], [-6, 0], [-2, -1], [3, 0], [7, 1], [9, 4]]) PR(x, cx + sx, 2 + sy, 2, 3, h.c); if (f === 'n') PE(x, cx, 9, 9, 7, h.c, h.d); },
+  beanie(x, cx, f, h) { HAIR_STYLES.short(x, cx, f, h); },
+};
+function heroSpr(ch, face = 's', step = 0, o = {}) {
+  const items = (o.items || []).filter(id => PIXCOST[id]);
+  const key = 'h' + ch.id + face + step + (o.shoot ? 'o' : '') + (o.hurt ? 'x' : '') + items.join(',');
+  return spr(key, () => {
+    const [cv, x] = mkc(26, 34); x.translate(0, 4);
+    const cx = 13, side = face === 'e' ? 1 : face === 'w' ? -1 : 0, skinD = shade(ch.skin, -.22), hc = {c: ch.hair, d: shade(ch.hair, -.3), l: shade(ch.hair, .3)};
+    const wear = layer => { for (const id of items) { const k = PIXCOST[id]; if (k[0] === layer) k[1](x, cx, face, side, ch); } };
+    wear('back');
+    // legs: three steps of a walk
+    const ly = [[0, 0], [-1, 1], [1, -1]][step] || [0, 0];
+    PR(x, cx - 4, 24 + ly[0], 3, 3, ch.pants); PR(x, cx + 1, 24 + ly[1], 3, 3, ch.pants);
+    // the body
+    const shirt = ch.shirtless ? ch.skin : ch.shirt;
+    PE(x, cx, 21.5, ch.muscle ? 6 : 5, 4, shirt, shade(shirt, -.35));
+    if (ch.shirtless) PR(x, cx - 4, 22, 9, 3, ch.pants);
+    if (ch.shirt2) PR(x, cx - 1, 18, 2, 7, ch.shirt2);
+    if (ch.tie) { PR(x, cx - 1, 18, 2, 5, '#8e1b3c'); PR(x, cx - 2, 18, 4, 1, '#f4f4f4'); }
+    if (ch.bowtie) { PR(x, cx - 3, 18, 2, 2, '#141417'); PR(x, cx + 1, 18, 2, 2, '#141417'); PR(x, cx - 1, 18, 1, 1, '#141417'); }
+    if (ch.toolbelt) { PR(x, cx - 5, 22, 10, 1, '#5a3a1e'); PR(x, cx + 3, 23, 1, 2, '#9aa3ad'); }
+    if (ch.robot) PR(x, cx - 2, 20, 4, 2, '#22c3d6');
+    const arm = ch.muscle ? 2.2 : 1.6;
+    PE(x, cx - (ch.muscle ? 6 : 5), 21 - (ly[0] ? 0.5 : 0), arm, 2.2, ch.skin === shirt ? ch.skin : ch.skin, skinD); PE(x, cx + (ch.muscle ? 6 : 5), 21, arm, 2.2, ch.skin, skinD);
+    wear('body');
+    // hair that falls behind the head
+    if (ch.style === 'long' && face !== 'n') { PE(x, cx, 11, 10, 9, hc.c); PR(x, cx - 10, 11, 4, 10, hc.c); PR(x, cx + 6, 11, 4, 10, hc.c); }
+    // the head
+    if (ch.robot) {
+      PR(x, cx - 9, 4, 18, 15, ch.skin); PR(x, cx - 9, 4, 18, 2, shade(ch.skin, .25)); PR(x, cx + 7, 4, 2, 15, shade(ch.skin, -.25));
+      PR(x, cx + 1, 0, 1, 4, '#6d747d'); PR(x, cx, -1, 3, 2, '#e23b2e');
+      if (face !== 'n') { PR(x, cx - 7 + side * 2, 9, 14, 6, '#16323a'); PR(x, cx - 5 + side * 2, 11, 3, 2, '#5ff2ff'); PR(x, cx + 2 + side * 2, 11, 3, 2, '#5ff2ff'); }
+    } else {
+      PE(x, cx, 11.5, 9, 8.5, ch.skin, skinD, shade(ch.skin, .25));
+      if (face === 'e') PE(x, cx - 7, 12, 1.6, 2.2, skinD); else if (face === 'w') PE(x, cx + 7, 12, 1.6, 2.2, skinD);
+      if (face !== 'n') {
+        const ex = face === 's' ? [-4, 4] : face === 'e' ? [1, 6] : [-6, -1];
+        for (const e of ex) { PE(x, cx + e - 0.5, 12.5, 2, 2.4, o.hurt ? '#6a0a0a' : '#1a0a0a'); PR(x, cx + e - 2, 11, 1, 1, '#ffffff'); }
+        if (ch.glasses) for (const e of ex) { const gx = cx + e - 3; PR(x, gx, 9, 5, 1, '#1a1a1e'); PR(x, gx, 14, 5, 1, '#1a1a1e'); PR(x, gx, 9, 1, 6, '#1a1a1e'); PR(x, gx + 4, 9, 1, 6, '#1a1a1e'); }
+        if (ch.piercing) { PR(x, cx + ex[1] + 2, 9, 1, 1, '#d8dde3'); PR(x, cx + 1 + side, 15, 1, 1, '#d8dde3'); }
+        const mx = cx - 1 + side * 3;
+        if (ch.beard) { PE(x, cx + side * 2, 17, face === 's' ? 7 : 6, 3.5, hc.c, hc.d); PR(x, mx, 17, 3, 1, o.shoot ? '#2a0a0a' : '#5a1a14'); }
+        else { if (ch.mustache) { PR(x, mx - 2, 16, 6, 1, hc.c); PR(x, mx - 3, 17, 1, 1, hc.c); PR(x, mx + 3, 17, 1, 1, hc.c); } if (o.shoot) PR(x, mx, 17, 2, 2, '#3a0a0a'); else PR(x, mx, 18, 3, 1, '#5a1a14'); }
+        if (ch.joint) { const jx = face === 'w' ? mx - 4 : mx + 3; PR(x, jx, 17, 4, 1, '#f2ece0'); PR(x, face === 'w' ? jx - 1 : jx + 4, 17, 1, 1, G.tick % 20 < 10 ? '#ff6a1a' : '#ffb02a'); }
+      }
+      (HAIR_STYLES[ch.style] || HAIR_STYLES.short)(x, cx, face, hc, ch);
+    }
+    wear('top');
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    let out = pixOutline(cv);
+    if (o.hurt) out = tinted(out, '#ff2020', 0.35);
+    return out;
+  });
+}
+// what you pick up shows on you: [layer, draw(ctx, cx, face, side, ch)] in sprite pixels
+const fr = f => f !== 'n';
+const PIXCOST = {
+  aureola: ['top', x => { PR(x, 8, 0, 10, 1, '#f0d27a'); PR(x, 7, 1, 1, 1, '#f0d27a'); PR(x, 18, 1, 1, 1, '#f0d27a'); PR(x, 8, 2, 10, 1, '#c9a24a'); PR(x, 11, 0, 3, 1, '#fff6d0'); }],
+  zolfo: ['top', (x, cx, f, s) => { for (const k of [-1, 1]) { PR(x, cx + k * 6 - (k < 0 ? 1 : 0), 3, 2, 2, '#b3121b'); PR(x, cx + k * 7 - (k < 0 ? 1 : 0), 1, 1, 2, '#7a0a10'); } if (fr(f)) for (const e of f === 's' ? [-4, 4] : f === 'e' ? [1, 6] : [-6, -1]) PR(x, cx + e - 1, 12, 2, 1, '#ff3b2a'); }],
+  caprone: ['top', (x, cx) => { for (const k of [-1, 1]) { PR(x, cx + k * 8 - (k < 0 ? 2 : 0), 4, 3, 1, '#d9c8a8'); PR(x, cx + k * 10 - (k < 0 ? 1 : 0), 5, 1, 3, '#d9c8a8'); PR(x, cx + k * 9 - (k < 0 ? 1 : 0), 8, 1, 1, '#b8a888'); } }],
+  occhiali: ['top', (x, cx, f) => { if (!fr(f)) return; for (const e of f === 's' ? [-4, 4] : f === 'e' ? [1, 6] : [-6, -1]) { const gx = cx + e - 3; PR(x, gx, 10, 5, 1, '#3a3a42'); PR(x, gx, 14, 5, 1, '#3a3a42'); PR(x, gx, 10, 1, 5, '#3a3a42'); PR(x, gx + 4, 10, 1, 5, '#3a3a42'); } }],
+  raggix: ['top', (x, cx, f) => { if (!fr(f)) return; for (const e of f === 's' ? [-4, 4] : f === 'e' ? [1, 6] : [-6, -1]) PE(x, cx + e - 0.5, 12.5, 2.4, 2.4, '#9fe3ff', '#5aa8c8', '#e8fbff'); PR(x, cx - 9, 12, 18, 1, '#3a3a3e'); }],
+  tech: ['top', (x, cx, f, s) => { PR(x, cx - 9, 9, 18, 1, '#2a3a4a'); if (fr(f)) PR(x, cx - 6 + s * 2, 11, 12, 1, '#22c3d6'); }],
+  sfera: ['top', (x, cx, f, s) => { if (fr(f)) { PR(x, cx - 1 + s * 2, 6, 3, 2, '#b07ad6'); PR(x, cx + s * 2, 6, 1, 1, '#2a1a3a'); } }],
+  pentagramma: ['top', (x, cx, f, s) => { if (fr(f)) { PR(x, cx - 1 + s * 2, 6, 3, 1, '#b3121b'); PR(x, cx + s * 2, 5, 1, 3, '#b3121b'); } }],
+  acquasanta: ['top', (x, cx, f, s) => { if (fr(f)) { PR(x, cx + s * 2, 5, 1, 1, '#9fd3ff'); PR(x, cx - 1 + s * 2, 6, 3, 2, '#9fd3ff'); } }],
+  cipolla: ['top', (x, cx, f, s) => { if (fr(f)) for (const e of f === 's' ? [-4, 4] : [s > 0 ? 1 : -6]) PR(x, cx + e - 1, 15, 1, 3, '#6ab8ff'); }],
+  pece: ['top', (x, cx, f, s) => { if (fr(f)) for (const e of f === 's' ? [-4, 4] : [s > 0 ? 1 : -6]) PR(x, cx + e - 1, 15, 1, 3, '#141418'); }],
+  campari: ['top', (x, cx, f) => { if (f === 's') { PR(x, cx - 7, 15, 2, 1, '#e86a6a'); PR(x, cx + 5, 15, 2, 1, '#e86a6a'); } }],
+  bistecca: ['top', (x, cx, f) => { if (f === 's') { PR(x, cx - 7, 14, 3, 2, '#a8323a'); PR(x, cx + 5, 16, 2, 1, '#a8323a'); } }],
+  caffe: ['top', (x, cx, f) => { if (f === 's') { PR(x, cx - 6, 15, 3, 1, '#7a5a4a'); PR(x, cx + 3, 15, 3, 1, '#7a5a4a'); } }],
+  fiasco: ['top', (x, cx, f, s) => { if (fr(f)) PR(x, cx + s * 3, 14, 2, 2, '#d2323a'); }],
+  latte: ['top', (x, cx, f, s) => { if (fr(f)) PR(x, cx - 2 + s * 3, 17, 5, 1, '#f8f8f8'); }],
+  cioccolata: ['top', (x, cx, f, s) => { if (fr(f)) PR(x, cx - 2 + s * 3, 19, 5, 1, '#4a2a14'); }],
+  ragu: ['top', (x, cx, f, s) => { if (fr(f)) { PR(x, cx - 3 + s * 3, 18, 2, 1, '#b3121b'); PR(x, cx + 2 + s * 3, 19, 1, 1, '#b3121b'); } }],
+  ghiacciolo: ['top', (x, cx, f, s) => { if (fr(f)) { PR(x, cx + 1 + s * 3, 18, 1, 2, '#c9a26b'); PR(x, cx + s * 3, 20, 3, 3, '#9fe3ff'); } }],
+  funghi: ['top', (x, cx) => { PE(x, cx, 5, 10, 4.5, '#c0101a', '#7a0a10', '#ff5a5a'); for (const [a, b] of [[-5, 4], [0, 2], [5, 5], [-1, 6]]) PR(x, cx + a, b, 2, 1, '#f4f4f4'); }],
+  prospettiva: ['top', (x, cx) => { PE(x, cx + 1, 4, 8, 3, '#b3121b', '#7a0a10', '#e04a4a'); PR(x, cx + 6, 1, 2, 2, '#b3121b'); }],
+  candela: ['top', (x, cx) => { PR(x, cx - 1, -1, 3, 6, '#2a2a30'); PR(x, cx, -4, 1, 3, '#b07ad6'); PR(x, cx, -3, 1, 1, '#e8b0ff'); }],
+  petardo: ['top', (x, cx) => { PR(x, cx, 1, 1, 3, '#a88'); PR(x, cx + 1, 0, 1, 1, '#a88'); PR(x, cx + 1, -1, 2, 2, G.tick % 6 < 3 ? '#ffcf40' : '#ff8a20'); }],
+  peperoncino: ['top', (x, cx) => { for (const k of [-4, 0, 4]) { PR(x, cx + k - 1, 1, 3, 3, k ? '#ff7a1a' : '#ffcf40'); PR(x, cx + k, -1, 1, 2, '#ffcf40'); } }],
+  pasta: ['top', (x, cx) => { for (let k = -2; k <= 2; k++) { PR(x, cx + k * 4, 5, 1, 4, '#f0cf6b'); PR(x, cx + k * 4 + 1, 8, 1, 3, '#f0cf6b'); } }],
+  olografica: ['top', (x, cx) => { PR(x, cx - 9, 9, 18, 1, '#e94b3c'); PR(x, cx + 6, 4, 3, 5, '#f5c400'); PR(x, cx + 7, 5, 1, 3, '#2b5aa8'); }],
+  ragno: ['top', (x, cx) => { PE(x, cx + 3, 5, 2.5, 2, '#2a2a2e'); for (const k of [-1, 1]) for (let j = 0; j < 3; j++) PR(x, cx + 3 + k * (2 + j), 4 + j, 1, 1, '#1a1a1e'); }],
+  contratto: ['top', (x, cx) => { PR(x, cx + 8, 6, 1, 7, '#3a1010'); PR(x, cx + 8, 12, 1, 1, '#e8b64a'); }],
+  pianetino: ['top', (x, cx) => { const a = G.tick * 0.06; PE(x, cx + Math.cos(a) * 11, 10 + Math.sin(a) * 4, 2, 2, '#7a9ad6', '#4a6aa6'); }],
+  mantello: ['back', (x, cx, f) => { if (f === 'n') { PR(x, cx - 6, 17, 12, 10, '#f4f0e0'); PR(x, cx - 6, 17, 12, 1, '#e8b64a'); } else { PR(x, cx - 7, 18, 2, 8, '#f4f0e0'); PR(x, cx + 5, 18, 2, 8, '#d8d0bc'); PR(x, cx - 5, 18, 10, 1, '#e8b64a'); } }],
+  balestra: ['back', (x, cx) => { for (let k = 0; k < 9; k++) PR(x, cx - 8 + k * 2, 15 + Math.abs(k - 4), 2, 1, '#8a5a2b'); PR(x, cx - 1, 14, 2, 10, '#5a3a1e'); }],
+  patto: ['back', (x, cx) => { for (let k = 0; k < 6; k++) PR(x, cx + 5 + k, 24 - k, 1, 1, '#7a0a10'); PR(x, cx + 10, 16, 3, 3, '#7a0a10'); }],
+  fuochi: ['back', (x, cx) => { PR(x, cx + 6, 10, 3, 12, '#e8b64a'); PR(x, cx + 6, 8, 3, 2, '#d2202a'); PR(x, cx + 7, 7, 1, 1, '#d2202a'); }],
+  pila: ['back', (x, cx) => { PR(x, cx + 6, 15, 4, 7, '#3a3a3e'); PR(x, cx + 6, 15, 4, 2, '#d9a556'); }],
+  pergamena: ['back', (x, cx) => { PR(x, cx - 9, 12, 3, 12, '#5a8ad6'); PR(x, cx - 10, 12, 5, 1, '#3a5aa6'); PR(x, cx - 10, 23, 5, 1, '#3a5aa6'); }],
+  scarpe: ['body', (x, cx) => { PR(x, cx - 5, 26, 4, 2, '#e94b3c'); PR(x, cx + 1, 26, 4, 2, '#e94b3c'); PR(x, cx - 5, 27, 4, 1, '#f4f4f4'); PR(x, cx + 1, 27, 4, 1, '#f4f4f4'); }],
+  petardi: ['body', (x, cx) => { for (let k = 0; k < 5; k++) PR(x, cx - 5 + k * 2, 18 + k, 2, 2, k % 2 ? '#2a2a2e' : '#5a4a3a'); }],
+  medaglia: ['body', (x, cx, f) => { if (fr(f)) { PR(x, cx - 1, 18, 2, 2, '#d2202a'); PE(x, cx, 21, 1.6, 1.6, '#e8b64a', '#a87a20'); } }],
+  bussola: ['body', (x, cx, f) => { if (fr(f)) { PE(x, cx, 21, 1.8, 1.8, '#d9c49a', '#a8946a'); PR(x, cx, 20, 1, 1, '#d2202a'); } }],
+  astrolabio: ['body', (x, cx, f) => { if (fr(f)) { PE(x, cx, 21, 2, 2, '#c9952a', '#8a6a10'); PR(x, cx, 20, 1, 3, '#6b4a10'); } }],
+  reliquia: ['body', (x, cx, f) => { if (fr(f)) { PR(x, cx, 19, 1, 5, '#f0d27a'); PR(x, cx - 1, 20, 3, 1, '#f0d27a'); } }],
+  rosario: ['body', (x, cx, f) => { if (fr(f)) { for (let k = -3; k <= 3; k += 2) PR(x, cx + k, 18 + Math.abs(k) / 2 | 0, 1, 1, '#d6c9b0'); PR(x, cx, 21, 1, 3, '#d6c9b0'); } }],
+  cuore: ['body', (x, cx, f) => { if (fr(f)) { PR(x, cx - 3, 20, 1, 1, '#d2202a'); PR(x, cx - 1, 20, 1, 1, '#d2202a'); PR(x, cx - 3, 21, 3, 1, '#d2202a'); PR(x, cx - 2, 22, 1, 1, '#d2202a'); } }],
+  sacrocuore: ['body', (x, cx, f) => { if (fr(f)) { PR(x, cx - 2, 20, 2, 2, '#e23b2e'); PR(x, cx + 1, 20, 2, 2, '#e23b2e'); PR(x, cx - 1, 22, 3, 1, '#e23b2e'); PR(x, cx, 18, 1, 2, '#ffd34a'); } }],
+  santino: ['body', (x, cx, f) => { if (fr(f)) { PR(x, cx - 4, 19, 3, 4, '#efe3cf'); PR(x, cx - 3, 20, 1, 1, '#e2a878'); } }],
+  ferro: ['body', (x, cx, f) => { if (fr(f)) { PR(x, cx - 2, 20, 1, 3, '#9aa3ad'); PR(x, cx + 2, 20, 1, 3, '#9aa3ad'); PR(x, cx - 1, 23, 3, 1, '#9aa3ad'); } }],
+  chiavi: ['body', (x, cx) => { PR(x, cx - 6, 22, 2, 2, '#d9b24a'); PR(x, cx - 5, 24, 1, 2, '#d9b24a'); }],
+  portafoglio: ['body', (x, cx) => { PR(x, cx + 3, 23, 3, 2, '#6b4a2a'); }],
+  banconota: ['body', (x, cx) => { PR(x, cx - 6, 22, 3, 2, '#3a7a4a'); }],
+  campanile: ['body', (x, cx) => { PR(x, cx + 3, 22, 1, 3, '#e8b64a'); PR(x, cx + 2, 21, 3, 1, '#e8b64a'); }],
+  mappa: ['body', (x, cx) => { PR(x, cx - 6, 21, 3, 3, '#d9c49a'); PR(x, cx - 5, 22, 1, 1, '#8a5a2b'); }],
+  ciaccia: ['body', (x, cx, f) => { if (fr(f)) { PR(x, cx - 2, 21, 1, 1, '#d9a556'); PR(x, cx + 2, 23, 1, 1, '#d9a556'); } }],
+  lardo: ['body', (x, cx) => { PE(x, cx, 23, 4, 2.5, '#f4ead6', '#d8ccb4'); }],
+  forchettone: ['body', (x, cx) => { PR(x, cx + 7, 13, 1, 9, '#c9cdd2'); PR(x, cx + 6, 13, 3, 1, '#c9cdd2'); PR(x, cx + 6, 12, 1, 1, '#c9cdd2'); PR(x, cx + 8, 12, 1, 1, '#c9cdd2'); }],
+  coltello: ['body', (x, cx) => { PR(x, cx + 7, 15, 1, 5, '#c9cdd2'); PR(x, cx + 8, 16, 1, 3, '#e8ecf2'); PR(x, cx + 7, 20, 1, 2, '#6b4a2a'); }],
+  calamita: ['body', (x, cx) => { PR(x, cx + 7, 18, 1, 3, '#d2202a'); PR(x, cx + 10, 18, 1, 3, '#d2202a'); PR(x, cx + 7, 17, 4, 1, '#d2202a'); PR(x, cx + 7, 21, 1, 1, '#c9cdd2'); PR(x, cx + 10, 21, 1, 1, '#c9cdd2'); }],
+  energy: ['body', (x, cx) => { PR(x, cx + 7, 18, 2, 4, '#3a7bd5'); PR(x, cx + 7, 18, 2, 1, '#c9cdd2'); }],
+  specchio: ['body', (x, cx) => { PE(x, cx - 8, 20, 1.6, 2.4, '#9fd3ff', '#5a8aa8'); }],
+  pallone: ['body', (x, cx) => { PE(x, cx - 8, 22, 2.4, 2.4, '#f4f4f4', '#c8c8c8'); PR(x, cx - 8, 22, 1, 1, '#222'); }],
+  colomba: ['body', (x, cx) => { PE(x, cx - 7, 16, 2.5, 1.6, '#f4f4f4', '#d8d8d8'); PR(x, cx - 5, 15, 1, 1, '#e8a03a'); }],
+  sfera2: null,
+};
+delete PIXCOST.sfera2;
+
+/* ---------- the HUD in pixels ---------- */
+function heartPix(kind, fill) { // kind: red, soul, black, empty
+  return spr('heart' + kind + fill, () => {
+    const [cv, x] = mkc(11, 10), base = {red: '#e0202a', soul: '#4a7acc', black: '#2a2a34', empty: '#2a0a0a', gold: '#e8b64a'}[kind];
+    const m = ['.##.##.', '#######', '#######', '#######', '.#####.', '..###..', '...#...'];
+    m.forEach((row, y) => [...row].forEach((ch2, i) => { if (ch2 !== '#') return; const empty = kind === 'empty' || (fill === 1 && i > 3); let col = empty ? '#2a0a0a' : base; if (!empty) { if (y === 1 && i === 1) col = '#ffffff'; else if (y >= 4 || i >= 5) col = shade(base, -.3); } PR(x, 2 + i, 2 + y, 1, 1, col); }));
+    return pixOutline(cv);
+  });
+}
+function iconPix(kind) {
+  return spr('icon' + kind, () => {
+    const [cv, x] = mkc(12, 12);
+    if (kind === 'coin') { PE(x, 6, 6, 3.5, 4.5, '#e8b64a', '#a87a20', '#fff0a0'); PR(x, 5, 3, 1, 6, '#fff3c4'); }
+    if (kind === 'bomb') { PE(x, 6, 7, 4, 4, '#4a4a52', '#26262c', '#7a7a82'); PR(x, 6, 2, 1, 2, '#a88'); PR(x, 7, 1, 2, 2, '#ffcf40'); }
+    if (kind === 'key') { PR(x, 2, 2, 5, 5, '#d9b24a'); x.clearRect(3, 3, 3, 3); PR(x, 4, 7, 2, 4, '#d9b24a'); PR(x, 6, 9, 2, 1, '#d9b24a'); PR(x, 2, 2, 5, 1, '#fff0a0'); }
+    return pixOutline(cv);
+  });
+}
+const PIXDIG = ['111101101101111', '010110010010111', '111001111100111', '111001111001111', '101101111001001', '111100111001111', '111100111101111', '111001010010010', '111101111101111', '111101111001111'];
+function digitsPix(c, n, x, y, z) { // white pixel digits with a dark shadow, like Isaac's counters
+  const str = String(n).padStart(2, '0');
+  for (const [i, chr] of [...str].entries()) { const d = PIXDIG[+chr] || PIXDIG[0]; for (let k = 0; k < 15; k++) if (d[k] === '1') { const px = x + (i * 4 + (k % 3)) * z, py = y + Math.floor(k / 3) * z; c.fillStyle = '#120707'; c.fillRect(px + z * 0.6, py + z * 0.6, z, z); c.fillStyle = '#efe9e0'; c.fillRect(px, py, z, z); } }
+}
+
+/* ---------- shadows and stains in pixels, never smooth ovals ---------- */
+function shadowSpr(rx) { // a flat shadow with a dithered rim
+  return spr('sh' + rx, () => { const ry = Math.max(2, Math.round(rx * 0.32)), [cv, x] = mkc(rx * 2 + 2, ry * 2 + 2); for (let j = -ry; j <= ry; j++) for (let i = -rx; i <= rx; i++) { const d = (i / rx) ** 2 + (j / ry) ** 2; if (d > 1) continue; if (d > 0.62 && (i + j) % 2) continue; PR(x, i + rx + 1, j + ry + 1, 1, 1, 'rgba(0,0,0,.38)'); } return cv; });
+}
+function pixShadow(c, x, y, rx) { blit(c, shadowSpr(Math.max(3, Math.round(rx * PIXK))), x, y, 0.5, 0.5); }
+function stainSpr(kind, seed, size) { // blood splats, scorch marks, rubble and tear drops: clusters of pixels
+  return spr('st' + kind + seed + size, () => {
+    pixSeed = seed * 7919 + 1;
+    const R2 = Math.round(10 * size) + 2, [cv, x] = mkc(R2 * 2 + 4, R2 * 2 + 4), o = R2 + 2;
+    if (kind === 'blood') {
+      for (let k = 0; k < 7; k++) { const a = prnd() * 6.28, dd = prnd() * R2 * 0.6, cx = o + Math.cos(a) * dd, cy = o + Math.sin(a) * dd * 0.7, r = 1.5 + prnd() * R2 * 0.35; for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (i * i + j * j < r * r * (0.7 + prnd() * 0.5)) PR(x, Math.round(cx + i), Math.round(cy + j * 0.7), 1, 1, prnd() < 0.15 ? '#7a0c12' : '#5a080c'); }
+      for (let k = 0; k < 9; k++) { const a = prnd() * 6.28, dd = R2 * (0.7 + prnd() * 0.4); PR(x, Math.round(o + Math.cos(a) * dd), Math.round(o + Math.sin(a) * dd * 0.7), 1 + (prnd() < 0.3 ? 1 : 0), 1, '#5a080c'); }
+    } else if (kind === 'scorch') {
+      for (let j = -R2; j <= R2; j++) for (let i = -R2; i <= R2; i++) { const d = Math.hypot(i, j * 1.3) / R2 + (prnd() - 0.5) * 0.25; if (d < 1 && (d < 0.55 || (i + j) % 2 === 0)) PR(x, o + i, o + j, 1, 1, d < 0.4 ? 'rgba(10,6,4,.7)' : 'rgba(10,6,4,.4)'); }
+    } else if (kind === 'rubble') {
+      for (let k = 0; k < 6; k++) { const px = o + Math.round((prnd() - 0.5) * R2 * 1.4), py = o + Math.round((prnd() - 0.5) * R2); PR(x, px, py, 2, 1, '#8a8078'); PR(x, px, py + 1, 2, 1, '#4a423c'); }
+    } else { // a tear stain
+      for (let k = 0; k < 5; k++) PR(x, o + Math.round((prnd() - 0.5) * 6), o + Math.round((prnd() - 0.5) * 4), 1, 1, 'rgba(160,200,230,.25)');
+    }
+    return cv;
+  });
+}
+
+/* ================= the bosses in pixels, creepy like Isaac's ================= */
+// each one is built from crisp shapes, two frames of animation; a white copy flashes when hit
+const SKIN = '#e8d8cc', SKIND = '#b8a498', BLOOD = '#8a0a10', BLOODL = '#c01a20', VOID = '#0c0606';
+function bossCanvas(w, h, draw) { const [cv, x] = mkc(w, h); draw(x); return pixOutline(cv); }
+const eyeHole = (x, cx, cy, r = 2.4, glow) => { PE(x, cx, cy, r, r * 1.15, VOID); if (glow) PR(x, Math.round(cx), Math.round(cy), 1, 1, glow); };
+const bloodTear = (x, cx, cy, len) => { PR(x, cx, cy, 1, len, BLOOD); PR(x, cx, cy + len, 2, 1, BLOOD); PR(x, cx, cy, 1, 1, BLOODL); };
+const stitches = (x, cx, cy, w) => { PR(x, cx - w, cy, w * 2, 1, '#3a0a0a'); for (let i = -w + 1; i < w; i += 2) PR(x, cx + i, cy - 1, 1, 3, '#1a0606'); };
+const PIXBOSS = {
+  balestriere: f => bossCanvas(40, 46, x => { // the crossbowman: a gaunt jester's face, empty eyes, a bloody bolt ready
+    PR(x, 12, 38 - f, 5, 6 + f, '#1a1a1e'); PR(x, 23, 38 + f, 5, 6 - f, '#e8e4dc');
+    PE(x, 20, 31, 11, 9, '#1a1a1e'); PR(x, 20, 22, 11, 18, '#e8e4dc'); PR(x, 20, 22, 1, 18, '#8a8680');
+    PE(x, 20, 15, 9, 9.5, SKIN, SKIND, '#f8ece4'); eyeHole(x, 16.5, 15, 2.2, '#ff2020'); eyeHole(x, 23.5, 15, 2.2, '#ff2020'); bloodTear(x, 16, 18, 4); stitches(x, 20, 21, 3);
+    PE(x, 20, 7, 11, 4, '#5a0a10', '#3a0408'); PR(x, 27, 0, 3, 7, '#e8b64a'); PR(x, 29, 1, 3, 3, '#e8b64a');
+    PR(x, 2, 26, 18, 2, '#4a3020'); PR(x, 3, 22, 2, 10, '#6b4a2a'); PR(x, 0, 26, 3, 2, '#c9cdd2'); PR(x, 0, 25, 1, 4, BLOOD);
+  }),
+  mattarellone: f => bossCanvas(52, 58, x => { // the giant zombie chef: bloated, stitched, a bloody rolling pin
+    PR(x, 16, 50 - f, 7, 6 + f, '#a8b098'); PR(x, 29, 50 + f, 7, 6 - f, '#a8b098');
+    PE(x, 26, 38, 16, 13, '#d8dcc8', '#a0a690', '#eef0e4'); PR(x, 13, 40, 26, 2, '#2b5aa8'); stitches(x, 26, 34, 6); PE(x, 30, 44, 4, 3, BLOOD, '#5a0408');
+    PE(x, 26, 20, 13, 12, '#b8c8a8', '#7a8a6a', '#d0dcc4'); eyeHole(x, 20, 19, 3); PE(x, 32, 19, 4, 4.4, '#f0f0d8', '#c8c8a0'); PR(x, 32, 19, 2, 2, '#1a0a0a'); bloodTear(x, 20, 23, 5);
+    PR(x, 19, 26, 14, 3, VOID); for (let i = 20; i < 33; i += 2) PR(x, i, 26, 1, 1, '#e8e0c8'); PR(x, 30, 29, 1, 3, '#8ab080');
+    PE(x, 26, 7, 12, 6, '#f4f2ea', '#c8c4b8'); PR(x, 15, 10, 22, 3, '#e8e4da'); PR(x, 20, 2, 3, 3, '#c8c4b8');
+    PR(x, 44, 18 + f * 2, 5, 26, '#c9965a'); PR(x, 44, 18 + f * 2, 1, 26, '#e0b07a'); PR(x, 45, 15 + f * 2, 3, 4, '#8a5a2b'); PR(x, 44, 30, 5, 5, BLOOD);
+  }),
+  capohippie: f => bossCanvas(52, 50, x => { // a floating head of matted hair, tie-dye rags, eyes weeping blood
+    const cols = ['#a83a2a', '#a86a1a', '#a89a1a', '#3a8a4a', '#2a5a9a', '#6a3a9a'];
+    for (let i = 0; i < 6; i++) PR(x, 14 + i * 4, 30, 4, 14 + ((i + f) % 2) * 3, cols[i]);
+    for (let k = 0; k < 16; k++) { const a = Math.PI * (0.85 + k * 0.083); PE(x, 26 + Math.cos(a) * 15, 20 + Math.sin(a) * 15, 4.5, 6, '#2a1a10', '#140a06'); }
+    PE(x, 26, 22, 11, 12, SKIN, SKIND, '#f8ece4');
+    for (const ex of [21, 31]) { PE(x, ex, 21, 3, 3, '#e8e0f0'); for (let a = 0; a < 6.28; a += 0.8) PR(x, Math.round(ex + Math.cos(a + f) * 2), Math.round(21 + Math.sin(a + f) * 2), 1, 1, '#6a3a9a'); bloodTear(x, ex, 24, 7); }
+    PE(x, 26, 30, 4, 3, VOID); PR(x, 24, 29, 4, 1, '#e8e0c8');
+    for (let k = 0; k < 7; k++) PR(x, 16 + k * 3, 36 + (k % 2) * 4, 2, 6, '#2a1a10');
+  }),
+  mostro: f => bossCanvas(60, 50, x => { // the dam monster: a heap of green flesh, too many eyes, a mouth full of teeth
+    PE(x, 30, 30, 27, 18 - f, '#5a8a6a', '#3a5a46', '#7aaa8a'); PE(x, 18, 22, 9, 6, '#6a9a7a');
+    for (const [ex, ey, r] of [[16, 20, 3.5], [27, 15, 3], [38, 18, 4], [46, 26, 2.5], [10, 30, 2.4]]) { PE(x, ex, ey, r, r, '#f0ecd8', '#b8b4a0'); PR(x, Math.round(ex), Math.round(ey), 2, 2, '#1a0606'); PR(x, Math.round(ex) - 1, Math.round(ey) - 1, 1, 1, '#ffffff'); }
+    PE(x, 30, 36, 15, 7 + f, VOID); for (let i = 17; i < 44; i += 3) { PR(x, i, 30 + f, 2, 3, '#f0ecd8'); PR(x, i + 1, 40, 2, 3, '#e0dcc8'); }
+    for (let i = 0; i < 6; i++) PR(x, 8 + i * 9, 46, 2, 3 + (i + f) % 3, '#5fa8c9');
+  }),
+  piero: f => bossCanvas(52, 66, x => { // the master: a pale face with gouged eyes, weeping blood; the red hat, the robe, a brush dripping red
+    for (let y = 30; y < 62; y++) { const hw = Math.round(10 + (y - 30) * 0.42); PR(x, 26 - hw, y, hw * 2, 1, y > 54 ? '#4a0c0c' : '#7a1414'); PR(x, 26 + hw - 3, y, 3, 1, '#3a0606'); }
+    for (const fx of [18, 26, 34]) for (let y = 34; y < 60; y += 2) PR(x, fx + ((y >> 2) % 2), y, 1, 1, '#4a0808');
+    PR(x, 15, 42, 22, 2, '#a8823a');
+    PE(x, 26, 22, 9.5, 10, '#ecdcc8', '#b8a490', '#fbf0e0'); eyeHole(x, 22, 22, 2.6); eyeHole(x, 30, 22, 2.6); bloodTear(x, 22, 25, 8); bloodTear(x, 30, 25, 6 + f);
+    PR(x, 23, 30, 6, 1, '#5a1a14'); PR(x, 24, 31, 4, 1, VOID);
+    PE(x, 26, 11, 10, 7, '#c0202a', '#7a0a10', '#e04a4a'); PR(x, 16, 13, 20, 4, '#c0202a'); PR(x, 16, 16, 20, 1, '#5a0a0a');
+    PR(x, 44, 22 - f, 2, 18, '#6b4a2a'); PE(x, 45, 20 - f, 2, 3, BLOODL); PR(x, 45, 24 - f, 1, 5 + f, BLOOD);
+    PE(x, 7, 40, 6, 4, '#c9965a', '#8a6a3a'); PR(x, 4, 39, 2, 2, BLOODL); PR(x, 8, 38, 2, 2, '#2b5aa8'); PR(x, 6, 41, 2, 2, '#e8b64a');
+  }),
+  retopi: f => bossCanvas(52, 44, x => { // the rat king: rats knotted by their tails, a crown on the biggest head
+    for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 + f * 0.3; PR(x, Math.round(26 + Math.cos(a) * 8), Math.round(32 + Math.sin(a) * 4), 2, 2, '#c99a8a'); }
+    for (const [cx, cy, s2] of [[14, 30, 0.8], [38, 30, 0.8], [20, 36, 0.7], [33, 37, 0.7]]) { PE(x, cx, cy, 8 * s2, 5 * s2, '#6b5a4e', '#4a3e34', '#8a786a'); PR(x, Math.round(cx + (cx < 26 ? -6 : 5) * s2), cy - 1, 2, 2, '#ff2020'); }
+    PE(x, 26, 22, 13, 10, '#7a685a', '#4e4036', '#9a887a'); PE(x, 18, 13, 3.5, 3.5, '#c99a8a', '#8a6a5a'); PE(x, 34, 13, 3.5, 3.5, '#c99a8a', '#8a6a5a');
+    eyeHole(x, 21, 21, 2, '#ff2020'); eyeHole(x, 31, 21, 2, '#ff2020'); PE(x, 26, 27, 3, 2, '#e08a9a'); PR(x, 24, 29, 1, 3, '#f0ecd8'); PR(x, 27, 29, 1, 3, '#f0ecd8');
+    for (const px of [18, 22, 26, 30]) PR(x, px, 4, 3, 6, '#e8b64a'); PR(x, 18, 8, 15, 3, '#e8b64a'); PR(x, 25, 6, 2, 2, '#c0202a');
+  }),
+  fantasma: f => bossCanvas(46, 60, x => { // the ghost of the tower: a gaping jaw and black sockets, the tower on its head
+    for (let y = 16; y < 56; y++) { const hw = Math.round(14 - Math.max(0, y - 40) * 0.2); const wob = y > 46 ? Math.round(Math.sin(y * 0.8 + f * 2) * 2) : 0; PR(x, 23 - hw + wob, y, hw * 2, 1, y > 46 && (y + f) % 4 === 0 ? 'rgba(0,0,0,0)' : '#e4ecf4'); }
+    PE(x, 23, 22, 14, 12, '#e4ecf4', '#a8b4c4', '#ffffff');
+    eyeHole(x, 17, 21, 3.4); eyeHole(x, 29, 21, 3.4); PE(x, 23, 35, 5, 7 + f, VOID); PR(x, 21, 29, 4, 1, VOID);
+    PR(x, 15, 2, 16, 10, '#8a7a6a'); for (let k = 0; k < 4; k++) PR(x, 15 + k * 5, 0, 3, 3, '#8a7a6a'); PR(x, 21, 5, 3, 4, '#1a1414'); PR(x, 15, 11, 16, 1, '#5a4a3a');
+  }),
+  sbandierone: f => bossCanvas(52, 52, x => { // the flag-waver under a sackcloth hood with stitched-on eyes; flags torn and stained
+    PR(x, 18, 44 - f, 5, 7 + f, '#2a3a6a'); PR(x, 29, 44 + f, 5, 7 - f, '#2a3a6a');
+    PE(x, 26, 36, 12, 10, '#d8a838', '#a87a18'); PR(x, 26, 27, 12, 18, '#2a4a8a'); PR(x, 26, 27, 1, 18, '#1a2a5a');
+    PE(x, 26, 17, 10, 11, '#b89a6a', '#8a6a3a', '#d0b48a'); for (let k = 0; k < 8; k++) PR(x, 18 + k * 2, 9 + (k % 2), 1, 1, '#6a4a2a');
+    for (const ex of [21, 31]) { PR(x, ex - 2, 16, 5, 1, VOID); PR(x, ex - 2, 14, 1, 5, VOID); PR(x, ex + 2, 14, 1, 5, VOID); PR(x, ex - 1, 15, 1, 3, VOID); PR(x, ex + 1, 15, 1, 3, VOID); }
+    stitches(x, 26, 23, 4);
+    PR(x, 4, 4, 2, 40, '#6b4a2a'); for (let y = 4; y < 18; y++) { PR(x, 6, y, 12 - Math.floor((y + f * 3) % 5), 1, y % 6 < 3 ? '#e8b64a' : '#2a4a8a'); } PR(x, 8, 10, 3, 3, BLOOD);
+  }),
+  fattucchiera: f => bossCanvas(48, 62, x => { // the witch: a crone's green face, a long warty nose, black eyes, a crooked hat
+    for (let y = 34; y < 60; y++) { const hw = Math.round(8 + (y - 34) * 0.35); PR(x, 24 - hw, y, hw * 2, 1, '#1e1428'); }
+    for (let k = 0; k < 8; k++) PR(x, 14 + k * 3, 30 + (k % 3), 2, 14 + (k + f) % 3, '#d8d8d0');
+    PE(x, 24, 28, 9, 9, '#a8b890', '#788860', '#c4d4ac'); eyeHole(x, 20, 26, 2.2, '#f5e04a'); eyeHole(x, 28, 26, 2.2, '#f5e04a');
+    PR(x, 24, 27, 3, 6, '#98a880'); PR(x, 26, 32, 3, 2, '#98a880'); PR(x, 27, 30, 1, 1, '#5a6a3a'); PR(x, 21, 35, 7, 1, VOID); PR(x, 22, 35, 1, 2, '#e8e0c8');
+    PE(x, 24, 18, 14, 3.5, '#1a1a22'); for (let y = 0; y < 16; y++) PR(x, 18 + Math.round(y * 0.35) + (y < 5 ? f : 0), y + 2, Math.max(2, 12 - Math.round(y * 0.7)), 1, '#1a1a22');
+    PR(x, 40, 22, 2, 30, '#5a3a2a'); PE(x, 41, 21, 3, 3, '#b07ad6', '#7a4aa6', '#e0b0ff');
+  }),
+  raviolissimo: f => bossCanvas(56, 50, x => ravioloPix(x, 28, 28, 1, f)),
+  raviolomedio: f => bossCanvas(38, 34, x => ravioloPix(x, 19, 19, 0.62, f)),
+  torchio: f => bossCanvas(60, 58, x => { // the pasta press with a face: gear teeth, red sauce dripping like blood
+    PR(x, 6, 4, 6, 44, '#4a5058'); PR(x, 48, 4, 6, 44, '#4a5058'); PR(x, 6, 4, 1, 44, '#7a828c'); PR(x, 48, 4, 1, 44, '#7a828c');
+    PR(x, 4, 2, 52, 9, '#6a7078'); PR(x, 4, 2, 52, 2, '#9aa2aa'); for (let k = 0; k < 6; k++) PR(x, 8 + k * 8, 5, 4, 3, '#3a4048');
+    PR(x, 12, 14 + f * 2, 36, 22, '#8a929a'); PR(x, 12, 14 + f * 2, 36, 2, '#b0b8c0');
+    eyeHole(x, 22, 22 + f * 2, 3, '#ff3020'); eyeHole(x, 38, 22 + f * 2, 3, '#ff3020');
+    PR(x, 18, 30 + f * 2, 24, 4, VOID); for (let i = 19; i < 42; i += 3) { PR(x, i, 30 + f * 2, 2, 2, '#c9cdd2'); PR(x, i + 1, 32 + f * 2, 2, 2, '#c9cdd2'); }
+    for (let i = 0; i < 7; i++) { const len = 8 + ((i * 5 + f * 3) % 9); PR(x, 17 + i * 4, 36 + f * 2, 2, len, i % 3 ? '#f0cf6b' : BLOODL); }
+    PR(x, 27, 0, 6, 3, '#3a3a3e');
+  }),
+  campanaro: f => bossCanvas(52, 54, x => { // the bell-ringer: hunched, bandaged, one eye staring, a cracked bell
+    PR(x, 16, 46 - f, 5, 7 + f, '#3a2a1a'); PR(x, 27, 46 + f, 5, 7 - f, '#3a2a1a');
+    PE(x, 24, 36, 13, 12, '#5a3a1e', '#3a2410', '#7a5a3a'); PE(x, 18, 27, 8, 5, '#6a4a2a');
+    PE(x, 22, 20, 10, 10, '#d8c8b8', '#a89888'); for (let y = 12; y < 30; y += 3) PR(x, 12, y, 20, 1, '#a89888');
+    PE(x, 26, 19, 3.2, 3.6, '#f4f0e0', '#c8c4b0'); PR(x, 26, 19, 2, 2, '#1a0606'); eyeHole(x, 18, 19, 2); bloodTear(x, 18, 22, 4);
+    PR(x, 19, 26, 8, 2, VOID);
+    PR(x, 40, 10 + f, 1, 8, '#6b4a2a'); for (let y = 0; y < 14; y++) { const hw = Math.round(3 + y * 0.45); PR(x, 40 - hw, 18 + y + f, hw * 2 + 1, 1, y > 11 ? '#8a6a1a' : '#c9952a'); } PR(x, 39, 22 + f, 1, 6, '#5a3a10'); PE(x, 40, 33 + f, 2, 2, '#3a2410');
+  }),
+  biscia: f => bossCanvas(36, 34, x => { // the river snake's head: yellow slit eyes, a forked tongue, jaws apart
+    PE(x, 18, 18, 14, 12, '#3a7a4a', '#24502e', '#5a9a6a'); for (let k = 0; k < 6; k++) PR(x, 8 + k * 4, 12 + (k % 2) * 3, 2, 1, '#2a5a36');
+    for (const ex of [11, 25]) { PE(x, ex, 14, 3.5, 3, '#f5e04a', '#c8b020'); PR(x, ex, 12, 1, 5, VOID); }
+    PE(x, 18, 25, 8, 4 + f, VOID); PR(x, 12, 23, 2, 3, '#f0ecd8'); PR(x, 22, 23, 2, 3, '#f0ecd8'); PR(x, 17, 28 + f, 2, 4, '#d2202a'); PR(x, 16, 32 + f, 1, 1, '#d2202a'); PR(x, 19, 32 + f, 1, 1, '#d2202a');
+  }),
+  guardiano: f => bossCanvas(56, 62, x => { // the sleeping soldier of the Resurrection, awake: a shadow under the helmet, two burning eyes
+    PR(x, 18, 52 - f, 6, 8 + f, '#5a3a20'); PR(x, 30, 52 + f, 6, 8 - f, '#5a3a20');
+    PE(x, 27, 40, 15, 14, '#8a2a1a', '#5a1a10', '#aa3a24'); PR(x, 12, 44, 30, 3, '#c9a24a');
+    PE(x, 27, 22, 11, 11, '#4a3020'); PE(x, 27, 18, 12, 9, '#8a8f96', '#5a5f66', '#c0c4ca'); PR(x, 15, 20, 24, 3, '#6a6f76'); PR(x, 25, 20, 4, 12, '#6a6f76');
+    PR(x, 19, 24, 5, 3, VOID); PR(x, 30, 24, 5, 3, VOID); PR(x, 20, 25, 2, 1, '#ff5a1a'); PR(x, 31, 25, 2, 1, '#ff5a1a');
+    PE(x, 27, 6, 3, 7, '#b3121b', '#7a0a10');
+    PE(x, 8, 40, 7, 11, '#c9a24a', '#8a6a1a', '#e8c86a'); PE(x, 8, 40, 2.5, 2.5, '#8a6a1a'); PR(x, 5, 32, 6, 1, BLOOD);
+    PR(x, 48, 2 - f, 2, 50, '#6b4a2a'); for (let y = 0; y < 7; y++) PR(x, 49 - Math.floor(y / 2), y - 4 - f + 2, 1 + Math.floor(y / 2) * 2, 1, '#c9cdd2');
+  }),
+};
+function ravioloPix(x, cx, cy, s, f) { // a ravioli the size of a man, crowned, the filling oozing out of a mouth full of teeth
+  const R2 = Math.round(22 * s);
+  for (let j = -R2; j <= R2; j++) for (let i = -R2; i <= R2; i++) { const edge = Math.max(Math.abs(i), Math.abs(j)) + ((i + j) % 3 === 0 ? 1 : 0); if (edge <= R2) PR(x, cx + i, cy + j, 1, 1, edge > R2 - 3 * s ? '#c9a24a' : '#e8c46a'); }
+  PE(x, cx, cy, 13 * s, 11 * s, '#f0d68a', '#c8aa5a', '#fff0b0');
+  eyeHole(x, cx - 6 * s, cy - 4 * s, 3 * s); eyeHole(x, cx + 6 * s, cy - 4 * s, 3 * s); PR(x, Math.round(cx - 8 * s), Math.round(cy - 9 * s), Math.round(5 * s), 1, '#3a1a10'); PR(x, Math.round(cx + 4 * s), Math.round(cy - 9 * s), Math.round(5 * s), 1, '#3a1a10');
+  PE(x, cx, cy + 6 * s, 8 * s, (4 + f) * s, VOID); for (let i = -6; i <= 6; i += 2) PR(x, Math.round(cx + i * s), Math.round(cy + 3 * s), Math.max(1, Math.round(s * 1.4)), Math.max(1, Math.round(2 * s)), '#f4f0e0');
+  PR(x, Math.round(cx + 2 * s), Math.round(cy + 9 * s), Math.max(1, Math.round(2 * s)), Math.round((5 + f) * s), BLOODL);
+  for (const px of [-8, -3, 2, 7]) PR(x, Math.round(cx + px * s), Math.round(cy - R2 - 4 * s), Math.max(2, Math.round(3 * s)), Math.round(5 * s), '#e8b64a');
+}
+function drawPixBoss(c, e, flip, t) { // the boss sprite: feet on its shadow, turned towards you, white when hit
+  const frame = Math.floor(t / 14) % 2, key = 'boss' + e.type + frame + (e.flash > 0 ? 'w' : '');
+  const s = spr(key, () => { const base = spr('boss' + e.type + frame, () => PIXBOSS[e.type](frame, e)); return e.flash > 0 ? tinted(base, '#ffffff', 0.7) : base; });
+  const foot = e.r * 0.85;
+  if (c === BUF.c) { c.save(); const m = c.getTransform(); c.setTransform(flip < 0 ? -1 : 1, 0, 0, 1, Math.round(m.e), Math.round(m.f + foot * m.d)); c.imageSmoothingEnabled = false; c.drawImage(s, -Math.round(s.width / 2), -s.height); c.restore(); return; }
+  const u = 1 / PIXK; c.save(); c.scale(flip < 0 ? -1 : 1, 1); c.imageSmoothingEnabled = false; c.drawImage(s, -s.width / 2 * u, foot - s.height * u, s.width * u, s.height * u); c.restore();
+}
+function drawBisciaBody(c, e) { // the snake's body: scaled segments with a pale belly, drawn behind the head
+  const parts = e.parts || [];
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const q = parts[i], r = Math.max(4, Math.round(q.r * PIXK));
+    const s = spr('seg' + r + (i % 2), () => { const [cv, x] = mkc(r * 2 + 2, r * 2 + 2); PE(x, r + 1, r + 1, r, r, i % 2 ? '#2f6a3e' : '#3a7a4a', '#1e4a28', '#5a9a6a'); PE(x, r + 1, r + 2, r * 0.6, r * 0.4, '#c9d98a'); return pixOutline(cv); });
+    blit(c, s, q.x - e.x, q.y - e.y + e.z, 0.5, 0.5);
+  }
+}
 /* ================= profile, unlocks, achievements, collection and the cloud ================= */
 // Filled in by build.sh for the GitHub copy; empty here, so the artifact keeps everything on the device
 const FIREBASE = {projectId: 'biturgiasotterranea', apiKey: 'AIzaSyD9KcmjPkkVnEBc2wnghVJAifY5GIEqOkU'};
@@ -4370,7 +4672,7 @@ const FIREBASE = {projectId: 'biturgiasotterranea', apiKey: 'AIzaSyD9KcmjPkkVnEB
 // Runs and wins recorded before EPOCH_START no longer show on the boards.
 const SAVE_EPOCH = 2, EPOCH_START = Date.UTC(2026, 9, 29, 12, 0);
 // the fastest-wins board starts over with every new version: wins from older versions don't count
-const BOARD_VERSION = 'v1.9', BOARD_START = Date.UTC(2026, 9, 29, 17, 2);
+const BOARD_VERSION = 'v2.0', BOARD_START = Date.UTC(2026, 9, 29, 19, 52);
 function wipeOldSaves() {
   if (store('bs-epoch') === SAVE_EPOCH) return;
   try {
@@ -4880,7 +5182,6 @@ function charSprite(ch, locked) {
   const cv = document.createElement('canvas'); cv.width = 200; cv.height = 240; // tall enough for hair that sticks up
   const c = cv.getContext('2d');
   drawChar(c, ch, 100, 174, {scale: 4, shadow: false});
-  if (!locked) outlineCanvas(cv, 4.5);
   if (locked) {
     c.globalCompositeOperation = 'source-in'; c.fillStyle = '#0d0907'; c.fillRect(0, 0, 200, 200);
     c.globalCompositeOperation = 'source-over'; c.fillStyle = '#5a4536'; c.font = '800 64px ' + DISPLAY_FONT; c.textAlign = 'center'; c.fillText('?', 100, 140);
@@ -5134,7 +5435,7 @@ function showNote(won) {
   $('nItems').textContent += ' Seme ' + run.seed.slice(0, 4) + ' ' + run.seed.slice(4) + '.';
   const cv = $('nPic'), c = cv.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.scale(4, 4);
-  drawChar(c, ch, 30, won ? 40 : 34, {dead: !won, shadow: false, face: 's', hurt: !won});
+  drawChar(c, ch, 30, won ? 42 : 34, {dead: !won, shadow: false, face: 's', hurt: !won, items: p.items}); // with every item of the run on
   $('note').hidden = false;
   $('nAgain').focus({preventScroll: true});
 }
@@ -5333,7 +5634,7 @@ flushFeedQueue();
 
 /* ---------- debug mode: five taps on the version number, then the key ---------- */
 // only the hash of the key is in the page, so reading the source doesn't give it away
-const DEBUG_HASH = 'f286c5804f46d06d5f8296171a2d5ebbba60aa414bf7e70de7d4a5a995b8d873';
+const DEBUG_HASH = 'df1b9eb7e8573946aba32a26089227b48a7b8b4d18d93a32dff8ffda6ab1a573';
 let verTaps = [];
 $('ver').addEventListener('click', () => {
   const now = performance.now(); verTaps = verTaps.filter(t => now - t < 3000); verTaps.push(now);
@@ -5503,7 +5804,7 @@ const FACADES = ['#6a5240', '#5a4636', '#7a6048', '#5e4a38'];
 // townsfolk, drawn like the heroes but in ordinary clothes
 const NPC_SKIN = ['#f0c9a8', '#e3b48e', '#d8a27c', '#c98e66'], NPC_STYLE = ['short', 'long', 'curly', 'slick', 'short'];
 const NPC_COL = ['#2b5aa8', '#7a1a2e', '#3e8a3a', '#d9a556', '#4a4a52', '#8a3ad5', '#c9cdd2', '#b3121b'];
-const npc = n => ({skin: NPC_SKIN[n % 4], shirt: NPC_COL[(n * 3) % 8], pants: ['#1c1c21', '#2e3140', '#3b4a6b'][n % 3], hair: ['#2a1d14', '#4a2c1a', '#c9a26b', '#8a8f96'][(n * 5) % 4], style: NPC_STYLE[n % 5], size: 0.92 + (n % 3) * 0.06});
+const npc = n => ({id: 'npc' + n, skin: NPC_SKIN[n % 4], shirt: NPC_COL[(n * 3) % 8], pants: ['#1c1c21', '#2e3140', '#3b4a6b'][n % 3], hair: ['#2a1d14', '#4a2c1a', '#c9a26b', '#8a8f96'][(n * 5) % 4], style: NPC_STYLE[n % 5], size: 0.92 + (n % 3) * 0.06});
 function walker(c, n, x, feet, sc, dir, t, moving = true) { drawChar(c, npc(n), x, feet - 13.5 * sc, {scale: sc, face: dir > 0 ? 'e' : dir < 0 ? 'w' : 's', walk: moving ? t * 9 + n : 0, shadow: true}); }
 function car(c, x, y, col, dir, sc = 1) { // a small Italian hatchback, lights on
   c.save(); c.translate(x, y); c.scale(dir * sc, sc);
@@ -5669,7 +5970,7 @@ function wrapText(c, txt, x, y, maxW, lh) {
   for (const word of txt.split(' ')) { const test = line ? line + ' ' + word : word; if (c.measureText(test).width > maxW && line) { c.fillText(line, x, yy); line = word; yy += lh; } else line = test; }
   if (line) c.fillText(line, x, yy);
 }
-function hero(c, ch, x, y, sc, o = {}) { outlined(c, x, y - 12 * sc, 46 * sc, cc => drawChar(cc, ch, x, y, {scale: sc, shadow: false, ...o})); ell(c, x, y + 14 * sc, 11 * sc, 3.5 * sc, 'rgba(0,0,0,.35)'); }
+function hero(c, ch, x, y, sc, o = {}) { const items = G.run && ch === G.run.ch && G.p ? G.p.items : []; outlined(c, x, y - 12 * sc, 50 * sc, cc => drawChar(cc, ch, x, y, {scale: sc, shadow: false, items, ...o})); ell(c, x, y + 14 * sc, 11 * sc, 3.5 * sc, 'rgba(0,0,0,.35)'); } // the hero wears everything picked up this run
 function bubble(c, x, y, txt, size = 13) {
   c.font = `800 ${size}px ${DISPLAY_FONT}`; const wd = c.measureText(txt).width + 16;
   c.fillStyle = '#f4f0e6'; rrect(c, x - wd / 2, y - size - 6, wd, size + 12, 6); c.fill(); c.beginPath(); c.moveTo(x - 4, y + 6); c.lineTo(x + 2, y + 13); c.lineTo(x + 6, y + 6); c.fill();
