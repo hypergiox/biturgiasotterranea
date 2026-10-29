@@ -227,6 +227,7 @@ html.portrait-play #rotate{display:flex}
   <h1 class="title">Biturgia<br>Sotterranea<small>Le cantine di Sansepolcro</small></h1>
   <canvas id="tCast" aria-label="I dodici personaggi"></canvas>
   <button type="button" class="big" id="tStart">Scendi in cantina</button>
+  <button type="button" class="ghost" id="tCont" hidden>Continua</button>
   <div class="menu">
     <button type="button" class="ghost" id="tColl">Collezione</button>
     <button type="button" class="ghost" id="tAch">Traguardi</button>
@@ -371,7 +372,7 @@ html.portrait-play #rotate{display:flex}
     <button type="button" class="ghost" id="pMusic">Musica: sì</button>
     <button type="button" class="ghost" id="pGfx">Grafica: completa</button>
     <button type="button" class="ghost" id="pFeed">Segnala</button>
-    <button type="button" class="ghost" id="pQuit">Esci</button>
+    <button type="button" class="ghost" id="pQuit">Salva ed esci</button>
   </div>
 </section>
 
@@ -391,7 +392,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v1.7.1';
+const VERSION = 'v1.8';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -418,19 +419,21 @@ function store(key, val) {
 
 /* ---------- seeded randomness: the floor layout comes from the seed, the fight does not ---------- */
 function mulberry32(a) {
-  return function () {
+  const f = function () {
     a |= 0; a = a + 0x6D2B79F5 | 0;
     let t = Math.imul(a ^ a >>> 15, 1 | a);
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
+  f.state = () => a; f.restore = v => { a = v; }; // a saved run picks up the same sequence
+  return f;
 }
 const SEED_CHARS = 'ABCDEFGHJKLMNPQRSTVWXYZ0123456789';
 function newSeed() { let s = ''; for (let i = 0; i < 8; i++) s += SEED_CHARS[Math.floor(rnd() * SEED_CHARS.length)]; return s; }
 function seedNum(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 function makeRng(n) {
   const f = mulberry32(n);
-  return {f, r: (a, b) => a + f() * (b - a), i: (a, b) => Math.floor(a + f() * (b - a + 1)), pick: a => a[Math.floor(f() * a.length)],
+  return {f, state: () => f.state(), restore: v => f.restore(v), r: (a, b) => a + f() * (b - a), i: (a, b) => Math.floor(a + f() * (b - a + 1)), pick: a => a[Math.floor(f() * a.length)],
     shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(f() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }};
 }
 
@@ -579,7 +582,7 @@ const CHARS = [
     red: 3, soul: 0, speed: 1, dmg: 3.5, delay: 16, range: 270, ss: 1, luck: 0, tear: 'nera', active: 'rallenty'},
   // the inventor: weak tears made of bolts, but a drone that shoots with him and a 3D printer that makes items
   {id: 'raspo', name: 'Raspo', skin: '#d8a27c', shirt: '#e07a1e', shirt2: '#c9651a', pants: '#3a4a6b', hair: '#2e2620', style: 'inventor', beard: '#2e2620', goggles: true, toolbelt: true,
-    red: 2, soul: 2, speed: 1, dmg: 2.9, delay: 15, range: 280, ss: 1.1, luck: 1, tear: 'bullone', active: 'stampante', drone: true},
+    red: 2, soul: 2, speed: 1, dmg: 2.9, delay: 15, range: 280, ss: 1.1, luck: 1, tear: 'bullone', active: 'stampante', drone: true, perk: 'Parte con un drone che spara con lui.'},
   {id: 'piero', name: 'Piero', skin: '#e2a878', shirt: '#f2f2f2', pants: '#1d3557', hair: '#2a1d14', style: 'band', muscle: true,
     red: 4, soul: 0, speed: 0.85, dmg: 5, delay: 22, range: 240, ss: 0.9, luck: 0, tear: 'grossa', active: 'muscoli', flags: {big: true}},
   {id: 'pinciu', name: 'Pinciu', skin: '#e3b48e', shirt: '#f5c400', shirt2: '#1d4fa3', pants: '#1d4fa3', hair: '#3a2a1e', style: 'short', mustache: true,
@@ -600,6 +603,9 @@ const CHARS = [
     red: 3, soul: 0, speed: 1.1, dmg: 2.6, delay: 11, range: 250, ss: 1.2, luck: 0, tear: 'riso', active: 'moto'},
   {id: 'faif', name: 'Faif', skin: '#e3b48e', shirt: '#d2202a', shirt2: '#141417', pants: '#141417', hair: '#3a2a1e', style: 'short', mustache: true,
     red: 3, soul: 0, speed: 1.15, dmg: 3.4, delay: 16, range: 260, ss: 1, luck: 0, tear: 'birra', active: 'sprint'},
+  // the programmer: lines of code for tears, a trail of second-hand smoke, a joint that leaves everybody dazed
+  {id: 'maiga', name: 'Maiga', skin: '#e6b892', shirt: '#3a3d44', pants: '#3b4a6b', hair: '#4a3020', style: 'messy', beard: '#4a3020', glasses: true, joint: true,
+    red: 3, soul: 0, speed: 0.95, dmg: 3, delay: 15, range: 300, ss: 0.95, luck: 0, tear: 'codice', active: 'canna', flags: {smoke: true}, perk: 'Lascia una scia di fumo passivo che intossica e rallenta i nemici.'},
 ];
 
 /* ---------- active items: charges fill one per cleared room ---------- */
@@ -620,6 +626,7 @@ const ACTIVES = {
   salvadanaio: {name: 'Salvadanaio', sub: 'Monete!', charge: 2, icon: 'pig', col: '#f08bb0'},
   moto: {name: 'Moto giapponese', sub: 'In sella: veloce e travolgente', charge: 3, icon: 'moto', col: '#d2202a'},
   sprint: {name: 'Scatto', sub: 'Velocissimo per sei secondi', charge: 2, icon: 'shoe', col: '#f5c400'},
+  canna: {name: 'La Canna', sub: 'Tutti fusi, tu più rilassato', charge: 3, icon: 'joint', col: '#7a9a4a'},
   stampante: {name: 'Stampante 3D', sub: 'Stampa un oggetto a caso', charge: 6, icon: 'printer', col: '#9aa3ad'},
 };
 
@@ -705,7 +712,7 @@ const PILLS = [
   {name: 'Velocità in su', fn: p => { p.speed += 0.12; }},
   {name: 'Velocità in giù', fn: p => { p.speed -= 0.1; }},
   {name: 'Fortuna in su', fn: p => { p.luck += 1; }},
-  {name: 'Mal di pancia', fn: p => { if (p.red + p.soul > 1) hurtPlayer(1, 'una pillola andata a male', true); }},
+  {name: 'Mal di pancia', fn: p => { if (hearts(p) > 2) hurtPlayer(2, 'una pillola andata a male', true); else { healAll(p); G.banner = {title: 'Salute piena', sub: 'Il mal di pancia ti ha fatto bene', t: 110, small: true}; } }}, // Isaac's Bad Trip: a full heart, or full health when you're nearly dead
   {name: 'Ho visto tutto', fn: () => { revealMap(true); }},
   {name: 'Spiccioli!', fn: p => { for (let i = 0; i < 4; i++) dropPickup('coin', p.x + rr(-30, 30), p.y + rr(-30, 30)); }},
   {name: 'Bang!', fn: p => { p.bombs = Math.min(99, p.bombs + 2); }},
@@ -987,23 +994,24 @@ function newPlayer(ch) {
     flags: {...(ch.flags || {})}, items: [], orbitals: [], pets: [], active: {id: ch.active, charge: ACTIVES[ch.active].charge},
     coins: 0, bombs: 1, keys: 0, pill: null, card: null, trinket: null, trans: [], inv: 0, cd: 0, eye: 1, face: 's', walk: 0, hold: null, shield: false,
     black: 0, gold: 0, eternal: 0, mult: 1, charge: 0,
-    fx: {muscoli: 0, raffica: 0, campari: 0, turbo: 0, fire: 0, carro: 0, mago: 0, forza: 0, diavolo: 0, imp: 0, volo: 0, moto: 0, sprint: 0}, dash: null, hitOnDash: new Set(), dead: false};
+    fx: {relax: 0, muscoli: 0, raffica: 0, campari: 0, turbo: 0, fire: 0, carro: 0, mago: 0, forza: 0, diavolo: 0, imp: 0, volo: 0, moto: 0, sprint: 0}, dash: null, hitOnDash: new Set(), dead: false};
   if (ch.drone) p.pets.push({kind: 'drone', x: p.x, y: p.y, cd: 0});
   return p;
 }
 const dmgOf = p => Math.max(0.5, p.dmg + (p.fx.diavolo ? 2 : 0) + (p.fx.imp ? 1.5 : 0) + (p.trinket === 'dente' ? 0.6 : 0)) * p.mult * (p.fx.muscoli ? 1.8 : 1) * (p.fx.campari ? 1.6 : 1) * (p.fx.forza ? 1.5 : 1);
-const delayOf = p => Math.max(4, p.delay - (p.trinket === 'petalo' ? 1.5 : 0)) / (p.fx.raffica ? 3 : 1) / (p.fx.sprint ? 1.5 : 1);
+const delayOf = p => Math.max(4, p.delay - (p.trinket === 'petalo' ? 1.5 : 0)) / (p.fx.raffica ? 3 : 1) / (p.fx.sprint ? 1.5 : 1) / (p.fx.relax ? 1.3 : 1);
 const speedOf = p => clamp(p.speed + (p.fx.imp ? 0.3 : 0) + (p.trinket === 'tappo' ? 0.15 : 0), 0.5, 2) * (p.fx.campari ? 1.3 : 1) * (p.fx.moto ? 1.7 : 1) * (p.fx.sprint ? 1.9 : 1);
 const flying = p => !!(p.flags.flight || p.fx.volo);
 const ssOf = p => clamp(p.ss, 0.6, 2.2);
 const rangeOf = p => Math.max(90, p.range);
 const hearts = p => p.red + p.soul + p.black;
+const heartSlots = p => Math.ceil(p.maxRed / 2) + Math.ceil(p.soul / 2) + Math.ceil(p.black / 2); // every heart on the bar, of any kind
 const hit2 = () => G.run.depth >= 5 ? 2 : 1;      // later floors bite harder, like the real thing
 
 function addHearts(p, n) { if (p.ch.noRed) p.soul = Math.min(24 - p.maxRed - p.black, p.soul + n); else p.maxRed = Math.min(24, p.maxRed + n); capHearts(p); }
 function addBlack(p, n) { p.black = Math.min(24 - p.maxRed - p.soul, p.black + n); }
 function capHearts(p) { // twelve hearts in all, like the real thing
-  p.soul = Math.max(0, Math.min(p.soul, 24 - p.maxRed)); p.black = Math.max(0, Math.min(p.black, 24 - p.maxRed - p.soul)); p.gold = Math.min(p.gold, Math.floor(p.maxRed / 2));
+  p.soul = Math.max(0, Math.min(p.soul, 24 - p.maxRed)); p.black = Math.max(0, Math.min(p.black, 24 - p.maxRed - p.soul)); p.gold = Math.min(p.gold, heartSlots(p));
 }
 function heal(p, n) { p.red = Math.min(p.maxRed, p.red + n); }
 function healAll(p) { p.red = p.maxRed; }
@@ -1059,6 +1067,7 @@ function enterRoom(room, fromDir, slide = true) {
   if (slide && prev && fromDir) G.trans = {from: prev, to: room, dir: fromDir, t: 0};
   Music.play(room.type === 'boss' && !room.cleared ? 'boss' : 'f' + chap(room.depth));
   G.flowT = -99;
+  queueSave();
 }
 function teleportRandom() {
   const list = G.floor.rooms.filter(r => r !== G.room && !['boss', 'secret', 'supersegreta', 'sfida'].includes(r.type));
@@ -1249,7 +1258,11 @@ function updateEnemy(e) {
   const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
   let mvx = 0, mvy = 0, sp = 0;
   e.cd -= k;
-  switch (e.type) {
+  if (e.conf > 0 && !(e.z > 0)) { // dazed by the smoke: wanders about and forgets to attack
+    e.conf--; e.cd += k;
+    if (e.t % 40 === 0 || !e.cdir) e.cdir = pick(Object.values(DIRS));
+    mvx = e.cdir[0]; mvy = e.cdir[1]; sp = EN[e.type].still ? 0 : 0.6;
+  } else switch (e.type) {
     case 'zanzara': {
       e.vx += (dx / d * 0.09 + rr(-0.2, 0.2)) * k; e.vy += (dy / d * 0.09 + rr(-0.2, 0.2)) * k;
       const v = Math.hypot(e.vx, e.vy), m = 1.5 * k; if (v > m) { e.vx *= m / v; e.vy *= m / v; }
@@ -1439,7 +1452,9 @@ function hurtPlayer(n, cause, self, redFirst) { // redFirst: blood machines, sac
   const fromBlack = Math.min(p.black, n); p.black -= fromBlack; n -= fromBlack;
   if (Math.ceil(before / 2) > Math.ceil(p.black / 2)) blackBlast();
   const fromSoul = Math.min(p.soul, n); p.soul -= fromSoul; n -= fromSoul;
-  if (n > 0) { p.red -= n; G.run.redLostFloor = true; if (p.gold > 0) { p.gold--; for (let i = 0; i < 3; i++) dropPickup('coin', p.x + rr(-20, 20), p.y + rr(-20, 20)); Snd.coin(); } }
+  if (n > 0) { p.red -= n; G.run.redLostFloor = true; }
+  if (p.gold > 0) { p.gold--; for (let i = 0; i < 3; i++) dropPickup('coin', p.x + rr(-20, 20), p.y + rr(-20, 20)); Snd.coin(); } // any hit cracks a golden heart, like Isaac
+  capHearts(p);
   if (!self) G.run.floorHit = true;
   p.inv = 66; G.shake = 7; G.hurtFlash = 1; G.hitstop = 5;
   if (G.room.type === 'boss') G.run.hitInBoss = true;
@@ -1505,6 +1520,14 @@ function useActive() {
       break;
     case 'dado': rerollRoom(); break;
     case 'moto': p.fx.moto = 300; Snd.tone(90, 0.8, 'sawtooth', 0.15, 260); Snd.noise(0.6, 0.12, 700); break;
+    case 'canna': { // one long drag: every enemy in the room is dazed for a while, and you shoot more calmly and more often
+      for (const e of live()) e.conf = e.boss ? 100 : 260;
+      p.fx.relax = 420;
+      G.fx.push({kind: 'smog', x: p.x, y: p.y - 6, life: 140, max: 140, r: 90, big: true});
+      Snd.noise(0.9, 0.12, 700, 1, 0, 200); Snd.tone(220, 0.8, 'sine', 0.08, 140);
+      G.banner = {title: 'Tutti fusi', sub: 'I nemici non sanno più dove sono', t: 110, small: true};
+      break;
+    }
     case 'stampante': { // prints a random item from the treasure pool, right next to you
       const s = freeSpot(p.x + (p.x < CX ? 50 : -50), p.y);
       G.room.pickups.push({...pickItem('t', RND, G.run), x: s.x, y: s.y, ped: true});
@@ -1621,7 +1644,7 @@ function touchPickup(pk) {
 }
 function winRun() {
   if (G.state !== 'play') return;
-  G.state = 'won'; Snd.win();
+  G.state = 'won'; Snd.win(); clearRunSave();
   floorDone();
   meta('win'); submitDaily(true);
   showNote(true);
@@ -1651,7 +1674,7 @@ function update() {
   if (G.fall) { if (--G.fall <= 0) { G.fall = 0; floorDone(); goFloor(G.run.depth + 1); G.fadeIn = 30; } return; }
   if (p.dead) {
     G.deathT--; updateFx();
-    if (G.deathT <= 0 && G.state === 'play') { G.state = 'dead'; meta('death'); submitDaily(false); showNote(false); }
+    if (G.deathT <= 0 && G.state === 'play') { G.state = 'dead'; clearRunSave(); meta('death'); submitDaily(false); showNote(false); }
     return;
   }
   G.run.frames++;
@@ -1659,7 +1682,8 @@ function update() {
   if (G.slow > 0) G.slow--;
   if (G.shake > 0) G.shake *= 0.85;
   // timers
-  for (const k of ['raffica', 'campari', 'turbo', 'fire', 'moto', 'sprint']) if (p.fx[k] > 0) p.fx[k]--;
+  for (const k of ['raffica', 'campari', 'turbo', 'fire', 'moto', 'sprint', 'relax']) if (p.fx[k] > 0) p.fx[k]--;
+  if (p.flags.smoke) smokeTrail(p);
   trackRun(p);
   if (p.inv > 0) p.inv--;
   if (p.hold) { p.hold.t--; if (p.hold.t <= 0) p.hold = null; }
@@ -1861,7 +1885,7 @@ function updateFx() {
 const canvas = $('game'), ctx = canvas.getContext('2d');
 let W = 0, H = 0, DPR = 1, S = 1, OX = 0, OY = 0;
 const TEAR_COL = {normale: '#8fd3ff', nera: '#2a2433', scarica: '#22c3d6', grossa: '#6fb6ec', pallone: '#f4f4f4', piatto: '#f4f4f4', proiettile: '#f0c040',
-  campari: '#d2202a', laser: '#ff3b3b', carta: '#f5c400', fuoco: '#ff7a1a', riso: '#f8f6ee', birra: '#e8a83a', coltello: '#c9cdd2', bomba: '#2a2a2e', santa: '#fff6d8', bullone: '#9aa3ad'};
+  codice: '#5aff7a', campari: '#d2202a', laser: '#ff3b3b', carta: '#f5c400', fuoco: '#ff7a1a', riso: '#f8f6ee', birra: '#e8a83a', coltello: '#c9cdd2', bomba: '#2a2a2e', santa: '#fff6d8', bullone: '#9aa3ad'};
 const hexA = (hex, a) => 'rgba(' + parseInt(hex.slice(1, 3), 16) + ',' + parseInt(hex.slice(3, 5), 16) + ',' + parseInt(hex.slice(5, 7), 16) + ',' + a + ')';
 function mixHex(a, b, f) { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), x = p(a), y = p(b); return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * f).toString(16).padStart(2, '0')).join(''); }
 const MOD_COL = {poison: '#4ad15a', burn: '#ff7a1a', slow: '#bff0ff', homing: '#b07ad6'};
@@ -1905,9 +1929,9 @@ function liteCheck(fps) {
 function outlined(c, x, y, R, fn, glow) {
   const m = c.getTransform(), sc = Math.hypot(m.a, m.b), size = Math.ceil(R * 2 * sc) + 8;
   if (size > 1600 || size < 4 || LITE.on) { fn(c); return; } // light graphics: no outlines
-  for (const cv of [OL.a, OL.b]) if (cv.width < size) cv.width = cv.height = size;
+  for (const cv of [OL.a, OL.b]) if (cv.width < size || cv.height < size) cv.width = cv.height = Math.max(size, cv.width); // a fresh canvas is 300×150: grow both sides
   const a = OL.a.getContext('2d'), b = OL.b.getContext('2d');
-  const pad = Math.min(OL.a.width, size + 4); // clear a little past the edge: smoothing must not pick up older drawings
+  const pad = Math.min(OL.a.width, OL.a.height, size + 4); // clear a little past the edge: smoothing must not pick up older drawings
   a.setTransform(1, 0, 0, 1, 0, 0); a.globalAlpha = 1; a.globalCompositeOperation = 'source-over'; a.clearRect(0, 0, pad, pad);
   a.save(); a.setTransform(sc, 0, 0, sc, size / 2 - x * sc, size / 2 - y * sc); fn(a); a.restore(); // the sprite's own alpha or colours never leak into the next one
   b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over'; b.clearRect(0, 0, pad, pad); b.drawImage(OL.a, 0, 0, size, size, 0, 0, size, size);
@@ -2317,6 +2341,7 @@ function drawIcon(c, icon, col, x, y, s) {
     case 'cap': circ(c, 0, 0, 11, col); for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; circ(c, Math.cos(a) * 11, Math.sin(a) * 11, 2, shade(col, -0.2)); } circ(c, 0, 0, 6, shade(col, 0.2)); break;
     case 'shell': c.beginPath(); c.moveTo(0, 10); c.lineTo(-12, -4); c.quadraticCurveTo(0, -16, 12, -4); c.closePath(); c.fillStyle = col; c.fill(); line(1.2); for (const a of [-6, -2, 2, 6]) { c.beginPath(); c.moveTo(0, 10); c.lineTo(a * 1.6, -7); line(1, shade(col, -0.35)); } break;
     case 'marble': circ(c, 0, 0, 10, col); c.strokeStyle = '#2b5aa8'; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 6, 0.5, 3); c.stroke(); circ(c, -3, -4, 2.5, 'rgba(255,255,255,.7)'); break;
+    case 'joint': c.save(); c.rotate(-0.4); c.fillStyle = '#efe8d8'; c.beginPath(); c.moveTo(-12, -2); c.lineTo(10, -3.5); c.lineTo(10, 3.5); c.lineTo(-12, 2); c.closePath(); c.fill(); line(1, '#b8b0a0'); circ(c, 11, 0, 3.4, '#ff6a1a'); circ(c, 11, 0, 1.6, '#ffd34a'); c.restore(); c.globalAlpha *= 0.6; circ(c, 6, -10, 3, '#b8c0a8'); circ(c, 9, -15, 4, '#b8c0a8'); break;
     case 'printer': c.fillStyle = col; rrect(c, -12, -6, 24, 14, 2); c.fill(); line(1.5, dark); c.fillStyle = '#5c636b'; c.fillRect(-9, -12, 18, 6); c.fillStyle = '#f4f4f4'; c.fillRect(-7, 8, 14, 5); circ(c, 8, -1, 1.6, '#25d366'); c.fillStyle = '#22c3d6'; c.fillRect(-8, -2, 9, 3); break;
     case 'drone': for (const s of [-1, 1]) { c.fillStyle = '#3a3a3e'; c.fillRect(s * 4, -2, s * 7, 2); ell(c, s * 12, -4, 6, 1.6, 'rgba(200,210,220,.7)'); } c.fillStyle = col; rrect(c, -6, -4, 12, 9, 3); c.fill(); line(1.2, dark); circ(c, 0, 1, 2.6, '#16323a'); circ(c, 0, 1, 1.4, '#ff3b1a'); break;
     case 'skull': circ(c, 0, -2, 11, col); c.fillStyle = col; c.fillRect(-6, 6, 12, 6); circ(c, -4, -2, 3.2, '#2a1d14'); circ(c, 4, -2, 3.2, '#2a1d14'); c.fillStyle = '#2a1d14'; for (const x of [-4, 0, 4]) c.fillRect(x - 0.8, 7, 1.6, 5); break;
@@ -2384,6 +2409,11 @@ function drawChar(c, ch, x, y, o = {}) {
     else if (ch.mustache) { ell(c, ex * 0.6, hy + 5.5, 4.5, 1.6, ch.hair); }
     if (!ch.beard) { c.strokeStyle = '#7a3a2a'; c.lineWidth = 1.3; c.beginPath(); o.shoot ? c.arc(ex * 0.6, hy + 7.5, 1.8, 0, 7) : c.arc(ex * 0.6, hy + 6.2, 2.4, 0.2, Math.PI - 0.2); c.stroke(); }
     else if (o.shoot) circ(c, ex * 0.5, hy + 7, 1.8, '#3a1a10');
+    if (ch.joint && !o.dead) { // the joint at the corner of the mouth, smoking
+      const jx = ex * 0.6 + (face === 'w' ? -3 : 3), sgn = face === 'w' ? -1 : 1;
+      c.save(); c.translate(jx, hy + 6.5); c.rotate(sgn * 0.25); c.fillStyle = '#efe8d8'; c.fillRect(sgn < 0 ? -7 : 0, -0.9, 7, 1.8); circ(c, sgn * 7.2, 0, 1.3, G.tick % 20 < 10 ? '#ff6a1a' : '#ffb02a'); c.restore();
+      c.globalAlpha *= 0.45; circ(c, jx + sgn * 8, hy + 2 - (G.tick % 40) * 0.15, 1.8 + (G.tick % 40) * 0.05, '#c8ccc0'); c.globalAlpha /= 0.45;
+    }
   }
   // hair on top
   c.fillStyle = ch.hair;
@@ -2394,6 +2424,11 @@ function drawChar(c, ch, x, y, o = {}) {
       if (face === 'n') circ(c, 0, hy, R + 0.5, ch.hair); else cap(Math.PI * 1.08, Math.PI * 1.92);
       if (ch.style === 'slick' && face !== 'n') { c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1.2; c.beginPath(); c.arc(-2, hy - 4, 8, Math.PI * 1.2, Math.PI * 1.6); c.stroke(); }
       if (ch.style === 'band') { c.fillStyle = '#e94b3c'; c.fillRect(-R, hy - 8, R * 2, 3.5); }
+      break;
+    case 'messy': // hair everywhere, never combed
+      if (face === 'n') circ(c, 0, hy, R + 0.5, ch.hair); else cap(Math.PI * 1.05, Math.PI * 1.95);
+      for (const [a, l, wdt] of [[1.1, 5, 0.22], [1.3, 7, 0.2], [1.5, 6, 0.24], [1.68, 8, 0.2], [1.85, 5, 0.22], [1.98, 4, 0.18]]) { const aa = Math.PI * a; c.beginPath(); c.moveTo(Math.cos(aa - wdt) * R, hy + Math.sin(aa - wdt) * R); c.lineTo(Math.cos(aa + 0.08) * (R + l), hy + Math.sin(aa + 0.08) * (R + l)); c.lineTo(Math.cos(aa + wdt) * R, hy + Math.sin(aa + wdt) * R); c.fill(); }
+      if (face !== 'n') { c.beginPath(); c.moveTo(-3, hy - R + 2); c.quadraticCurveTo(2, hy - 5, 7, hy - R + 3); c.lineTo(5, hy - R + 1); c.fill(); }
       break;
     case 'inventor': // wild hair sticking up, and welding goggles on the forehead
       if (face === 'n') circ(c, 0, hy, R + 0.5, ch.hair); else cap(Math.PI * 1.08, Math.PI * 1.92);
@@ -2413,7 +2448,10 @@ function drawChar(c, ch, x, y, o = {}) {
       break;
     case 'curly':
       if (ch.hachimaki) { c.save(); c.fillStyle = '#f4f4f4'; c.fillRect(-R, hy - 7, R * 2, 4); if (face === 's') circ(c, 0, hy - 5, 2, '#d2202a'); c.restore(); }
-      if (face !== 'n') for (let i = 0; i < 7; i++) { const a = Math.PI * (1.02 + i * 0.16); circ(c, Math.cos(a) * (R - 1), hy + Math.sin(a) * (R - 1) - 1, 5, ch.hair); }
+      if (face !== 'n') { // seen from the side the curls move to the back of the head, so the face stays clear
+        const a0 = face === 'e' ? 0.82 : face === 'w' ? 1.38 : 1.02;
+        for (let i = 0; i < 7; i++) { const a = Math.PI * (a0 + i * 0.13 * (face === 's' ? 16 / 13 : 1)); circ(c, Math.cos(a) * (R - 1), hy + Math.sin(a) * (R - 1) - 1, 5, ch.hair); }
+      }
       else circ(c, 0, hy, R + 1, ch.hair);
       break;
   }
@@ -2516,6 +2554,7 @@ function drawEnemy(c, e) {
   if (e.z <= 0 && !e.fly && !e.ghost) ell(c, 0, e.r * 0.75, e.r * 0.9, e.r * 0.3, 'rgba(0,0,0,.33)');
   outlined(c, 0, 0, EN[e.type].span || Math.max(36, e.r * 3.4), cc => drawEnemyBody(cc, e, flip, t), e.champ && e.champ.col);
   c.restore();
+  if (e.conf > 0) { c.save(); for (let i = 0; i < 3; i++) { const a = G.tick * 0.12 + i * 2.1; circ(c, e.x + Math.cos(a) * e.r * 0.8, e.y - e.z - e.r * 1.4 + Math.sin(a) * 3, 2.2, i % 2 ? '#b8e05a' : '#f5e04a'); } c.restore(); }
   if (e.poison > 0 && G.tick % 8 < 4) { c.save(); c.globalAlpha = 0.3; circ(c, e.x, e.y - 4, e.r, '#3ad16b'); c.restore(); }
   if (e.flash > 0 || e.burn > 0 || e.slow > 0) {
     c.save(); c.globalCompositeOperation = 'lighter';
@@ -2710,6 +2749,7 @@ function drawTear(c, t) {
     case 'birra': circ(c, 0, 0, r, '#b8761a'); circ(c, 0, 0, r - 1.2, '#e8a83a'); ell(c, 0, -r * 0.55, r * 0.85, r * 0.4, '#fff8e8'); circ(c, r * 0.3, r * 0.2, r * 0.15, 'rgba(255,255,255,.7)'); break;
     case 'coltello': c.rotate(t.spin * 1.5); c.fillStyle = '#c9cdd2'; c.beginPath(); c.moveTo(-2, -r * 1.6); c.quadraticCurveTo(r * 0.8, -r * 0.4, 2, r * 0.3); c.lineTo(-2, r * 0.3); c.closePath(); c.fill(); c.fillStyle = '#6b4a2a'; c.fillRect(-2.2, r * 0.3, 4.4, r * 1.1); break;
     case 'bomba': drawIcon(c, 'bomb', '#222', 0, 0, r * 2.6); break;
+    case 'codice': { c.rotate(Math.atan2(t.vy, t.vx)); c.fillStyle = '#0c1a10'; rrect(c, -r * 1.2, -r * 0.8, r * 2.4, r * 1.6, 2); c.fill(); c.strokeStyle = col; c.lineWidth = 1; c.stroke(); c.fillStyle = col; const bits = Math.floor(t.spin * 2) % 4; for (let i = 0; i < 3; i++) { if ((bits >> i & 1) || i === 1) c.fillRect(-r * 0.8 + i * r * 0.6, -r * 0.4, r * 0.35, r * 0.8); else { c.strokeStyle = col; c.strokeRect(-r * 0.8 + i * r * 0.6, -r * 0.4, r * 0.35, r * 0.8); } } break; }
     case 'bullone': c.rotate(t.spin || 0); c.fillStyle = shade(col, -0.35); c.beginPath(); for (let i = 0; i < 6; i++) c.lineTo(Math.cos(i * Math.PI / 3) * r, Math.sin(i * Math.PI / 3) * r); c.fill(); c.fillStyle = col; c.beginPath(); for (let i = 0; i < 6; i++) c.lineTo(Math.cos(i * Math.PI / 3) * (r - 1.3), Math.sin(i * Math.PI / 3) * (r - 1.3)); c.fill(); circ(c, 0, 0, r * 0.38, '#2a2a30'); break;
     case 'santa': c.globalCompositeOperation = 'lighter'; circ(c, 0, 0, r * 1.4, 'rgba(255,240,190,.35)'); circ(c, 0, 0, r, '#fff6d8'); break;
     case 'fuoco': c.globalCompositeOperation = 'lighter'; circ(c, 0, 0, r * 1.3, 'rgba(255,122,26,.4)'); circ(c, 0, 0, r * 0.8, '#ffd34a'); break;
@@ -2779,6 +2819,7 @@ function drawLive(c) {
     else if (f.kind === 'smoke') { c.globalAlpha = Math.min(1, f.life / f.max) * 0.45; circ(c, f.x, f.y, f.size, '#3a332e'); c.globalAlpha = 1; }
     else if (f.kind === 'shock') { const k = 1 - f.life / f.max; c.strokeStyle = 'rgba(255,240,200,' + (1 - k) * 0.7 + ')'; c.lineWidth = 6 * (1 - k) + 1; c.beginPath(); c.arc(f.x, f.y, f.r * k, 0, 7); c.stroke(); }
     else if (f.kind === 'spark') { f.y += f.vy; c.globalAlpha = f.life / 40; c.fillStyle = f.col; c.fillRect(f.x - 1, f.y - 1, f.size, f.size); c.globalAlpha = 1; }
+    else if (f.kind === 'smog') { const k = 1 - f.life / f.max, rad = f.r * (0.6 + k * (f.big ? 0.8 : 0.6)); c.globalAlpha = Math.min(1, f.life / 30) * (f.big ? 0.35 : 0.28); circ(c, f.x + Math.sin(f.life * 0.05) * 3, f.y - k * 10, rad, '#9aa58a'); circ(c, f.x - rad * 0.3, f.y - k * 12 - rad * 0.2, rad * 0.6, '#b8c0a8'); c.globalAlpha = 1; }
     else if (f.kind === 'cloud') { const k = 1 - f.life / f.max; c.globalAlpha = (1 - k) * 0.6; for (let i = 0; i < 7; i++) circ(c, f.x + Math.cos(i) * 60 * k, f.y + Math.sin(i * 1.7) * 50 * k, 26 + 50 * k, i % 2 ? '#7a8a3a' : '#9a7b3a'); c.globalAlpha = 1; }
   }
   for (const rg of G.rings) { c.strokeStyle = rg.col; c.globalAlpha = 1 - rg.r / rg.max; c.lineWidth = 10; c.beginPath(); c.arc(rg.x, rg.y, rg.r, 0, 7); c.stroke(); c.globalAlpha = 1; }
@@ -2861,13 +2902,14 @@ function drawHUD(c) {
       heartPath(c, cx, cy, hs); c.fillStyle = 'rgba(0,0,0,.55)'; c.fill();
       const fill = clamp(p.red - i * 2, 0, 2);
       if (fill) { c.save(); heartPath(c, cx, cy, hs); c.clip(); c.fillStyle = '#d2202a'; c.fillRect(cx - hs * 1.4, cy - hs * 1.2, fill === 2 ? hs * 2.8 : hs * 1.4, hs * 2.4); c.restore(); }
-      const gold = i >= nRed - p.gold; // golden hearts sit on the rightmost red hearts, like Isaac
+      const gold = i >= total - p.gold; // golden hearts sit on the rightmost hearts of any kind, like Isaac
       heartPath(c, cx, cy, hs); c.strokeStyle = gold ? '#e8b64a' : '#1a0606'; c.lineWidth = (gold ? 2.4 : 1.4) * u; c.stroke();
       if (p.eternal && i === nRed - 1) { c.save(); heartPath(c, cx, cy, hs * 0.6); c.clip(); c.fillStyle = '#f4f4f4'; c.fillRect(cx - hs, cy - hs, hs, hs * 2); c.restore(); }
     } else {
       const soul = i < nRed + nSoul, si = soul ? i - nRed : i - nRed - nSoul, fill = clamp((soul ? p.soul : p.black) - si * 2, 0, 2);
       c.save(); heartPath(c, cx, cy, hs); c.clip(); c.fillStyle = soul ? 'rgba(120,170,255,.9)' : '#141418'; c.fillRect(cx - hs * 1.4, cy - hs * 1.2, fill === 2 ? hs * 2.8 : hs * 1.4, hs * 2.4); c.restore();
-      heartPath(c, cx, cy, hs); c.strokeStyle = soul ? '#13285a' : '#c9b8e0'; c.lineWidth = (soul ? 1.4 : 1.8) * u; c.stroke();
+      const gold = i >= total - p.gold;
+      heartPath(c, cx, cy, hs); c.strokeStyle = gold ? '#e8b64a' : soul ? '#13285a' : '#c9b8e0'; c.lineWidth = (gold ? 2.4 : soul ? 1.4 : 1.8) * u; c.stroke();
       if (!soul && fill) circ(c, cx - hs * 0.35, cy - hs * 0.25, hs * 0.18, 'rgba(201,184,224,.7)'); // a glint so black hearts don't read as empty
     }
   }
@@ -2979,7 +3021,7 @@ const curse = id => !!(G.floor && G.floor.curse === id || G.run && G.run.curses 
 /* ---------- room rewards ---------- */
 function rollReward(p) {
   const table = [['coin', 26], ['nickel', 5], [p.ch.noRed ? 'soul' : 'heart', G.run.hard ? 6 : 13], ['bomb', 13], ['key', 18], ['pill', 6], ['card', 6], ['soul', 4],
-    ['black', 2], ['gold', p.ch.noRed ? 0 : 2], ['eternal', 1], ['battery', 3], ['chest', 4], ['goldchest', 2], ['redchest', 1], ['sack', 3], ['trinket', 3]];
+    ['black', 2], ['gold', 2], ['eternal', 1], ['battery', 3], ['chest', 4], ['goldchest', 2], ['redchest', 1], ['sack', 3], ['trinket', 3]];
   let x = rnd() * table.reduce((s, [, w]) => s + w, 0);
   for (const [k, w] of table) { if ((x -= w) < 0) return k; }
   return 'coin';
@@ -2997,7 +3039,7 @@ function dropHeldConsumable(p) {
 const EXTRA_PICKUPS = {
   battery(pk, p) { const A = ACTIVES[p.active.id]; if (p.active.charge >= A.charge && !pk.price) return false; p.active.charge = A.charge; Snd.power(); return true; },
   black(pk, p) { if (hearts(p) - p.red + p.maxRed >= 24 && !pk.price) return false; addBlack(p, 2); Snd.tone(150, 0.3, 'sawtooth', 0.1, 80); return true; },
-  gold(pk, p) { if (p.ch.noRed || p.gold >= Math.floor(p.maxRed / 2)) return false; p.gold++; Snd.coin(); return true; },
+  gold(pk, p) { if (p.gold >= heartSlots(p)) return false; p.gold++; Snd.coin(); return true; }, // gold covers any heart, red, soul or black
   eternal(pk, p) { if (p.eternal) { p.eternal = 0; addHearts(p, 2); heal(p, 2); G.banner = {title: 'Cuore eterno', sub: 'Un cuore in più', t: 100, small: true}; } else p.eternal = 1; Snd.item(); return true; },
   sack(pk, p) { spill(p, ri(3, 5), ['coin', 'coin', 'coin', 'nickel', 'bomb', 'key', 'heart'], pk.x, pk.y); Snd.noise(0.2, 0.15, 1200); return true; },
   card(pk, p) {
@@ -3082,7 +3124,7 @@ function trySpawnDeal(boss) {
 }
 function payHearts(n) {
   const p = G.p;
-  if (p.maxRed >= n * 2) { p.maxRed -= n * 2; p.red = Math.min(p.red, p.maxRed); p.gold = Math.min(p.gold, Math.floor(p.maxRed / 2)); }
+  if (p.maxRed >= n * 2) { p.maxRed -= n * 2; p.red = Math.min(p.red, p.maxRed); capHearts(p); }
   else if (p.soul + p.black >= 6) { let c = 6; const s = Math.min(p.soul, c); p.soul -= s; c -= s; p.black -= c; } // no red hearts: three soul hearts instead
   else return false;
   G.run.tookDeal = true; Snd.tone(110, 0.8, 'sawtooth', 0.15, 55);
@@ -3521,6 +3563,7 @@ const ENDINGS = {
   nuppobot: 'Nuppobot salva la partita, scrive «MISSIONE COMPIUTA» sul display e si spegne per la notte. Bip.',
   pake: 'Pake aggiunge alla collezione una carta nuova: Piero della Francesca, olografica. Edizione limitata.',
   manfro: 'Manfro monta in moto e sparisce verso la E45 gridando «Banzai!». Il riso avanzato lo offre ai piccioni.',
+  maiga: 'Maiga chiude il portatile, si accende l\'ultima canna e stappa una birra. Il bug più grosso del Borgo è stato risolto.',
   faif: 'Faif stappa una birra, si liscia i baffi e alza il trofeo come una coppa. Il Borgo canta il suo nome.',
 };
 
@@ -4164,6 +4207,18 @@ beast('guardiano', {name: 'il Guardiano della Resurrezione', short: 'Guardiano d
     c.save(); c.translate(10 * flip, 0); c.rotate(a); c.fillStyle = '#6b4a2a'; c.fillRect(-10, -1.2, 30, 2.4); c.fillStyle = '#c9cdd2'; c.beginPath(); c.moveTo(20, -3.5); c.lineTo(28, 0); c.lineTo(20, 3.5); c.fill(); c.restore();
   });
 
+/* ---------- Maiga's second-hand smoke: a trail of clouds that hurts and slows ---------- */
+function smokeTrail(p) {
+  if (G.tick % 9 === 0 && Math.hypot(p.vx, p.vy) > 0.5) G.fx.push({kind: 'smog', x: p.x + rr(-4, 4), y: p.y + 4, life: 110, max: 110, r: 18});
+  if (G.tick % 20) return;
+  const clouds = G.fx.filter(f => f.kind === 'smog');
+  if (!clouds.length) return;
+  for (const e of G.enemies) {
+    if (!hittable(e)) continue;
+    if (clouds.some(f => Math.hypot(e.x - f.x, e.y - f.y) < f.r * Math.min(1, 0.6 + (1 - f.life / f.max)) + e.r)) { damageEnemy(e, 1 + dmgOf(p) * 0.1, 0, 0, true); e.slow = Math.max(e.slow, 25); }
+  }
+}
+
 /* ---------- enemy projectiles that are more than a drop ---------- */
 function updateSpecialTear(t, k) { // returns true when handled
   const p = G.p;
@@ -4231,7 +4286,7 @@ const FIREBASE = {projectId: 'biturgiasotterranea', apiKey: 'AIzaSyD9KcmjPkkVnEB
 // Runs and wins recorded before EPOCH_START no longer show on the boards.
 const SAVE_EPOCH = 2, EPOCH_START = Date.UTC(2026, 9, 29, 12, 0);
 // the fastest-wins board starts over with every new version: wins from older versions don't count
-const BOARD_VERSION = 'v1.7', BOARD_START = Date.UTC(2026, 9, 29, 15, 30);
+const BOARD_VERSION = 'v1.8', BOARD_START = Date.UTC(2026, 9, 29, 16, 26);
 function wipeOldSaves() {
   if (store('bs-epoch') === SAVE_EPOCH) return;
   try {
@@ -4259,6 +4314,7 @@ const UNLOCKS = {
   nuppobot: {cond: 'Sconfiggi Piero della Francesca 5 volte.', test: P => P.stats.wins >= 5, v: 1},
   manfro: {cond: 'Dona 50 monete ai mendicanti.', test: P => P.stats.donated >= 50, v: 1},
   faif: {cond: 'Vinci una partita in modalità difficile.', test: P => P.stats.hardWins >= 1, v: 1},
+  maiga: {cond: 'Prendi 15 pillole (anche in partite diverse).', test: P => (P.stats.pillsUsed || 0) >= 15, v: 1},
 };
 const winners = P => CHARS.filter(c => (P.stats.winsBy[c.id] || 0) > 0).length;
 const isUnlocked = id => !UNLOCKS[id] || (PROF && PROF.unlocked.includes(id));
@@ -4290,6 +4346,9 @@ const INFO = {
   funghi: 'I nemici colpiti vengono avvelenati e perdono vita per qualche secondo. Danno +0,3.', specchio: 'Ogni tanto spari una lacrima anche alle tue spalle.',
   pianetino: 'Le lacrime ti girano intorno allargandosi, come pianeti in orbita. Danno +0,5.', ragu: 'Tre bombe in più, e le tue bombe diventano enormi: più grandi e più forti.',
   campanile: 'Le chiavi salgono a 99.', banconota: 'Le monete salgono a 99.', lardo: 'Due cuori in più e cura, ma sei un po\' più lento.',
+  tech: 'Al posto delle lacrime spari un sottile raggio laser che attraversa la stanza. Si somma agli altri effetti: veleno, fuoco, ghiaccio e lacrime multiple.',
+  coltello: 'Al posto delle lacrime hai un coltello: tieni premuto per caricare e rilascia per lanciarlo. Torna indietro come un boomerang e trapassa i nemici.',
+  fuochi: 'Al posto delle lacrime spari piccole bombe che esplodono dove cadono. Danno +1, ma spari molto più piano.',
   pergamena: 'Sulla mappa compaiono la stanza segreta e quella supersegreta di ogni piano. Il muro va comunque fatto saltare.',
   astrolabio: 'Sulla mappa compaiono tutte le stanze speciali del piano: tesoro, negozio, boss e le altre.',
   sfera: 'Come l\'oracolo: vedi tutta la mappa di ogni piano, comprese le stanze segrete.', raggix: 'Quando entri in una stanza accanto a una stanza segreta, il muro si apre da solo.',
@@ -4302,7 +4361,7 @@ const ACT_INFO = {
   campari: 'Per sei secondi danno e velocità salgono, ma i comandi si invertono.', fagioli: 'Una nube velenosa respinge e avvelena chi ti sta vicino.',
   postbruciatore: 'Spari un anello di fuoco e per qualche secondo bruci chi ti tocca.', busta: 'Escono due premi a caso: monete, bombe, chiavi, cuori o pillole.',
   dado: 'Ogni oggetto sui piedistalli della stanza diventa un altro oggetto, preso dalla stessa riserva.', tamburello: 'Spari dieci lacrime tutte intorno a te.',
-  bibbia: 'Voli fino all\'uscita dalla stanza.', stampante: 'La stampante 3D di Raspo crea un oggetto a caso, preso dalla stanza del tesoro, su un piedistallo accanto a te.', salvadanaio: 'Escono da due a cinque monete.',
+  bibbia: 'Voli fino all\'uscita dalla stanza.', moto: 'Monti sulla moto giapponese di Manfro per cinque secondi: vai molto più veloce e travolgi i nemici che tocchi.', sprint: 'Per sei secondi corri velocissimo e spari più spesso.', canna: 'Una boccata lunga: tutti i nemici della stanza restano storditi per qualche secondo (i boss meno) e vagano senza attaccare, e per sette secondi spari più spesso.', stampante: 'La stampante 3D di Raspo crea un oggetto a caso, preso dalla stanza del tesoro, su un piedistallo accanto a te.', salvadanaio: 'Escono da due a cinque monete.',
 };
 const COLLECTION = [...Object.keys(ACTIVES).map(id => ({key: 'a_' + id, id, act: true})), ...ITEMS.map(i => ({key: 'i_' + i.id, id: i.id, act: false})), ...TRINKETS.map(t => ({key: 'n_' + t.id, id: t.id, trk: true}))];
 
@@ -4317,7 +4376,7 @@ const ACH = [
   {id: 'piano1', name: 'Primo scalino', desc: 'Scendi al secondo piano.', icon: 'keys', test: P => P.stats.bestDepth >= 2},
   {id: 'vittoria', name: 'Liberata!', desc: 'Vinci una partita.', icon: 'trophy', test: P => P.stats.wins >= 1},
   {id: 'iniziali', name: 'Gli amici di sempre', desc: 'Vinci con cinque personaggi diversi.', icon: 'heart', test: P => winners(P) >= 5},
-  {id: 'tutti', name: 'La compagnia al completo', desc: 'Vinci con tutti e dodici i personaggi.', icon: 'saint', test: P => CHARS.every(c => (P.stats.winsBy[c.id] || 0) > 0)},
+  {id: 'tutti', name: 'La compagnia al completo', desc: 'Vinci con tutti i personaggi.', icon: 'saint', test: P => CHARS.every(c => (P.stats.winsBy[c.id] || 0) > 0)},
   {id: 'sblocca', name: 'Porte aperte', desc: 'Sblocca tutti i personaggi.', icon: 'keys', test: P => Object.keys(UNLOCKS).every(id => P.unlocked.includes(id))},
   {id: 'coll15', name: 'Collezionista', desc: 'Scopri 15 oggetti.', icon: 'cards', test: P => Object.keys(P.seen).length >= 15},
   {id: 'collall', name: 'Il catalogo completo', desc: 'Scopri tutti gli oggetti del gioco.', icon: 'map', test: P => COLLECTION.every(x => P.seen[x.key])},
@@ -4352,7 +4411,7 @@ const ACH = [
 let PROF = null;
 function blankProfile(name, display) {
   return {name, display, stats: {runs: 0, wins: 0, deaths: 0, kills: 0, rocks: 0, bought: 0, secrets: 0, flawless: 0, flew: 0, coinsMax: 0, mostItems: 0,
-    epoch: SAVE_EPOCH, deals: 0, angels: 0, cards: 0, champs: 0, cursed: 0, uv: {}, redfull: 0, soul4: 0, deals3: 0, cleanred2: 0, nohit2: 0, donated: 0, hardWins: 0, transforms: 0, minis: 0, waves: 0, bestTime: 0, bestDepth: 0, floorsBy: {}, winsBy: {}, bosses: {}}, unlocked: [], ach: {}, seen: {}, pills: [], chal: [], endings: [], daily: {}, updated: 0};
+    epoch: SAVE_EPOCH, deals: 0, angels: 0, cards: 0, champs: 0, cursed: 0, pillsUsed: 0, uv: {}, redfull: 0, soul4: 0, deals3: 0, cleanred2: 0, nohit2: 0, donated: 0, hardWins: 0, transforms: 0, minis: 0, waves: 0, bestTime: 0, bestDepth: 0, floorsBy: {}, winsBy: {}, bosses: {}}, unlocked: [], ach: {}, seen: {}, pills: [], chal: [], endings: [], daily: {}, updated: 0};
 }
 function mergeProfile(a, b) { // the union of two copies: nothing ever gets lost
   if (!b) return a;
@@ -4406,7 +4465,7 @@ function meta(ev, data) {
     case 'secret': st.secrets++; break;
     case 'rock': st.rocks++; break;
     case 'coins': st.coinsMax = Math.max(st.coinsMax, data); break;
-    case 'pill': if (!P.pills.includes(data)) P.pills.push(data); break;
+    case 'pill': if (!P.pills.includes(data)) P.pills.push(data); st.pillsUsed = (st.pillsUsed || 0) + 1; break;
     case 'win': {
       if (run.hard) st.hardWins++;
       if (!P.endings.includes(run.ch.id)) P.endings.push(run.ch.id);
@@ -4664,7 +4723,7 @@ function pause() {
 function resume() { $('pause').hidden = true; G.state = 'play'; $('tbtns').hidden = !TOUCH; last = performance.now(); resize(); }
 $('pResume').addEventListener('click', resume);
 $('pRestart').addEventListener('click', () => { $('pause').hidden = true; startRun(true); });
-$('pQuit').addEventListener('click', () => { $('pause').hidden = true; G.room = null; openSelect(); });
+$('pQuit').addEventListener('click', () => { saveRun(); $('pause').hidden = true; G.room = null; showTitle(); });
 $('pMusic').addEventListener('click', () => Music.toggle());
 const syncGfx = () => { $('pGfx').textContent = 'Grafica: ' + (LITE.on ? 'leggera' : 'completa'); };
 $('pGfx').addEventListener('click', () => { LITE.on = !LITE.on; LITE.auto = false; store('bs-lite', LITE.on); syncGfx(); });
@@ -4682,6 +4741,7 @@ function showTitle() {
   if (!PROF) { showLogin(); return; }
   showSheet('title');
   $('whoName').textContent = PROF.display;
+  syncContinue();
   drawCast();
   $('tStart').focus({preventScroll: true});
 }
@@ -4792,7 +4852,7 @@ function selectChar(i) {
   st.append(Object.assign(document.createElement('dt'), {textContent: 'Gittata'}), pips(ch.range, 210, 340));
   const A = ACTIVES[ch.active];
   $('selAct').innerHTML = '';
-  $('selAct').append('Oggetto attivo: ', Object.assign(document.createElement('b'), {textContent: A.name}), ', ' + A.sub.toLowerCase() + '. Si ricarica in ' + A.charge + (A.charge === 1 ? ' stanza.' : ' stanze.') + (ch.drone ? ' Parte con un drone che spara con lui.' : ''));
+  $('selAct').append('Oggetto attivo: ', Object.assign(document.createElement('b'), {textContent: A.name}), ', ' + A.sub.toLowerCase() + '. Si ricarica in ' + A.charge + (A.charge === 1 ? ' stanza.' : ' stanze.') + (ch.perk ? ' ' + ch.perk : ''));
   const s = PROF.stats, wins = s.winsBy[ch.id] || 0, fl = s.floorsBy[ch.id] || 0;
   $('selRec').textContent = locked ? '' : wins ? `Vittorie: ${wins}.` : fl ? `Boss più profondo battuto: piano ${fl}.` : 'Non è ancora mai sceso in cantina.';
 }
@@ -5164,6 +5224,63 @@ $('feedRead').addEventListener('click', openFeedList);
 $('flBack').addEventListener('click', () => { if (FEED.inPause) { $('feedlist').hidden = true; openFeed(); } else openFeed(); });
 flushFeedQueue();
 if (location.hash.includes('feedback')) openFeedList();
+/* ================= save and continue: like Isaac, a run is kept when you quit and picked up later ================= */
+// the run is saved on this device every time you walk into a room, and when you quit from the pause menu;
+// it is thrown away when the run ends. A room you left mid-fight starts over when you come back.
+var SAVE_V = 1, saveTimer = null; // var, not const: the title screen asks for the save before this part of the script has run
+function runKey() { return PROF ? 'bs-run-' + PROF.name : null; }
+function queueSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveRun, 0); }
+function saveRun() {
+  const key = runKey();
+  if (!key || !G.run || !G.p || !G.floor || !G.room || G.p.dead || G.state === 'won' || G.state === 'dead') return;
+  try {
+    const fl = G.floor, idx = new Map(fl.rooms.map((r, i) => [r, i])), links = [], li = new Map();
+    const rooms = fl.rooms.map(r => {
+      const o = {...r, grid: Array.from(r.grid), hp: Array.from(r.hp), doors: {}, bg: null, decals: r.decals.slice(-60)};
+      for (const [d, l] of Object.entries(r.doors)) {
+        if (!li.has(l)) { li.set(l, links.length); links.push({a: idx.get(l.a), b: idx.get(l.b), kind: l.kind, hidden: l.hidden, locked: l.locked}); }
+        o.doors[d] = li.get(l);
+      }
+      return o;
+    });
+    const run = {...G.run, rng: G.run.rng.state(), ch: G.run.ch.id, taken: [...G.run.taken], pillKnown: [...G.run.pillKnown]};
+    const p = {...G.p, ch: G.p.ch.id, hitOnDash: [], dash: null, hold: null, inv: 0};
+    store(key, {v: SAVE_V, version: VERSION, when: Date.now(), run, p, floor: {depth: fl.depth, curse: fl.curse, rooms, links, start: idx.get(fl.start), cur: idx.get(G.room)}});
+  } catch (e) { ERRS.push('salvataggio: ' + e.message); }
+}
+function clearRunSave() { const key = runKey(); if (key) try { localStorage.removeItem(key); } catch (e) {} }
+function savedRun() { const key = runKey(), s = key && store(key); return s && s.v === SAVE_V && CHARS.some(c => c.id === s.run.ch) ? s : null; }
+function resumeRun() {
+  const s = savedRun(); if (!s) { showTitle(); return; }
+  try {
+    Snd.init(); Music.start();
+    const ch = CHARS.find(c => c.id === s.run.ch), rng = makeRng(1); rng.restore(s.run.rng);
+    G.run = {...s.run, ch, rng, taken: new Set(s.run.taken), pillKnown: new Set(s.run.pillKnown)};
+    const rooms = s.floor.rooms.map(o => ({...o, grid: Uint8Array.from(o.grid), hp: Uint8Array.from(o.hp), doors: {}, bg: null}));
+    const links = s.floor.links.map(l => ({...l, a: rooms[l.a], b: rooms[l.b]}));
+    s.floor.rooms.forEach((o, i) => { for (const [d, n] of Object.entries(o.doors)) rooms[i].doors[d] = links[n]; });
+    const depth = s.floor.depth;
+    G.floor = {rooms, start: rooms[s.floor.start], depth, name: floorName(depth), theme: floorTheme(depth), curse: s.floor.curse};
+    G.p = {...s.p, ch, hitOnDash: new Set()};
+    Object.assign(G, {slow: 0, shake: 0, deathT: 0, fall: 0, hitstop: 0, trans: null, vs: 0, room: null, fadeIn: 30});
+    LAST = {challenge: G.run.challenge, daily: G.run.daily, hard: G.run.hard, seed: G.run.daily ? G.run.seed : undefined};
+    for (const id of SHEETS) $(id).hidden = true;
+    G.state = 'play'; $('tbtns').hidden = !TOUCH; if (TOUCH) goFullscreen();
+    enterRoom(rooms[s.floor.cur], null, false);
+    G.banner = {title: 'Si riprende', sub: G.floor.name + ' · piano ' + depth, t: 160, big: true};
+    releaseAll(); last = performance.now(); resize();
+  } catch (e) { ERRS.push('ripresa: ' + e.message); clearRunSave(); G.state = 'title'; showTitle(); }
+}
+function syncContinue() {
+  const s = PROF && savedRun(), b = $('tCont');
+  b.hidden = !s;
+  if (s) b.textContent = 'Continua · ' + CHARS.find(c => c.id === s.run.ch).name + ', piano ' + s.floor.depth;
+}
+$('tCont').addEventListener('click', resumeRun);
+// closing the tab or switching away keeps the run too
+document.addEventListener('visibilitychange', () => { if (document.hidden && (G.state === 'play' || G.state === 'pause')) saveRun(); });
+window.addEventListener('pagehide', () => { if (G.state === 'play' || G.state === 'pause') saveRun(); });
+if (G.state === 'title') syncContinue();
 </script>
 
 </html>
