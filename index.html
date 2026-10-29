@@ -223,6 +223,14 @@ html.touch .tonly{display:inline}
 #tActive{right:calc(14px + env(safe-area-inset-right,0px));top:24%}
 #tBomb{right:calc(14px + env(safe-area-inset-right,0px));top:calc(24% + 66px)}
 #tPill{right:calc(14px + env(safe-area-inset-right,0px));top:calc(24% + 132px)}
+#audioBtns{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:30;display:flex;gap:6px}
+#audioBtns button{width:38px;height:38px;border-radius:50%;background:rgba(42,31,26,.75);border:2px solid var(--line);padding:0;display:grid;place-items:center;color:var(--paper)}
+#audioBtns button:hover{border-color:var(--gold)}
+#audioBtns svg{width:20px;height:20px}
+#audioBtns .x{display:none}
+#audioBtns button[aria-pressed="true"]{color:var(--muted)}
+#audioBtns button[aria-pressed="true"] .x{display:block;color:#ff6a5a}
+html.playing #audioBtns{display:none}
 #intro{position:fixed;inset:0;width:100%;height:100%;z-index:90;background:#070504;cursor:pointer;transition:opacity .45s}
 #intro.out{opacity:0}
 #rotate{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;box-sizing:border-box;text-align:center;background:rgba(19,13,11,.95)}
@@ -260,7 +268,7 @@ html.portrait-play #rotate{display:flex}
   <p id="cloudNote"></p>
   <p class="who" id="dbgOn" hidden><b class="dbg">MODALITÀ DEBUG</b> tutti i personaggi sbloccati, le partite non contano <button type="button" class="link" id="dbgOff">disattiva</button></p>
   <form class="row" id="dbgForm" hidden><label class="seed" for="dbgKey">Parola chiave <input id="dbgKey" type="password" maxlength="32" autocomplete="off"></label><button type="submit" class="ghost">Debug</button></form>
-  <p class="note"><span class="kb"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> muovi &middot; <kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> spara &middot; <kbd>Spazio</kbd> oggetto attivo &middot; <kbd>E</kbd> bomba &middot; <kbd>Q</kbd> pillola &middot; <kbd>Esc</kbd> pausa</span><span class="tonly">Pollice sinistro per muoverti, pollice destro per sparare</span></p>
+  <p class="note"><span class="kb"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> muovi &middot; <kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> spara &middot; <kbd>Spazio</kbd> oggetto attivo &middot; <kbd>E</kbd> bomba &middot; <kbd>Q</kbd> pillola &middot; <kbd>Esc</kbd> pausa &middot; <kbd>M</kbd> musica &middot; <kbd>N</kbd> suoni</span><span class="tonly">Pollice sinistro per muoverti, pollice destro per sparare</span></p>
   <span class="ver" id="ver"></span>
 </section>
 
@@ -396,6 +404,7 @@ html.portrait-play #rotate{display:flex}
     <button type="button" class="big" id="pResume">Continua</button>
     <button type="button" class="ghost" id="pRestart">Ricomincia</button>
     <button type="button" class="ghost" id="pMusic">Musica: sì</button>
+    <button type="button" class="ghost" id="pSfx">Suoni: sì</button>
     <button type="button" class="ghost" id="pGfx">Grafica: completa</button>
     <button type="button" class="ghost" id="pFeed">Segnala</button>
     <button type="button" class="ghost" id="pQuit">Salva ed esci</button>
@@ -415,11 +424,15 @@ html.portrait-play #rotate{display:flex}
   </div>
 </section>
 
+<div id="audioBtns">
+  <button type="button" id="aMusic" aria-label="Musica" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="16.5" cy="16" r="2.6" fill="currentColor"/><path class="x" d="M3 3l18 18" stroke="currentColor" stroke-width="2.4"/></svg></button>
+  <button type="button" id="aSfx" aria-label="Suoni" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2"/><path class="x" d="M3 3l18 18" stroke="currentColor" stroke-width="2.4"/></svg></button>
+</div>
 <canvas id="intro" hidden aria-label="Introduzione: tocca per saltarla"></canvas>
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v1.9';
+const VERSION = 'v1.10';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -466,7 +479,7 @@ function makeRng(n) {
 
 /* ---------- sound: everything is synthesised ---------- */
 const Snd = {
-  ctx: null, out: null, on: true,
+  ctx: null, out: null, on: store('bs-sfx') !== false, // sound effects can be switched off on their own
   init() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     try {
@@ -482,7 +495,7 @@ const Snd = {
     return ++this.bn > 14;
   },
   tone(f, dur, type = 'sine', vol = 0.2, to = null, delay = 0) {
-    if (!this.ctx || this.busy()) return;
+    if (!this.ctx || !this.on || this.busy()) return;
     const c = this.ctx, t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
     o.type = type; o.frequency.setValueAtTime(f, t);
     if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
@@ -490,7 +503,7 @@ const Snd = {
     o.connect(g); g.connect(this.out); o.start(t); o.stop(t + dur + 0.05);
   },
   noise(dur, vol = 0.2, freq = 1200, q = 0.8, delay = 0, to = null) {
-    if (!this.ctx || this.busy()) return;
+    if (!this.ctx || !this.on || this.busy()) return;
     const c = this.ctx, t = c.currentTime + delay, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
     s.buffer = this.nbuf; f.type = 'lowpass'; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
     if (to) f.frequency.exponentialRampToValueAtTime(to, t + dur);
@@ -557,6 +570,19 @@ const THEMES = {
     if (s % 2 === 0) { const f = semi(r * 2, [0, 5, 7, 12, 7, 5][(s / 2) % 6]); n(f, 0.6, 'sine', 0.035); n(f, 0.6, 'sine', 0.014, null, 0.39); }
     if (s % 24 === 10) n(1800, 0.12, 'sine', 0.03, 900);
   }},
+  // the intro: an anime opening, power chords and a running bass
+  intro: {step: 210, roots: [146.83, 116.54, 130.81, 110], play(s, r, n, z) { // warm and steady, like a slow opening
+    if (s % 8 === 0) { n(r / 2, 1.6, 'sawtooth', 0.04); n(r, 1.6, 'triangle', 0.05); n(semi(r, 7), 1.6, 'triangle', 0.035); }
+    if (s % 2 === 0) n(semi(r * 2, [0, 7, 12, 15, 12, 7][(s / 2) % 6]), 0.45, 'triangle', 0.03);
+    if (s % 8 === 4) z(0.18, 0.08, 180);
+    if (s >= 16 && s % 4 === 2) n(semi(r * 4, [0, 3, 7, 5, 3, 2, 0, -2][Math.floor(s / 4) % 8]), 0.6, 'sine', 0.025);
+  }},
+  // the endings: a bright, gentle major tune
+  ending: {step: 240, roots: [130.81, 174.61, 196, 130.81], play(s, r, n) {
+    if (s % 8 === 0) { n(r / 2, 1.8, 'triangle', 0.05); n(semi(r, 4), 1.8, 'triangle', 0.03); n(semi(r, 7), 1.8, 'triangle', 0.03); }
+    if (s % 2 === 0) n(semi(r * 2, [0, 4, 7, 12, 7, 4][(s / 2) % 6]), 0.5, 'sine', 0.035);
+    if (s >= 16 && s % 4 === 0) n(semi(r * 4, [4, 7, 9, 7, 4, 2, 0, 2][Math.floor(s / 4) % 8]), 0.7, 'triangle', 0.025);
+  }},
   // boss fights: fast, low and pushing
   boss: {step: 140, roots: [110, 116.54, 110, 103.83], play(s, r, n, z) {
     n(r / 2, 0.12, 'sawtooth', 0.05);
@@ -600,7 +626,12 @@ const Music = {
   },
   toggle() { this.on = !this.on; store('bs-music', this.on); this.on ? this.play(this.want) : this.stop(); syncMusic(); },
 };
-function syncMusic() { $('pMusic').textContent = 'Musica: ' + (Music.on ? 'sì' : 'no'); }
+function syncMusic() {
+  $('pMusic').textContent = 'Musica: ' + (Music.on ? 'sì' : 'no'); $('pSfx').textContent = 'Suoni: ' + (Snd.on ? 'sì' : 'no');
+  $('aMusic').setAttribute('aria-pressed', !Music.on); $('aSfx').setAttribute('aria-pressed', !Snd.on);
+  $('aMusic').title = Music.on ? 'Togli la musica (M)' : 'Rimetti la musica (M)'; $('aSfx').title = Snd.on ? 'Togli i suoni (N)' : 'Rimetti i suoni (N)';
+}
+function toggleSfx() { Snd.on = !Snd.on; store('bs-sfx', Snd.on); syncMusic(); }
 
 /* ---------- characters ---------- */
 // Isaac-style base stats: red = heart containers, soul = soul hearts, delay = frames between tears
@@ -1679,7 +1710,7 @@ function winRun() {
   G.state = 'won'; Snd.win(); clearRunSave();
   floorDone();
   meta('win'); submitDaily(true);
-  showNote(true);
+  playEnding(G.run.ch, () => showNote(true)); // the character's own little ending film, then the last will
 }
 
 /* ---------- the main update ---------- */
@@ -1838,7 +1869,8 @@ function updateTears() {
         if (best) { const sp = Math.hypot(t.vx, t.vy), a = Math.atan2(t.vy, t.vx), b = Math.atan2(best.y - t.y, best.x - t.x); let da = b - a; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2; const na = a + clamp(da, -0.12, 0.12); t.vx = Math.cos(na) * sp; t.vy = Math.sin(na) * sp; }
       }
       if (t.boom && !t.back && t.life < t.max * 0.5) { t.back = true; t.hits.clear(); }
-      if (t.back) { const dx = p.x - t.x, dy = p.y - t.y, d = Math.hypot(dx, dy) || 1, sp = 6.5; t.vx = lerp(t.vx, dx / d * sp, 0.15); t.vy = lerp(t.vy, dy / d * sp, 0.15); if (d < 14) { t.life = 0; t.caught = true; } }
+      if (t.back) { t.backT = (t.backT || 0) + 1; if (t.backT < 180) t.life = Math.max(t.life, 2); // like Isaac's knife and boomerangs: it always comes home
+        const dx = p.x - t.x, dy = p.y - t.y, d = Math.hypot(dx, dy) || 1, sp = 6.5 + Math.min(4, t.backT * 0.05); t.vx = lerp(t.vx, dx / d * sp, 0.15); t.vy = lerp(t.vy, dy / d * sp, 0.15); if (d < 14) { t.life = 0; t.caught = true; } }
     }
     if (t.from === 'e' && updateSpecialTear(t, k)) continue;
     if (t.orbit) { // circles the player, drifting outwards
@@ -4685,6 +4717,7 @@ window.addEventListener('keydown', e => {
   if (k === 'KeyE') placeBomb();
   if (k === 'KeyQ') usePill();
   if (k === 'KeyM') Music.toggle();
+  if (k === 'KeyN') toggleSfx();
   if (k === 'Escape' || k === 'KeyP') pause();
 });
 window.addEventListener('keyup', e => { G.keys[e.code] = false; });
@@ -4779,6 +4812,9 @@ $('pResume').addEventListener('click', resume);
 $('pRestart').addEventListener('click', () => { $('pause').hidden = true; startRun(true); });
 $('pQuit').addEventListener('click', () => { saveRun(); $('pause').hidden = true; G.room = null; showTitle(); });
 $('pMusic').addEventListener('click', () => Music.toggle());
+$('pSfx').addEventListener('click', toggleSfx);
+$('aMusic').addEventListener('click', () => { Snd.init(); Music.toggle(); });
+$('aSfx').addEventListener('click', () => { Snd.init(); toggleSfx(); });
 const syncGfx = () => { $('pGfx').textContent = 'Grafica: ' + (LITE.on ? 'leggera' : 'completa'); };
 $('pGfx').addEventListener('click', () => { LITE.on = !LITE.on; LITE.auto = false; store('bs-lite', LITE.on); syncGfx(); });
 
@@ -5062,7 +5098,7 @@ $('nMenu').addEventListener('click', openSelect);
 
 function startRun(sameSeedNo, opts = {}) {
   if (!isUnlocked(CHARS[SEL].id) && !opts.challenge && !opts.daily) { openSelect(); return; }
-  Snd.init(); Music.start();
+  Snd.init(); Music.start(); stopFilm(false);
   const typed = $('seedIn').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!opts.challenge && !opts.daily && opts.hard === undefined) opts.hard = $('hardIn').checked;
   if (sameSeedNo === true && G.run) { opts = {challenge: G.run.challenge, daily: G.run.daily, hard: G.run.hard, seed: G.run.daily ? G.run.seed : undefined}; }
@@ -5114,6 +5150,7 @@ function frame(now) {
   if (n === 4) acc = 0;
   render();
   if (G.state === 'select') drawCarousel();
+  document.documentElement.classList.toggle('playing', G.state === 'play' || INTRO.on);
   requestAnimationFrame(frame);
 }
 window.addEventListener('resize', resize);
@@ -5374,123 +5411,290 @@ $('tCont').addEventListener('click', resumeRun);
 document.addEventListener('visibilitychange', () => { if (document.hidden && (G.state === 'play' || G.state === 'pause')) saveRun(); });
 window.addEventListener('pagehide', () => { if (G.state === 'play' || G.state === 'pause') saveRun(); });
 if (G.state === 'title') syncContinue();
-/* ================= the opening: "10inch feet games presenta", then an anime-style intro; any tap skips it ================= */
-const INTRO = {on: false, t0: 0};
-const INTRO_LEN = 11.2;
-function startIntro() {
-  if (/nointro/.test(location.search) || location.hash.includes('feedback')) return;
+/* ================= films: the opening ("10inch feet games presenta") and an ending for every character ================= */
+// one full-screen canvas plays either; a tap skips. The opening waits for a first tap, which also unlocks the sound.
+const FILM = {on: false, started: false, kind: '', t0: 0, len: 0, draw: null, onEnd: null, seen: new Set()};
+const INTRO = FILM; // older code asks INTRO.on
+function playFilm(kind, len, draw, onEnd, waitTap) {
   const cv = $('intro'); cv.hidden = false; cv.classList.remove('out');
-  INTRO.on = true; INTRO.t0 = performance.now();
-  requestAnimationFrame(introFrame);
+  Object.assign(FILM, {on: true, started: !waitTap, kind, len, draw, onEnd, t0: performance.now(), seen: new Set()});
+  requestAnimationFrame(filmFrame);
 }
-function endIntro() {
-  if (!INTRO.on) return;
-  INTRO.on = false;
-  const cv = $('intro'); cv.classList.add('out');
-  setTimeout(() => { cv.hidden = true; }, 460);
+function stopFilm(run = true) {
+  if (!FILM.on) return;
+  FILM.on = false;
+  const cv = $('intro'), done = FILM.onEnd; cv.classList.add('out');
+  setTimeout(() => { if (!FILM.on) cv.hidden = true; }, 460);
+  if (run && done) done();
 }
-$('intro').addEventListener('pointerdown', e => { e.preventDefault(); endIntro(); });
-window.addEventListener('keydown', e => { if (INTRO.on) { e.preventDefault(); e.stopImmediatePropagation(); endIntro(); } }, true);
+const once = key => !FILM.seen.has(key) && FILM.seen.add(key); // true the first time: sounds that play once
+function filmTap() {
+  if (!FILM.started) { FILM.started = true; FILM.t0 = performance.now(); Snd.init(); Music.play('intro'); return; }
+  stopFilm();
+}
+$('intro').addEventListener('pointerdown', e => { e.preventDefault(); filmTap(); });
+window.addEventListener('keydown', e => { if (FILM.on) { e.preventDefault(); e.stopImmediatePropagation(); filmTap(); } }, true);
 
 const ease = x => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
-function introFrame(now) {
-  if (!INTRO.on) return;
+const smooth = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+function filmFrame(now) {
+  if (!FILM.on) return;
   const cv = $('intro'), w = innerWidth, h = innerHeight, d = Math.min(2, devicePixelRatio || 1);
   if (cv.width !== Math.round(w * d) || cv.height !== Math.round(h * d)) { cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
-  const c = cv.getContext('2d'), t = (now - INTRO.t0) / 1000;
+  const c = cv.getContext('2d');
   c.setTransform(d, 0, 0, d, 0, 0); c.globalAlpha = 1; c.fillStyle = '#070504'; c.fillRect(0, 0, w, h);
-  if (t < 3.1) introStudio(c, w, h, t);
-  else if (t < 9) introAnime(c, w, h, t - 3.1);
-  else if (t < INTRO_LEN) introTitle(c, w, h, t - 9);
-  else { endIntro(); return; }
-  c.globalAlpha = 0.55; c.fillStyle = '#a8988a'; c.font = `600 13px ${BODY_FONT}`; c.textAlign = 'right'; c.fillText(TOUCH ? 'tocca per saltare' : 'clicca o premi un tasto per saltare', w - 16, h - 14); c.globalAlpha = 1;
-  requestAnimationFrame(introFrame);
+  if (!FILM.started) { // the studio logo waits for the first tap
+    introStudio(c, w, h, Math.min(1.2, (now - FILM.t0) / 1000), true);
+    c.globalAlpha = 0.55 + Math.sin(now / 500) * 0.3; c.fillStyle = '#efe3cf'; c.textAlign = 'center'; c.font = `700 ${Math.round(Math.min(w, h) * 0.04)}px ${BODY_FONT}`;
+    c.fillText(TOUCH ? 'Tocca per iniziare' : 'Clicca o premi un tasto per iniziare', w / 2, h * 0.9); c.globalAlpha = 1;
+    requestAnimationFrame(filmFrame); return;
+  }
+  const t = Math.max(0, (now - FILM.t0) / 1000); // the frame's timestamp can come a hair before the start
+  if (t >= FILM.len) { stopFilm(); return; }
+  FILM.draw(c, w, h, t);
+  c.globalAlpha = 0.5; c.fillStyle = '#a8988a'; c.font = `600 13px ${BODY_FONT}`; c.textAlign = 'right'; c.fillText(TOUCH ? 'tocca per saltare' : 'clicca o premi un tasto per saltare', w - 16, h - 14); c.globalAlpha = 1;
+  requestAnimationFrame(filmFrame);
 }
 
-/* ---------- the studio card ---------- */
+/* ================= the opening ================= */
 function drawFoot(c, x, y, s) { // the studio's mascot: a big bare foot over a ruler
   c.save(); c.translate(x, y); c.scale(s, s);
   c.fillStyle = '#efe3cf'; c.beginPath(); c.moveTo(-14, 30); c.bezierCurveTo(-22, 8, -20, -18, -6, -26); c.bezierCurveTo(8, -32, 20, -20, 18, -2); c.bezierCurveTo(16, 14, 10, 24, 6, 34); c.bezierCurveTo(2, 44, -12, 42, -14, 30); c.fill();
   c.strokeStyle = '#0b0706'; c.lineWidth = 2.4; c.stroke();
   for (const [tx, ty, r] of [[-8, -34, 6.5], [2, -38, 5], [10, -35, 4.4], [16, -29, 3.8], [20, -22, 3.2]]) { circ(c, tx, ty, r, '#efe3cf'); c.beginPath(); c.arc(tx, ty, r, 0, 7); c.stroke(); }
   ell(c, -4, 6, 6, 9, 'rgba(201,149,42,.25)');
-  // ruler with its 10
   c.fillStyle = '#e8b64a'; c.fillRect(-34, 50, 68, 12); c.strokeRect(-34, 50, 68, 12);
   c.strokeStyle = '#5a3a10'; c.lineWidth = 1.2; for (let i = 0; i <= 10; i++) { c.beginPath(); c.moveTo(-31 + i * 6.2, 50); c.lineTo(-31 + i * 6.2, i % 5 ? 54 : 57); c.stroke(); }
   c.restore();
 }
-function introStudio(c, w, h, t) {
-  const a = Math.min(clamp((t - 0.3) / 0.6, 0, 1), clamp((3.1 - t) / 0.5, 0, 1));
+function introStudio(c, w, h, t, waiting) {
+  const a = Math.min(clamp((t - 0.3) / 0.6, 0, 1), waiting ? 1 : clamp((3.4 - t) / 0.8, 0, 1));
   c.globalAlpha = a;
   const s = Math.min(w, h) / 260, cy = h * 0.42;
   const g = c.createRadialGradient(w / 2, cy, 10, w / 2, cy, Math.max(w, h) * 0.6); g.addColorStop(0, 'rgba(232,182,74,.18)'); g.addColorStop(1, 'rgba(232,182,74,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
-  drawFoot(c, w / 2, cy - 40 * s + (1 - ease((t - 0.3) / 0.8)) * 20, s * 1.1);
+  drawFoot(c, w / 2, cy - 40 * s + (waiting ? (1 - ease((t - 0.3) / 0.8)) * 20 : 0), s * 1.1);
   c.textAlign = 'center'; c.fillStyle = '#efe3cf';
   c.font = `800 ${Math.round(42 * s)}px ${DISPLAY_FONT}`; c.fillText('10inch feet', w / 2, cy + 62 * s);
   c.fillStyle = '#e8b64a'; c.font = `700 ${Math.round(15 * s)}px ${BODY_FONT}`;
   c.save(); if (c.letterSpacing !== undefined) c.letterSpacing = `${Math.round(9 * s)}px`; c.fillText('GAMES', w / 2, cy + 84 * s); c.restore();
-  c.globalAlpha = a * clamp((t - 1.5) / 0.5, 0, 1); c.fillStyle = '#a8988a'; c.font = `italic 600 ${Math.round(17 * s)}px ${BODY_FONT}`; c.fillText('presenta', w / 2, cy + 112 * s);
+  c.globalAlpha = waiting ? 0 : a * clamp((t - 0.6) / 0.8, 0, 1); c.fillStyle = '#a8988a'; c.font = `italic 600 ${Math.round(17 * s)}px ${BODY_FONT}`; c.fillText('presenta', w / 2, cy + 112 * s);
+  c.globalAlpha = 1;
+  if (!waiting && t > 0.6 && once('chime')) [784, 988, 1175, 1568].forEach((f, i) => Snd.tone(f, 0.8, 'triangle', 0.05, null, i * 0.12));
+}
+// four calm scenes, one per floor: the friends step in one at a time and say who they are
+const INTRO_GROUPS = [[0, 1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]];
+const SCENE = 3.6, INTRO_START = 3.4, INTRO_TITLE = INTRO_START + SCENE * 4;
+function introDraw(c, w, h, t) {
+  if (t < INTRO_START) { introStudio(c, w, h, t); return; }
+  if (t < INTRO_TITLE) { const k = Math.floor((t - INTRO_START) / SCENE); introScene(c, w, h, k, (t - INTRO_START - k * SCENE) / SCENE, t); return; }
+  introTitle(c, w, h, t - INTRO_TITLE);
+}
+function introScene(c, w, h, k, u, t) {
+  const fl = FLOORS[k], group = INTRO_GROUPS[k].map(i => CHARS[i]).filter(Boolean);
+  const a = Math.min(smooth(u / 0.16), smooth((1 - u) / 0.16)); // fade in, fade out: no flashes
+  c.globalAlpha = a;
+  // the floor of that level, lit by torches at the sides
+  c.fillStyle = fl.wall; c.fillRect(0, 0, w, h);
+  c.fillStyle = fl.floor; c.fillRect(0, h * 0.58, w, h * 0.42);
+  c.fillStyle = 'rgba(0,0,0,.25)'; for (let x = (-(u * 60) % 80); x < w; x += 80) c.fillRect(x, h * 0.58, 2, h * 0.42);
+  c.fillStyle = fl.brick; c.globalAlpha = a * 0.35; for (let y = 0; y < h * 0.58; y += 26) for (let x = (y / 26 % 2) * 30 - 60; x < w; x += 60) c.fillRect(x + 2, y + 2, 56, 22); c.globalAlpha = a;
+  for (const tx of [0.08, 0.92]) { const g = c.createRadialGradient(w * tx, h * 0.3, 4, w * tx, h * 0.3, h * 0.6); g.addColorStop(0, 'rgba(255,170,80,.35)'); g.addColorStop(1, 'rgba(255,170,80,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); circ(c, w * tx, h * 0.3, 6 + Math.sin(t * 6 + tx * 9) * 1.2, '#ffcf6a'); }
+  const v = c.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)'); c.fillStyle = v; c.fillRect(0, 0, w, h);
+  // the floor's name
+  c.textAlign = 'center'; c.fillStyle = '#e8b64a'; c.font = `600 ${Math.round(Math.min(w, h) * 0.032)}px ${BODY_FONT}`; c.globalAlpha = a * smooth((u - 0.05) / 0.15);
+  c.fillText('PIANO ' + (k * 2 + 1), w / 2, h * 0.12);
+  c.fillStyle = '#efe3cf'; c.font = `800 ${Math.round(Math.min(w * 0.07, h * 0.09))}px ${DISPLAY_FONT}`; c.fillText(fl.name, w / 2, h * 0.22);
+  // the friends, one after another
+  const sz = Math.min(h * 0.42, w / (group.length + 1.2)), gap = Math.min(w / (group.length + 0.6), sz * 1.15);
+  group.forEach((ch, j) => {
+    const at = 0.12 + j * 0.13, e = ease((u - at) / 0.12);
+    if (e <= 0) return;
+    if (once('in' + k + j)) Snd.tone(330 + j * 110, 0.35, 'triangle', 0.04);
+    const x = w / 2 + (j - (group.length - 1) / 2) * gap, y = h * 0.86 - (1 - e) * 30 + Math.sin(t * 2.2 + j) * 3;
+    c.globalAlpha = a * e;
+    ell(c, x, h * 0.86 + 2, sz * 0.22, sz * 0.05, 'rgba(0,0,0,.4)');
+    drawSprite(c, charSprite(ch, false), x, y, sz);
+    c.fillStyle = 'rgba(233,220,192,.92)'; const lw = Math.max(70, sz * 0.62), lh = Math.min(30, sz * 0.15);
+    c.fillRect(x - lw / 2, h * 0.88, lw, lh); c.fillStyle = '#2a1d14'; c.font = `800 ${Math.round(lh * 0.75)}px ${DISPLAY_FONT}`; c.fillText(ch.name, x, h * 0.88 + lh * 0.78);
+  });
   c.globalAlpha = 1;
 }
-
-/* ---------- the anime opening: one hard cut per character, speed lines and names ---------- */
-function speedLines(c, w, h, cx, cy, col, spin, n = 46) {
-  c.save(); c.translate(cx, cy); c.rotate(spin); c.fillStyle = col;
-  const R = Math.hypot(w, h);
-  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + (hash(i, 7) - 0.5) * 0.08, wd = 0.012 + hash(i, 3) * 0.02, r0 = R * (0.18 + hash(i, 5) * 0.2); c.beginPath(); c.moveTo(Math.cos(a - wd) * r0, Math.sin(a - wd) * r0); c.lineTo(Math.cos(a) * R, Math.sin(a) * R); c.lineTo(Math.cos(a + wd) * r0, Math.sin(a + wd) * r0); c.fill(); }
-  c.restore();
-}
-function introAnime(c, w, h, t) {
-  const n = CHARS.length, per = 4.3 / n;
-  if (t < 4.3) {
-    const i = Math.floor(t / per), u = (t - i * per) / per, ch = CHARS[i], side = i % 2 ? -1 : 1;
-    const bg = shade(ch.shirtless ? ch.pants : ch.shirt, -0.45);
-    c.fillStyle = bg; c.fillRect(0, 0, w, h);
-    speedLines(c, w, h, w * (0.5 + side * 0.12), h * 0.5, 'rgba(255,240,210,.16)', t * 0.4);
-    // the character punches in from the side, big
-    const sz = Math.min(h * 0.6, w * 0.5), x = w / 2 + side * w * 0.14 + side * (1 - ease(u * 4)) * w * 0.7 - side * u * 18;
-    const spr = charSprite(ch, false);
-    c.save(); c.globalAlpha = 0.25; drawSprite(c, spr, x + side * 40, h * 0.74, sz); c.restore();
-    drawSprite(c, spr, x, h * 0.74, sz);
-    // a slanted band with the name, sliding the other way
-    const bx = w / 2 - side * (1 - ease(u * 3)) * w * 0.6;
-    c.save(); c.translate(bx, h * 0.84); c.rotate(-0.06 * side);
-    c.fillStyle = '#b3121b'; c.fillRect(-w * 0.7, -h * 0.07, w * 1.4, h * 0.14); c.fillStyle = '#0b0706'; c.fillRect(-w * 0.7, h * 0.07, w * 1.4, h * 0.012);
-    c.fillStyle = '#efe3cf'; c.textAlign = 'center'; c.font = `800 ${Math.round(h * 0.1)}px ${DISPLAY_FONT}`; c.fillText(ch.name.toUpperCase(), side * w * 0.12, h * 0.035);
-    c.restore();
-    if (u < 0.12) { c.fillStyle = `rgba(255,250,235,${(0.12 - u) / 0.12 * 0.8})`; c.fillRect(0, 0, w, h); }
-    return;
-  }
-  // everybody together, bouncing
-  const u = (t - 4.3) / 1.6;
-  c.fillStyle = '#2a1206'; c.fillRect(0, 0, w, h);
-  speedLines(c, w, h, w / 2, h * 1.1, 'rgba(232,182,74,.22)', Math.sin(t) * 0.05, 60);
-  const sz = Math.min(w / (n * 0.62), h * 0.45);
-  CHARS.forEach((ch, i) => {
-    const x = w / 2 + (i - (n - 1) / 2) * sz * 0.6, jump = Math.abs(Math.sin(t * 7 + i * 0.7)) * h * 0.04, appear = ease(u * 3 - i * 0.08);
-    drawSprite(c, charSprite(ch, false), x, h * 0.78 - jump + (1 - appear) * h * 0.5, sz);
-  });
-  if (u < 0.1) { c.fillStyle = `rgba(255,250,235,${(0.1 - u) * 8})`; c.fillRect(0, 0, w, h); }
-}
-
-/* ---------- the title slams in ---------- */
 function introTitle(c, w, h, t) {
-  const slam = ease(t / 0.35), sh = t < 0.7 ? (0.7 - t) * 14 : 0;
+  const a = Math.min(smooth(t / 0.8), smooth((3.4 - t) / 0.8)), zoom = 1.08 - smooth(t / 2.5) * 0.08;
+  c.globalAlpha = a;
   c.fillStyle = '#130d0b'; c.fillRect(0, 0, w, h);
-  const g = c.createRadialGradient(w / 2, h * 0.42, 10, w / 2, h * 0.42, Math.max(w, h) * 0.6); g.addColorStop(0, 'rgba(232,182,74,.28)'); g.addColorStop(1, 'rgba(232,182,74,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
-  speedLines(c, w, h, w / 2, h * 0.42, 'rgba(179,18,27,.18)', t * 0.2, 36);
-  c.save(); c.translate(w / 2 + rr(-sh, sh), h * 0.45 + rr(-sh, sh)); const sc = 1 + (1 - slam) * 1.6; c.scale(sc, sc);
+  const g = c.createRadialGradient(w / 2, h * 0.42, 10, w / 2, h * 0.42, Math.max(w, h) * 0.6); g.addColorStop(0, 'rgba(232,182,74,.25)'); g.addColorStop(1, 'rgba(232,182,74,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  if (t > 0.2 && once('title')) { Snd.tone(146.83, 2.2, 'sine', 0.12, 110); Snd.noise(1.2, 0.08, 400, 1); }
+  c.save(); c.translate(w / 2, h * 0.45); c.scale(zoom, zoom);
   c.textAlign = 'center'; const fs = Math.min(w * 0.12, h * 0.17);
   c.font = `800 ${Math.round(fs)}px ${DISPLAY_FONT}`;
   c.fillStyle = '#b3121b'; c.fillText('Biturgia', fs * 0.04, -fs * 0.42 + fs * 0.05); c.fillText('Sotterranea', fs * 0.04, fs * 0.5 + fs * 0.05);
   c.fillStyle = '#efe3cf'; c.fillText('Biturgia', 0, -fs * 0.42); c.fillText('Sotterranea', 0, fs * 0.5);
   c.restore();
-  c.globalAlpha = clamp((t - 0.6) / 0.5, 0, 1); c.textAlign = 'center'; c.fillStyle = '#e8b64a'; c.font = `600 ${Math.round(Math.min(w, h) * 0.035)}px ${BODY_FONT}`;
+  c.globalAlpha = a * smooth((t - 0.8) / 0.8); c.textAlign = 'center'; c.fillStyle = '#e8b64a'; c.font = `600 ${Math.round(Math.min(w, h) * 0.035)}px ${BODY_FONT}`;
   c.fillText('LE CANTINE DI SANSEPOLCRO', w / 2, h * 0.45 + Math.min(w * 0.12, h * 0.17) * 1.1);
   c.globalAlpha = 1;
-  if (t > 0.3 && t < 0.55) { c.fillStyle = `rgba(255,250,235,${(0.55 - t) * 3})`; c.fillRect(0, 0, w, h); }
-  if (t > 1.8) { c.fillStyle = `rgba(7,5,4,${(t - 1.8) / 0.4})`; c.fillRect(0, 0, w, h); }
 }
+function startIntro() {
+  if (/nointro/.test(location.search) || location.hash.includes('feedback')) return;
+  playFilm('intro', INTRO_TITLE + 3.4, introDraw, () => { Snd.init(); Music.play('menu'); }, true);
+}
+
+/* ================= endings: a short scene for every character, then the last will ================= */
+// scenes are drawn on a 480×270 stage, scaled to the screen; the ending's text types itself on a paper strip below
+const STAGE_W = 480, STAGE_H = 270, ENDING_LEN = 11;
+function playEnding(ch, onEnd) {
+  Snd.init(); Music.play('ending');
+  playFilm('ending', ENDING_LEN, (c, w, h, t) => drawEnding(c, w, h, t, ch), onEnd, false);
+}
+function drawEnding(c, w, h, t, ch) {
+  const s = Math.min(w / STAGE_W, h / STAGE_H), ox = (w - STAGE_W * s) / 2, oy = (h - STAGE_H * s) / 2;
+  const a = Math.min(smooth(t / 0.8), smooth((ENDING_LEN - t) / 0.8));
+  c.save(); c.translate(ox, oy); c.scale(s, s); c.beginPath(); c.rect(0, 0, STAGE_W, STAGE_H); c.clip();
+  c.globalAlpha = a;
+  c.save(); c.translate(0, -26); (ENDING_SCENES[ch.id] || ENDING_SCENES.vina)(c, t, ch); c.restore(); // lifted so the paper strip doesn't cover anyone
+  // the paper strip with the ending, typed out
+  const txt = ENDINGS[ch.id], n = Math.floor(clamp((t - 1) / 5.5, 0, 1) * txt.length);
+  c.fillStyle = 'rgba(233,220,192,.94)'; c.fillRect(20, 216, 440, 46); c.fillStyle = '#2a1d14'; c.font = `600 11.5px ${BODY_FONT}`; c.textAlign = 'left';
+  wrapText(c, txt.slice(0, n), 30, 230, 420, 13);
+  c.restore();
+  c.globalAlpha = 1;
+}
+function wrapText(c, txt, x, y, maxW, lh) {
+  let line = '', yy = y;
+  for (const word of txt.split(' ')) { const test = line ? line + ' ' + word : word; if (c.measureText(test).width > maxW && line) { c.fillText(line, x, yy); line = word; yy += lh; } else line = test; }
+  if (line) c.fillText(line, x, yy);
+}
+function hero(c, ch, x, y, sc, o = {}) { outlined(c, x, y - 12 * sc, 46 * sc, cc => drawChar(cc, ch, x, y, {scale: sc, shadow: false, ...o})); ell(c, x, y + 14 * sc, 11 * sc, 3.5 * sc, 'rgba(0,0,0,.35)'); }
+function bubble(c, x, y, txt, size = 13) {
+  c.font = `800 ${size}px ${DISPLAY_FONT}`; const wd = c.measureText(txt).width + 16;
+  c.fillStyle = '#f4f0e6'; rrect(c, x - wd / 2, y - size - 6, wd, size + 12, 6); c.fill(); c.beginPath(); c.moveTo(x - 4, y + 6); c.lineTo(x + 2, y + 13); c.lineTo(x + 6, y + 6); c.fill();
+  c.fillStyle = '#2a1d14'; c.textAlign = 'center'; c.fillText(txt, x, y + 1);
+}
+// backdrops
+function skyNight(c, top = '#0e1430', bottom = '#3a2448') { const g = c.createLinearGradient(0, 0, 0, 200); g.addColorStop(0, top); g.addColorStop(1, bottom); c.fillStyle = g; c.fillRect(0, 0, STAGE_W, STAGE_H); for (let i = 0; i < 40; i++) { c.globalAlpha *= 0.6 + hash(i, 1) * 0.4; circ(c, hash(i, 2) * STAGE_W, hash(i, 3) * 120, hash(i, 4) * 1.2 + 0.3, '#fff6d8'); c.globalAlpha /= 0.6 + hash(i, 1) * 0.4; } }
+function skySunset(c) { const g = c.createLinearGradient(0, 0, 0, 200); g.addColorStop(0, '#3a2a5a'); g.addColorStop(0.6, '#e07a4a'); g.addColorStop(1, '#f5c46a'); c.fillStyle = g; c.fillRect(0, 0, STAGE_W, STAGE_H); circ(c, 360, 150, 26, '#ffe0a0'); }
+function town(c, lit) { // Sansepolcro's roofs and the tower of Berta
+  const cols = ['#2a1d24', '#33222a', '#281a20'];
+  for (let i = 0; i < 9; i++) { const x = i * 56 - 10, hgt = 60 + hash(i, 9) * 50; c.fillStyle = cols[i % 3]; c.fillRect(x, 190 - hgt, 58, hgt); c.beginPath(); c.moveTo(x - 4, 190 - hgt); c.lineTo(x + 29, 178 - hgt); c.lineTo(x + 62, 190 - hgt); c.fill(); if (lit) for (let k = 0; k < 4; k++) if (hash(i, k) > 0.4) { c.fillStyle = 'rgba(255,200,110,.75)'; c.fillRect(x + 8 + (k % 2) * 26, 200 - hgt + Math.floor(k / 2) * 22, 10, 12); } }
+  c.fillStyle = '#1e141a'; c.fillRect(214, 40, 34, 150); for (let k = 0; k < 4; k++) c.fillRect(212 + k * 9, 32, 6, 9);
+}
+function ground(c, col, y = 190) { c.fillStyle = col; c.fillRect(0, y, STAGE_W, STAGE_H - y); c.fillStyle = 'rgba(0,0,0,.18)'; for (let x = 0; x < STAGE_W; x += 24) c.fillRect(x, y, 1, STAGE_H - y); }
+function roomBack(c, wall, floor) { c.fillStyle = wall; c.fillRect(0, 0, STAGE_W, STAGE_H); c.fillStyle = 'rgba(0,0,0,.15)'; for (let y = 0; y < 190; y += 20) for (let x = (y / 20 % 2) * 20 - 40; x < STAGE_W; x += 40) c.fillRect(x, y, 38, 18); ground(c, floor); }
+function lamp(c, x, on = true) { c.fillStyle = '#1a1418'; c.fillRect(x - 2, 90, 4, 100); c.fillRect(x - 10, 88, 20, 4); if (on) { const g = c.createRadialGradient(x, 96, 2, x, 96, 60); g.addColorStop(0, 'rgba(255,210,120,.55)'); g.addColorStop(1, 'rgba(255,210,120,0)'); c.fillStyle = g; c.fillRect(x - 60, 36, 120, 160); circ(c, x, 96, 5, '#ffd88a'); } }
+function confetti(c, t, n = 40) { for (let i = 0; i < n; i++) { const x = (hash(i, 5) * STAGE_W + Math.sin(t + i) * 10) % STAGE_W, y = ((hash(i, 6) * 300 + t * (30 + hash(i, 7) * 30)) % 230) - 20; c.fillStyle = ['#d2202a', '#e8b64a', '#2b5aa8', '#25d366', '#f4f4f4'][i % 5]; c.save(); c.translate(x, y); c.rotate(t * 3 + i); c.fillRect(-2, -1, 4, 2.5); c.restore(); } }
+const walkTo = (t, t0, t1, x0, x1) => lerp(x0, x1, smooth((t - t0) / (t1 - t0)));
+const ENDING_SCENES = {
+  vina(c, t, ch) { // out of the cellar, into Via XX Settembre at night
+    skyNight(c); town(c, true); ground(c, '#3a3036'); lamp(c, 90); lamp(c, 390);
+    c.fillStyle = '#140c0a'; c.fillRect(120, 140, 30, 50); c.fillStyle = 'rgba(255,170,80,.25)'; c.fillRect(124, 144, 22, 46);
+    const x = walkTo(t, 0.6, 3.6, 135, 250), walking = t > 0.6 && t < 3.6, leave = t > 7.6;
+    hero(c, ch, leave ? walkTo(t, 7.6, 10.5, 250, 520) : x, 196, 2.2, {walk: walking || leave ? t * 9 : 0, face: walking || leave ? 'e' : 's'});
+    if (t > 4 && t < 7) bubble(c, 250, 120, '...', 14);
+  },
+  raspo(c, t, ch) { // takes the painting apart, builds a drone
+    roomBack(c, '#3a332c', '#4a3c30');
+    c.fillStyle = '#6b4a2a'; c.fillRect(90, 120, 4, 70); c.fillRect(120, 120, 4, 70); c.save(); c.translate(107, 110); c.rotate(t < 4 ? 0 : 0.2); drawIcon(c, 'frame', '#e8b64a', 0, 0, 52); c.restore();
+    c.fillStyle = '#5a3a1e'; c.fillRect(300, 160, 110, 8); c.fillRect(306, 168, 6, 22); c.fillRect(398, 168, 6, 22);
+    hero(c, ch, 230, 196, 2.2, {face: t < 5 ? 'w' : 'e'});
+    if (t < 5 && Math.floor(t * 4) % 2) for (let i = 0; i < 6; i++) circ(c, 130 + rr(-8, 8), 120 + rr(-10, 10), 1.5, '#ffd34a');
+    if (t > 5.2) { const dt = t - 5.2, dx = 350 + Math.sin(dt * 2) * 60, dy = 150 - Math.min(80, dt * 40) + Math.sin(dt * 5) * 4; drawIcon(c, 'drone', '#e07a1e', dx, dy, 32); if (once('drone')) Snd.tone(600, 0.6, 'square', 0.04, 1200); }
+    else drawIcon(c, 'drone', '#9aa3ad', 350, 152, 26);
+  },
+  piero(c, t, ch) { // lifts Piero della Francesca's canvas like a barbell
+    skySunset(c); town(c, false); ground(c, '#8a6a4a');
+    const rep = Math.max(0, Math.sin((t - 1) * 2.4)), y = 196, lift = rep * 26;
+    hero(c, ch, 240, y, 2.4);
+    c.save(); c.translate(240, 120 - lift); drawIcon(c, 'frame', '#e8b64a', 0, 0, 70); c.restore();
+    c.fillStyle = '#efe3cf'; c.font = `800 16px ${DISPLAY_FONT}`; c.textAlign = 'left'; c.fillText('× ' + Math.max(0, Math.floor((t - 1) * 2.4 / Math.PI / 2 + 0.75)), 330, 70);
+  },
+  pinciu(c, t, ch) { // a ten-minute voice message nobody listens to
+    roomBack(c, '#2e3a48', '#3a4450');
+    hero(c, ch, 160, 196, 2.3, {face: 'e'}); drawIcon(c, 'phone', '#25d366', 196, 150, 26);
+    const secs = Math.floor(clamp((t - 1) / 7, 0, 1) * 600);
+    c.fillStyle = '#dcf8c6'; rrect(c, 220, 70, 150, 34, 8); c.fill(); c.fillStyle = '#25d366'; for (let i = 0; i < 22; i++) { const hh = 3 + Math.abs(Math.sin(t * 6 + i)) * 10; c.fillRect(236 + i * 5, 87 - hh / 2, 3, hh); }
+    c.fillStyle = '#2a1d14'; c.font = `700 10px ${BODY_FONT}`; c.textAlign = 'right'; c.fillText(Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0'), 364, 100);
+    ['vina', 'gumi', 'alex'].forEach((id, i) => { const f = CHARS.find(x => x.id === id); hero(c, f, 330 + i * 45, 200, 1.3, {face: 'n'}); if (t > 4) { c.fillStyle = '#efe3cf'; c.font = `700 10px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText('z', 338 + i * 45, 140 - ((t * 10 + i * 5) % 12)); } });
+  },
+  alex(c, t, ch) { // back at the bar for the evening shift
+    roomBack(c, '#4a3020', '#5a3e28');
+    c.fillStyle = '#c9cdd2'; rrect(c, 60, 110, 70, 50, 4); c.fill(); c.fillStyle = '#3a3a3e'; c.fillRect(70, 122, 50, 16);
+    hero(c, ch, 240, 170, 2.2); // behind the counter
+    c.fillStyle = '#6b4226'; c.fillRect(0, 160, STAGE_W, 34); c.fillStyle = '#8a5a34'; c.fillRect(0, 156, STAGE_W, 6);
+    const cx = walkTo(t, 2.5, 4, 240, 360); drawIcon(c, 'cup', '#f4f4f4', cx, 146, 22);
+    c.globalAlpha *= 0.5; for (let i = 0; i < 3; i++) circ(c, cx - 3 + i * 3, 130 - ((t * 14 + i * 6) % 18), 2.5, '#efe3cf'); c.globalAlpha /= 0.5;
+    if (t > 4.5) bubble(c, 240, 92, 'Un caffè? Arriva subito.', 12);
+  },
+  gumi(c, t, ch) { // blows on the barrel, counts the bullets
+    skyNight(c, '#101418', '#2a2a34'); town(c, true); ground(c, '#2e2a2e'); lamp(c, 380);
+    hero(c, ch, 220, 196, 2.4, {face: 'e'}); drawIcon(c, 'gun', '#f0c040', 262, 150, 26);
+    c.globalAlpha *= 0.5; for (let i = 0; i < 4; i++) circ(c, 274 + Math.sin(t * 2 + i) * 3, 138 - ((t * 12 + i * 7) % 26), 2 + i * 0.6, '#c8ccc0'); c.globalAlpha /= 0.5;
+    const n = Math.floor(clamp((t - 3) / 4, 0, 1) * 9); for (let i = 0; i < n; i++) { c.fillStyle = '#c9952a'; rrect(c, 120 + i * 14, 70, 6, 16, 2); c.fill(); c.fillStyle = '#f0c040'; c.fillRect(120 + i * 14, 66, 6, 6); }
+  },
+  capa(c, t, ch) { // red shorts, a Campari, the whole piazza
+    skySunset(c); town(c, false); ground(c, '#9a7a5a');
+    const raise = smooth((t - 2) / 1);
+    hero(c, ch, 240, 196, 2.6);
+    c.save(); c.translate(272, 150 - raise * 40); c.rotate(-0.3 * raise); drawIcon(c, 'bottle', '#d2202a', 0, 0, 24); c.restore();
+    if (t > 3.2) { confetti(c, t, 24); bubble(c, 240, 82, 'Cin cin!', 15); if (once('cin')) { Snd.tone(1568, 0.3, 'triangle', 0.06); Snd.tone(2093, 0.4, 'triangle', 0.05, null, 0.08); } }
+  },
+  davidone(c, t, ch) { // off to the Alpe della Luna
+    skyNight(c, '#14183a', '#4a3a6a'); circ(c, 380, 60, 22, '#f4ead6'); circ(c, 388, 54, 20, '#14183a');
+    c.fillStyle = '#2a2448'; c.beginPath(); c.moveTo(0, 190); c.lineTo(120, 90); c.lineTo(220, 170); c.lineTo(330, 70); c.lineTo(480, 180); c.lineTo(480, 270); c.lineTo(0, 270); c.fill();
+    c.fillStyle = '#1a1830'; c.beginPath(); c.moveTo(0, 230); c.quadraticCurveTo(240, 160, 480, 200); c.lineTo(480, 270); c.lineTo(0, 270); c.fill();
+    const x = walkTo(t, 0.5, 9, 80, 420), y = 226 - (x - 80) * 0.08;
+    c.fillStyle = '#6b4a2a'; rrect(c, x - 22, y - 46, 14, 22, 3); c.fill();
+    hero(c, ch, x, y, 1.9, {walk: t * 8, face: 'e'});
+  },
+  nuppobot(c, t, ch) { // saves the game and switches off for the night
+    roomBack(c, '#20262c', '#2a3036');
+    hero(c, ch, 240, 196, 2.6);
+    const msg = t < 3 ? 'SALVATAGGIO…' : 'MISSIONE COMPIUTA';
+    c.fillStyle = '#16323a'; rrect(c, 150, 60, 180, 40, 6); c.fill(); c.fillStyle = '#5ff2ff'; c.font = `700 14px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText(msg, 240, 85);
+    if (t < 3) { c.fillStyle = '#5ff2ff'; c.fillRect(170, 92, 140 * clamp((t - 0.5) / 2.3, 0, 1), 4); }
+    if (t > 6) { c.fillStyle = `rgba(0,0,0,${smooth((t - 6) / 1.5) * 0.8})`; c.fillRect(0, 0, STAGE_W, STAGE_H); if (t > 7.6) { c.fillStyle = '#5ff2ff'; c.font = `800 14px ${DISPLAY_FONT}`; c.fillText('Bip.', 240, 150); } if (once('bip') && t > 7.6) Snd.tone(1200, 0.15, 'square', 0.04); }
+  },
+  pake(c, t, ch) { // a new card: Piero della Francesca, holographic
+    roomBack(c, '#1f2a44', '#2a3450');
+    hero(c, ch, 150, 196, 2.3, {face: 'e'});
+    c.save(); c.translate(300, 120 + Math.sin(t * 1.5) * 6); c.scale(Math.cos(t * 1.4), 1);
+    const g = c.createLinearGradient(-30, -42, 30, 42); ['#ff6a8a', '#ffd34a', '#6aff9a', '#6ad3ff', '#b07ad6'].forEach((col, i) => g.addColorStop(((i / 4 + t * 0.2) % 1 + 1) % 1, col));
+    c.fillStyle = g; rrect(c, -30, -42, 60, 84, 5); c.fill(); c.fillStyle = 'rgba(20,10,10,.75)'; c.fillRect(-22, -32, 44, 50); c.restore();
+    c.save(); c.translate(300, 126 + Math.sin(t * 1.5) * 6); c.scale(Math.cos(t * 1.4) * 0.62, 0.62); drawEnemyBody(c, {type: 'piero', t: t * 60, hp: 1, max: 1, r: 26}, 1, t * 60); c.restore(); // the master himself on the card
+    c.fillStyle = '#efe3cf'; c.font = `700 11px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText('Edizione limitata', 300, 186);
+  },
+  manfro(c, t, ch) { // to the E45 on the motorbike, shouting
+    skySunset(c);
+    c.fillStyle = '#3a3a3e'; c.fillRect(0, 170, STAGE_W, 60); c.fillStyle = '#e8b64a'; for (let x = -((t * 240) % 60); x < STAGE_W; x += 60) c.fillRect(x, 198, 30, 4);
+    ground(c, '#5a7a3a', 230);
+    const x = t < 2 ? 120 : walkTo(t, 2, 6, 120, 560);
+    hero(c, ch, x, 172, 2, {face: 'e'}); drawIcon(c, 'moto', '#d2202a', x, 186, 64);
+    if (t > 1.2 && t < 4.2) bubble(c, x + 10, 110, 'BANZAI!', 16);
+    if (once('vroom') && t > 2) { Snd.tone(90, 1.2, 'sawtooth', 0.1, 260); Snd.noise(0.8, 0.1, 700); }
+    for (let i = 0; i < 3; i++) { drawIcon(c, 'bird', '#8d96a3', 60 + i * 26, 240 + Math.abs(Math.sin(t * 4 + i)) * -3, 20); for (let k = 0; k < 4; k++) ell(c, 54 + i * 26 + k * 4, 252, 1.6, 0.8, '#f8f6ee'); }
+  },
+  faif(c, t, ch) { // a beer, the moustache, the trophy, the whole stadium
+    c.fillStyle = '#1a2a1a'; c.fillRect(0, 0, STAGE_W, STAGE_H);
+    for (let i = 0; i < 160; i++) circ(c, (i % 40) * 12 + 6, 30 + Math.floor(i / 40) * 18 + Math.sin(t * 5 + i) * 2, 5, ['#d2202a', '#141417', '#e0b090', '#f4f4f4'][i % 4]);
+    c.fillStyle = '#3a8a3a'; c.fillRect(0, 110, STAGE_W, 160); c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 2; c.beginPath(); c.arc(240, 200, 50, 0, 7); c.stroke();
+    const up = smooth((t - 2.5) / 1);
+    hero(c, ch, 240, 196, 2.5);
+    drawIcon(c, 'trophy', '#e8b64a', 240, 120 - up * 30, 40); drawIcon(c, 'can', '#e8a83a', 280, 160, 20);
+    if (t > 3.5) { confetti(c, t); if (once('crowd')) Snd.noise(2.5, 0.12, 1800, 0.6); }
+  },
+  maiga(c, t, ch) { // closes the laptop, one last joint, one beer
+    roomBack(c, '#22242a', '#2c2e34');
+    c.fillStyle = '#5a3a1e'; c.fillRect(250, 160, 160, 8); c.fillRect(256, 168, 6, 22); c.fillRect(398, 168, 6, 22);
+    const shut = smooth((t - 2.5) / 0.8);
+    c.fillStyle = '#3a3d44'; c.fillRect(300, 152, 70, 8);
+    c.save(); c.translate(300, 152); c.scale(1, 1 - shut * 0.95); c.fillStyle = '#2a2d34'; c.fillRect(0, -44, 70, 44); c.fillStyle = '#0c1a10'; c.fillRect(4, -40, 62, 36);
+    if (shut < 0.5) { c.fillStyle = '#5aff7a'; for (let i = 0; i < 6; i++) c.fillRect(8, -36 + i * 5, 10 + hash(i, Math.floor(t * 3)) * 40, 2); } c.restore();
+    hero(c, ch, 200, 196, 2.4, {face: 'e'});
+    drawIcon(c, 'can', '#e8a83a', 392, 146, 20);
+    if (t > 4) { c.globalAlpha *= 0.4; for (let i = 0; i < 6; i++) circ(c, 220 + Math.sin(t + i) * 10, 140 - ((t * 10 + i * 12) % 70), 6 + i, '#b8c0a8'); c.globalAlpha /= 0.4; }
+    if (t > 6) bubble(c, 200, 100, 'Bug risolto.', 13);
+  },
+};
 startIntro();
 </script>
 
