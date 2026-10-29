@@ -432,7 +432,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v2.0.7';
+const VERSION = 'v2.0.8';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -2322,7 +2322,7 @@ function drawEnemy(c, e) {
   if (e.z <= 0 && !e.fly && !e.ghost) pixShadow(c, 0, e.r * 0.75, e.r * 0.9);
   if (e.hitT > 0) { const q = e.hitT / 6 * 0.14; c.translate(0, e.r * 0.7); c.scale(1 + q, 1 - q); c.translate(0, -e.r * 0.7); if (G.state === 'play') e.hitT--; }
   if (PIXBOSS[e.type]) { if (e.type === 'biscia') drawBisciaBody(c, e); drawPixBoss(c, e, flip, t); } // the bosses are pixel sprites now
-  else if (!(ENW[e.type] && drawPixEnemy(c, e, flip, t))) outlined(c, 0, 0, EN[e.type].span || Math.max(36, e.r * 3.4), cc => drawEnemyBody(cc, e, flip, t), e.champ && e.champ.col);
+  else if (!((ENW[e.type] || DUDE[e.type]) && drawPixEnemy(c, e, flip, t))) outlined(c, 0, 0, EN[e.type].span || Math.max(36, e.r * 3.4), cc => drawEnemyBody(cc, e, flip, t), e.champ && e.champ.col);
   c.restore();
   if (e.conf > 0) { c.save(); for (let i = 0; i < 3; i++) { const a = G.tick * 0.12 + i * 2.1; circ(c, e.x + Math.cos(a) * e.r * 0.8, e.y - e.z - e.r * 1.4 + Math.sin(a) * 3, 2.2, i % 2 ? '#b8e05a' : '#f5e04a'); } c.restore(); }
   if (e.poison > 0 && G.tick % 8 < 4) { c.save(); c.globalAlpha = 0.3; circ(c, e.x, e.y - 4, e.r, '#3ad16b'); c.restore(); }
@@ -4405,7 +4405,7 @@ const HAIR_STYLES = {
 };
 function heroSpr(ch, face = 's', step = 0, o = {}) {
   const items = (o.items || []).filter(id => PIXCOST[id]);
-  const key = 'h' + ch.id + face + step + (o.shoot ? 'o' : '') + (o.hurt ? 'x' : '') + items.join(',');
+  const key = 'h' + ch.id + face + step + (o.shoot ? 'o' : '') + (o.hurt ? 'x' : '') + items.join(',') + (o.xk || '');
   return spr(key, () => {
     const [cv, x] = mkc(26, 34); x.translate(0, 4);
     const cx = 13, side = face === 'e' ? 1 : face === 'w' ? -1 : 0, skinD = shade(ch.skin, -.22), hc = {c: ch.hair, d: shade(ch.hair, -.3), l: shade(ch.hair, .3)};
@@ -4449,6 +4449,7 @@ function heroSpr(ch, face = 's', step = 0, o = {}) {
       (HAIR_STYLES[ch.style] || HAIR_STYLES.short)(x, cx, face, hc, ch);
     }
     wear('top');
+    if (o.extra) o.extra(x, cx, face, side); // what an enemy wears or carries
     x.setTransform(1, 0, 0, 1, 0, 0);
     let out = pixOutline(cv);
     if (o.hurt) out = tinted(out, '#ff2020', 0.35);
@@ -5294,99 +5295,94 @@ const ENW = {};
 function enDef(type, w, h, ay, build, pose) { ENW[type] = {w, h, ay, build, pose: pose || ((e, t) => ({f: Math.floor(t / 12) % 2}))}; }
 const walkF = (e, t) => ({f: Math.floor(e.t / 10) % 2});
 
-// a little person, like the heroes but smaller and nastier
-function dude(x, o, f) {
-  const cx = 10, skin = o.skin || '#e0b090', skinD = shade(skin, -0.22), body = o.body || '#3a3a42';
-  PR(x, cx - 4, 21 - f, 3, 4 + f, o.legs || '#2a2a30'); PR(x, cx + 1, 21 + f, 3, 4 - f, o.legs || '#2a2a30');
-  if (o.back) o.back(x, cx, f);
-  PE(x, cx, 18.5, 6, 4.5, body, shade(body, -0.35), shade(body, 0.2));
-  if (o.shirt) o.shirt(x, cx, f);
-  PE(x, cx - 6, 18, 1.6, 2.2, o.arms || skin, shade(o.arms || skin, -0.3)); PE(x, cx + 6, 18, 1.6, 2.2, o.arms || skin, shade(o.arms || skin, -0.3));
-  if (o.hairBack) o.hairBack(x, cx);
-  PE(x, cx, 8.5, 7.5, 7, skin, skinD, shade(skin, 0.22));
-  const ey = o.ey || 9;
-  switch (o.eyes || 'dot') {
-    case 'dot': for (const ex of [-3, 3]) { PE(x, cx + ex - 0.5, ey, 1.6, 2, '#140808'); PR(x, cx + ex - 2, ey - 1, 1, 1, '#ffffff'); } break;
-    case 'gaper': for (const ex of [-3, 3]) PE(x, cx + ex - 0.5, ey, 2, 2.4, '#0c0606'); PR(x, cx - 4, ey + 2, 1, 4 + f, BLOOD); break; // Isaac's empty eyes, bleeding
-    case 'angry': for (const ex of [-3, 3]) { PE(x, cx + ex - 0.5, ey, 1.4, 1.8, '#140808'); PR(x, cx + ex - 2, ey - 1, 1, 1, '#ffffff'); } PR(x, cx - 5, ey - 3, 4, 1, '#2a1410'); PR(x, cx + 1, ey - 3, 4, 1, '#2a1410'); PR(x, cx - 2, ey - 2, 1, 1, '#2a1410'); PR(x, cx + 1, ey - 2, 1, 1, '#2a1410'); break;
-    case 'shut': PR(x, cx - 5, ey, 3, 1, '#2a1410'); PR(x, cx + 2, ey, 3, 1, '#2a1410'); PR(x, cx - 5, ey - 1, 3, 1, shade(skin, -0.35)); PR(x, cx + 2, ey - 1, 3, 1, shade(skin, -0.35)); break;
-    case 'glow': for (const ex of [-3, 3]) { PE(x, cx + ex - 0.5, ey, 2, 2.2, '#0c0606'); PR(x, cx + ex - 1, ey, 1, 1, o.glow || '#ff7a3a'); } break;
-  }
-  switch (o.mouth || 'line') {
-    case 'line': PR(x, cx - 2, 13, 4, 1, '#5a1a14'); break;
-    case 'open': PE(x, cx, 13.5, 2, 1.4 + f * 0.4, '#2a0808'); break;
-    case 'teeth': PR(x, cx - 3, 12, 6, 3, '#1a0606'); PR(x, cx - 3, 12, 1, 1, '#ece4c8'); PR(x, cx - 1, 12, 1, 1, '#ece4c8'); PR(x, cx + 1, 12, 1, 1, '#ece4c8'); PR(x, cx, 14, 1, 1, '#ece4c8'); break;
-    case 'frown': PR(x, cx - 2, 13, 4, 1, '#3a0a0a'); PR(x, cx - 3, 14, 1, 1, '#3a0a0a'); PR(x, cx + 2, 14, 1, 1, '#3a0a0a'); break;
-  }
-  if (o.face) o.face(x, cx, f);
-  if (o.hat) o.hat(x, cx, f);
-  if (o.hand) o.hand(x, cx, f);
+
+/* ---------- people: made with the very same pixels as the heroes, plus what each one wears and carries ---------- */
+const DUDE = {};
+const eyeXs = f => f === 's' ? [-4, 4] : f === 'e' ? [1, 6] : [-6, -1];
+const gaperEyes = (x, cx, f, bleed = true) => { if (f === 'n') return; for (const e of eyeXs(f)) PE(x, cx + e - 0.5, 12.5, 2.2, 2.6, '#0a0404'); if (bleed) { const e = eyeXs(f)[0]; PR(x, cx + e - 1, 15, 1, 5, BLOOD); PR(x, cx + e - 1, 20, 2, 1, BLOOD); } };
+const heldX = (cx, f) => f === 'w' ? cx - 9 : cx + 7;
+function dudeType(type, ch, extra, pose) { DUDE[type] = {ch: Object.assign({id: 'en_' + type, size: 1}, ch), extra, pose: pose || (() => ({}))}; }
+dudeType('incappucciato', {skin: '#1a1a20', shirt: '#3a3a42', pants: '#1c1c21', hair: '#3a3a42', style: 'long'}, (x, cx, f) => {
+  if (f !== 'n') { PE(x, cx, 13, 6.5, 6, '#0a0a0e'); for (const e of eyeXs(f)) PR(x, cx + e - 1, 12, 2, 2, '#f4f4f4'); } // only dark inside the hood, and two eyes
+  PE(x, cx, 4, 9, 4, '#3a3a42', '#26262c'); PR(x, cx - 2, 19, 1, 4, '#d8d8d8'); PR(x, cx + 2, 19, 1, 4, '#d8d8d8');
+});
+dudeType('zombie', {skin: '#a4b494', shirt: '#efeadc', pants: '#a8a898', hair: '#5a6a4a', style: 'short'}, (x, cx, f, side, v) => {
+  gaperEyes(x, cx, f); if (f !== 'n') { PR(x, cx - 2 + side * 3, 17, 5, 2, '#1a0606'); PR(x, cx - 1 + side * 3, 17, 1, 1, '#ece4c8'); PR(x, cx + 1 + side * 3, 17, 1, 1, '#ece4c8'); }
+  PR(x, cx - 5, 22, 10, 1, '#2b5aa8'); PE(x, cx + 2, 24, 1.4, 1, BLOOD);
+  PE(x, cx, 1, 7, 3.5, '#f4f4f4', '#c8c4b8'); PR(x, cx - 7, 2, 14, 2, '#e8e4da'); // the chef's hat
+  const hx = heldX(cx, f); if (v === 'c') { PR(x, hx, 4, 3, 13, '#c9965a'); PR(x, hx, 4, 1, 13, '#e0b07a'); } else { PR(x, hx, 17, 3, 11, '#c9965a'); PR(x, hx, 17, 1, 11, '#e0b07a'); PR(x, hx, 21, 3, 2, BLOOD); }
+}, e => ({v: e.st === 'charge' || e.st === 'lunge' ? 'c' : ''}));
+dudeType('hippie', {skin: '#e2b28c', shirt: '#e8b64a', pants: '#4a6ea8', hair: '#7a4a26', style: 'long', beard: '#7a4a26'}, (x, cx, f) => {
+  if (f !== 'n') { for (const e of eyeXs(f)) PE(x, cx + e - 0.5, 12.5, 2.4, 2.2, '#1a1a1e'); PR(x, cx - 2, 12, 4, 1, '#1a1a1e'); for (const e of eyeXs(f)) PR(x, cx + e - 2, 11, 1, 1, '#7a7a8a'); } // round shades
+  PR(x, cx - 9, 6, 18, 1, '#d2202a'); PE(x, cx + 6, 5, 1.4, 1.4, '#f5c400');
+  PE(x, cx - 2, 22, 1.2, 1.2, '#d2202a'); PE(x, cx + 2, 23, 1.2, 1.2, '#25d366'); PE(x, cx, 25, 1, 1, '#b07ad6'); // tie-dye
+});
+dudeType('comunista', {skin: '#e0b090', shirt: '#b3121b', pants: '#3a3a3a', hair: '#2a1a10', style: 'short', beard: '#2a1a10'}, (x, cx, f) => {
+  if (f !== 'n') for (const e of eyeXs(f)) PR(x, cx + e - 2, 9, 3, 1, '#2a1410'); // frowning
+  PE(x, cx + 1, 3, 9, 3.4, '#b3121b', '#7a0a10', '#d83a3a'); PR(x, cx + 3, 1, 3, 3, '#f5c400'); PR(x, cx + 4, 0, 1, 1, '#f5c400');
+  const hx = heldX(cx, f); PR(x, hx - 1, 19, 4, 5, '#f4f4f4'); PR(x, hx, 20, 2, 1, '#b3121b'); PR(x, hx, 22, 2, 1, '#8a8a8a');
+});
+dudeType('vigile', {skin: '#e0b090', shirt: '#1d2a44', pants: '#1d2a44', hair: '#3a2a1e', style: 'short', mustache: true}, (x, cx, f, side, v) => {
+  if (v === 'c' && f !== 'n') { PE(x, cx - 5, 15, 2, 1.4, '#e86a5a'); PE(x, cx + 5, 15, 2, 1.4, '#e86a5a'); for (const e of eyeXs(f)) PR(x, cx + e - 2, 9, 3, 1, '#2a1410'); } // red in the face, charging
+  PE(x, cx, 4, 9.5, 3.4, '#f4f4f4', '#c8c8d0'); PR(x, cx - 9, 5, 18, 2, '#1d2a44'); PE(x, cx, 2, 1.4, 1.4, '#e8b64a');
+  PR(x, cx - 5, 21, 10, 1, '#f4f4f4'); PE(x, cx - 5, 21, 1.6, 1.6, '#f4f4f4'); PE(x, cx + 5, 21, 1.6, 1.6, '#f4f4f4');
+}, e => ({v: e.st === 'charge' ? 'c' : '', fast: e.st === 'charge'}));
+dudeType('soldato', {skin: '#d9a07a', shirt: '#9a2a1a', pants: '#6b4a2a', hair: '#3a2a1a', style: 'short'}, (x, cx, f) => {
+  gaperEyes(x, cx, f);
+  PE(x, cx, 6, 9.5, 5, '#8a8f96', '#5a5f66', '#c0c4ca'); PR(x, cx - 10, 8, 20, 2, '#6a6f76'); PE(x, cx, 0, 1.8, 3.6, '#b3121b', '#7a0a10');
+  PR(x, cx - 5, 23, 10, 1, '#c9a24a');
+  const hx = heldX(cx, f); PE(x, hx + 1, 21, 3.4, 5, '#c9a24a', '#8a6a1a', '#e8c86a'); PE(x, hx + 1, 21, 1, 1, '#8a6a1a');
+});
+dudeType('ubriaco', {skin: '#e8a08a', shirt: '#5a6b3a', pants: '#3a3040', hair: '#3a2a20', style: 'messy'}, (x, cx, f, side, v) => {
+  if (f !== 'n') { for (const e of eyeXs(f)) PR(x, cx + e - 2, 11, 3, 2, '#d88a7a'); PE(x, cx + side * 3, 15, 1.8, 1.6, '#d0505a', '#a03040'); } // heavy lids, a red nose
+  if (v !== 't') { const hx = heldX(cx, f); PR(x, hx, 17, 3, 6, '#7a1a2e'); PR(x, hx + 1, 15, 1, 2, '#c9cdd2'); PR(x, hx, 18, 1, 3, '#b04a5e'); }
+}, e => ({v: e.throw > 0 ? 't' : '', dx: Math.sin(e.t * 0.05) * 2.5}));
+dudeType('scheletro', {skin: '#e9e2d0', shirt: '#e9e2d0', pants: '#e9e2d0', hair: '#e9e2d0', style: 'short'}, (x, cx, f, side) => {
+  if (f !== 'n') { for (const e of eyeXs(f)) { PE(x, cx + e - 0.5, 12.5, 2.2, 2.6, '#0a0404'); PR(x, cx + e - 1, 12, 1, 1, '#ff7a3a'); } PR(x, cx - 3 + side * 3, 17, 6, 2, '#1a0606'); for (let i = 0; i < 3; i++) PR(x, cx - 3 + side * 3 + i * 2, 17, 1, 1, '#e9e2d0'); }
+  for (let y = 19; y < 25; y += 2) PR(x, cx - 4, y, 9, 1, '#8a8070');
+  const hx = heldX(cx, f); PR(x, hx, 15, 2, 10, '#e9e2d0'); PE(x, hx, 15, 1.2, 1.2, '#e9e2d0'); PE(x, hx + 2, 15, 1.2, 1.2, '#e9e2d0');
+});
+dudeType('tamburino', {skin: '#e0b090', shirt: '#1d4fa3', shirt2: '#e8b64a', pants: '#f4f4f4', hair: '#4a2c1a', style: 'short'}, (x, cx, f, side, v) => {
+  PE(x, cx, 4, 9, 3, '#1d4fa3', '#122e6a'); PE(x, cx + 6, 1.5, 1.6, 2.2, '#d2202a');
+  PE(x, cx, 25, 6.5, 2, '#efe3cf', '#c8bca8'); PR(x, cx - 6, 25, 13, 3, '#d9a556'); for (let i = -5; i <= 5; i += 3) PR(x, cx + i, 26, 1, 2, '#8a5a2b');
+  if (v === 'h') { PR(x, cx - 7, 21, 4, 1, '#6b4a2a'); PR(x, cx + 4, 18, 1, 4, '#6b4a2a'); } else { PR(x, cx - 7, 18, 1, 4, '#6b4a2a'); PR(x, cx + 4, 21, 4, 1, '#6b4a2a'); }
+}, e => ({v: (e.beat || 0) > 8 ? 'h' : ''}));
+dudeType('operaio', {skin: '#e0b090', shirt: '#2b5aa8', pants: '#1d2a44', hair: '#3a2a1e', style: 'short', mustache: true}, (x, cx, f) => {
+  gaperEyes(x, cx, f);
+  PE(x, cx, 4, 9.5, 4.2, '#f5c400', '#c89a00', '#fff080'); PR(x, cx - 10, 7, 20, 1, '#d9a400');
+  PR(x, cx - 2, 19, 4, 3, '#f5c400');
+  const hx = heldX(cx, f); PR(x, hx, 15, 2, 9, '#9aa3ad'); PR(x, hx - 1, 14, 4, 2, '#9aa3ad'); PR(x, hx, 15, 2, 1, '#2a2a30');
+});
+dudeType('pescatore', {skin: '#e0b090', shirt: '#3a6a5a', pants: '#3a3a2a', hair: '#8a8070', style: 'short', beard: '#a89a8a'}, (x, cx, f, side, v) => {
+  PE(x, cx, 5, 11.5, 2.4, '#c9b07a', '#8a7448'); PE(x, cx, 2.5, 6.5, 3.2, '#c9b07a', '#8a7448'); PR(x, cx - 6, 4, 13, 1, '#7a1a1a');
+  const hx = heldX(cx, f), k = v === 'c' ? 0.3 : 0.08; for (let i = 0; i < 22; i++) PR(x, hx + 1 + Math.round(i * k) * (f === 'w' ? -1 : 1), 24 - i, 1, 1, '#6b4a2a');
+}, e => ({v: e.cast > 0 ? 'c' : ''}));
+dudeType('sbandieratore', {skin: '#e0b090', shirt: '#e8b64a', shirt2: '#1d4fa3', pants: '#1d4fa3', hair: '#3a2a1e', style: 'short'}, (x, cx) => {
+  PE(x, cx, 4, 9, 3.6, '#1d4fa3', '#122e6a');
+}, e => { // the flag whirling round him, on its own sprite: behind him when it points up
+  const v = ((Math.round(((e.ang || 0) % (Math.PI * 2) + Math.PI * 2) / (Math.PI / 8))) % 16), f = Math.floor(e.t / 10) % 2;
+  const draw = c => { const s = spr('flag' + v + f, () => { const [cv, x] = mkc(64, 64), a = v * Math.PI / 8, fx = 32, fy = 32, L = 29;
+    vein(x, [[fx, fy], [Math.round(fx + Math.cos(a) * L), Math.round(fy + Math.sin(a) * L)]], '#6b4a2a');
+    const nx = -Math.sin(a), ny = Math.cos(a);
+    for (let t = 0.45; t <= 1.001; t += 0.03) { const half = Math.round(8 * (1.15 - t) + 1), wave = Math.sin(t * 9 + f * 3) * 1.4; for (let k = -half; k <= half; k++) PR(x, Math.round(fx + Math.cos(a) * L * t + nx * (k + wave)), Math.round(fy + Math.sin(a) * L * t + ny * (k + wave)), 1, 1, k < 0 ? '#e8b64a' : '#1d4fa3'); }
+    return pixOutline(cv); }); blit(c, s, 0, -4, 0.5, 0.5); };
+  return {after: draw};
+});
+function drawDude(c, e, flip, t) {
+  const D = DUDE[e.type], P = D.pose(e) || {}, p = G.p, dx = p.x - e.x, dy = p.y - e.y;
+  const face = Math.abs(dx) > Math.abs(dy) * 1.2 ? (dx > 0 ? 'e' : 'w') : dy < 0 ? 'n' : 's';
+  const step = [0, 1, 0, 2][Math.floor(e.t / (P.fast ? 4 : 8)) % 4], v = P.v || '';
+  const base = heroSpr(D.ch, face, step, {extra: (x, cx, f, side) => D.extra(x, cx, f, side, v), xk: v});
+  const sp = e.flash > 0 ? spr('hw' + D.ch.id + face + step + v, () => tinted(base, '#ffffff', 0.7)) : e.champ ? spr('hc' + D.ch.id + face + step + v + e.champ.col, () => tinted(base, e.champ.col, 0.28)) : base;
+  const feet = e.r * 0.9 + 2;
+  c.save(); if (P.dx) c.translate(P.dx, 0);
+  if (P.before) P.before(c);
+  if (isPix(c)) blit(c, sp, 0, feet, 0.5, 31 / 34, 1);
+  else { const u = 1 / PIXK; c.imageSmoothingEnabled = false; c.drawImage(sp, -13 * u, feet - 31 * u, 26 * u, 34 * u); }
+  if (P.after) P.after(c);
+  c.restore();
+  return true;
 }
-const dudeDef = (type, o, pose) => enDef(type, 20, 26, 16, (x, f, v) => dude(x, typeof o === 'function' ? o(v) : o, f), pose || walkF);
-
-/* ---------- people ---------- */
-dudeDef('incappucciato', {skin: '#3a3a42', body: '#3a3a42', legs: '#1c1c21', arms: '#2e2e36', eyes: 'none', mouth: 'none',
-  face: (x, cx) => { PE(x, cx, 9.5, 5.5, 5.5, '#0a0a0e'); PE(x, cx - 2.5, 9, 1.2, 1.4, '#f4f4f4'); PE(x, cx + 2.5, 9, 1.2, 1.4, '#f4f4f4'); }, // a face that is only dark and two eyes
-  shirt: (x, cx) => { PR(x, cx - 2, 15, 1, 4, '#d8d8d8'); PR(x, cx + 2, 15, 1, 4, '#d8d8d8'); PR(x, cx - 4, 20, 9, 2, '#2e2e36'); }});
-dudeDef('zombie', v => ({skin: '#8fa38a', body: '#efeadc', legs: '#a8a898', eyes: 'gaper', mouth: 'teeth',
-  shirt: (x, cx) => { PR(x, cx - 6, 18, 12, 1, '#2b5aa8'); PE(x, cx + 2, 20, 1.6, 1.2, BLOOD); },
-  face: (x, cx) => { PR(x, cx + 4, 5, 2, 1, '#6a7a64'); pustule(x, cx - 5, 12, 1); },
-  hat: (x, cx) => { PE(x, cx, 1.8, 6, 2.8, '#f4f4f4', '#c8c4b8'); PR(x, cx - 6, 2, 12, 2, '#e8e4da'); },
-  hand: (x, cx) => { if (v === 'c') { PR(x, cx + 7, 4, 3, 13, '#c9965a'); PR(x, cx + 7, 4, 1, 13, '#e0b07a'); PR(x, cx + 8, 2, 1, 2, '#8a5a2b'); } else { PR(x, cx + 6, 15, 3, 10, '#c9965a'); PR(x, cx + 6, 15, 1, 10, '#e0b07a'); PR(x, cx + 7, 25, 1, 1, '#8a5a2b'); } }}),
-  e => ({f: Math.floor(e.t / 10) % 2, v: e.st === 'charge' || e.st === 'lunge' ? 'c' : ''}));
-dudeDef('hippie', {skin: '#e2b28c', body: '#e8b64a', legs: '#4a6ea8', eyes: 'none', mouth: 'none',
-  hairBack: (x, cx) => { PE(x, cx, 10, 9, 9, '#7a4a26', '#4a2a14'); PR(x, cx - 9, 10, 3, 9, '#7a4a26'); PR(x, cx + 6, 10, 3, 9, '#7a4a26'); },
-  shirt: (x, cx) => { PE(x, cx - 2, 18, 1.4, 1.4, '#d2202a'); PE(x, cx + 2, 19, 1.4, 1.4, '#25d366'); PE(x, cx, 21, 1.2, 1, '#b07ad6'); },
-  face: (x, cx) => { PE(x, cx - 3, 9, 2.2, 2, '#1a1a1e'); PE(x, cx + 3, 9, 2.2, 2, '#1a1a1e'); PR(x, cx - 1, 9, 2, 1, '#1a1a1e'); PR(x, cx - 4, 8, 1, 1, '#6a6a7a'); PR(x, cx + 2, 8, 1, 1, '#6a6a7a'); // round shades
-    PE(x, cx, 14, 4.5, 2.6, '#7a4a26', '#4a2a14'); PR(x, cx - 1, 13, 2, 1, '#3a1a10'); },
-  hat: (x, cx) => { PE(x, cx, 3, 7.5, 3.5, '#7a4a26', '#4a2a14'); PR(x, cx - 7, 4, 15, 1, '#d2202a'); PE(x, cx + 5, 4, 1.4, 1.4, '#f5c400'); }});
-dudeDef('comunista', {skin: '#e0b090', body: '#b3121b', legs: '#3a3a3a', eyes: 'angry', mouth: 'none',
-  face: (x, cx) => { PE(x, cx, 13.5, 5, 2.6, '#4a3020', '#2a1a10'); PR(x, cx - 2, 12, 4, 1, '#3a2010'); },
-  hat: (x, cx) => { PE(x, cx + 1, 2.5, 7.5, 3.2, '#b3121b', '#7a0a10', '#d83a3a'); PR(x, cx + 2, 1, 3, 3, '#f5c400'); PR(x, cx + 3, 0, 1, 1, '#f5c400'); },
-  hand: (x, cx) => { PR(x, cx + 6, 16, 4, 5, '#f4f4f4'); PR(x, cx + 7, 17, 2, 1, '#b3121b'); PR(x, cx + 7, 19, 2, 1, '#8a8a8a'); }});
-dudeDef('vigile', v => ({skin: v === 'c' ? '#e88a7a' : '#e0b090', body: '#1d2a44', legs: '#1d2a44', arms: '#f4f4f4', eyes: v === 'c' ? 'angry' : 'dot', mouth: v === 'c' ? 'open' : 'line',
-  shirt: (x, cx) => { PR(x, cx - 6, 17, 12, 1, '#f4f4f4'); PR(x, cx - 1, 18, 2, 2, '#e8b64a'); },
-  face: (x, cx) => { PR(x, cx + 2, 13, 3, 1, '#c8c8d0'); }, // the whistle
-  hat: (x, cx) => { PE(x, cx, 2.5, 8, 3, '#f4f4f4', '#c8c8d0'); PR(x, cx - 8, 3, 16, 2, '#1d2a44'); PE(x, cx, 1, 1.4, 1.4, '#e8b64a'); }}),
-  e => ({f: Math.floor(e.t / (e.st === 'charge' ? 5 : 10)) % 2, v: e.st === 'charge' ? 'c' : ''}));
-dudeDef('soldato', {skin: '#d9a07a', body: '#9a2a1a', legs: '#6b4a2a', eyes: 'gaper', mouth: 'line',
-  shirt: (x, cx) => { PR(x, cx - 6, 20, 12, 1, '#c9a24a'); },
-  hat: (x, cx) => { PE(x, cx, 4, 8, 4.5, '#8a8f96', '#5a5f66', '#c0c4ca'); PR(x, cx - 8, 5, 16, 2, '#6a6f76'); PE(x, cx, -0.5, 1.6, 3.5, '#b3121b', '#7a0a10'); },
-  hand: (x, cx) => { PE(x, cx + 7, 18, 3, 4.5, '#c9a24a', '#8a6a1a', '#e8c86a'); PE(x, cx + 7, 18, 1, 1, '#8a6a1a'); }});
-dudeDef('ubriaco', v => ({skin: '#e8a08a', body: '#5a6b3a', legs: '#3a3040', eyes: 'shut', mouth: 'open',
-  face: (x, cx) => { PE(x, cx, 11, 1.8, 1.6, '#d0505a', '#a03040'); PR(x, cx + 3, 12, 1, 1, '#e86a7a'); },
-  hat: (x, cx) => { PE(x, cx - 1, 3, 6.5, 3, '#3a2a20', '#20140c'); },
-  hand: (x, cx) => { if (v !== 't') { PR(x, cx + 7, 14, 3, 6, '#7a1a2e'); PR(x, cx + 8, 12, 1, 2, '#c9cdd2'); PR(x, cx + 7, 15, 1, 3, '#b04a5e'); } }}),
-  e => ({f: Math.floor(e.t / 14) % 2, v: e.throw > 0 ? 't' : '', dx: Math.sin(e.t * 0.05) * 2.5}));
-dudeDef('scheletro', {skin: '#e9e2d0', body: '#e9e2d0', legs: '#e9e2d0', arms: '#e9e2d0', eyes: 'glow', mouth: 'teeth',
-  shirt: (x, cx) => { for (let y = 16; y < 22; y += 2) PR(x, cx - 4, y, 9, 1, '#8a8070'); PR(x, cx, 15, 1, 7, '#a89a84'); },
-  face: (x, cx) => { PR(x, cx - 1, 11, 2, 1, '#2a1a10'); },
-  hand: (x, cx) => { PR(x, cx + 7, 13, 2, 9, '#e9e2d0'); PE(x, cx + 7, 13, 1.2, 1.2, '#e9e2d0'); PE(x, cx + 9, 13, 1.2, 1.2, '#e9e2d0'); }});
-dudeDef('tamburino', v => ({skin: '#e0b090', body: '#1d4fa3', legs: '#f4f4f4', eyes: 'dot', mouth: v === 'h' ? 'open' : 'line',
-  shirt: (x, cx) => { PR(x, cx, 14, 6, 9, '#e8b64a'); },
-  hat: (x, cx) => { PE(x, cx, 2.5, 7.5, 3, '#1d4fa3', '#122e6a'); PE(x, cx + 5, 0.5, 1.6, 2, '#d2202a'); },
-  hand: (x, cx) => { PE(x, cx, 22, 6, 2.2, '#efe3cf', '#c8bca8'); PR(x, cx - 6, 22, 12, 3, '#d9a556'); for (let i = -5; i <= 4; i += 3) PR(x, cx + i, 23, 1, 2, '#8a5a2b');
-    if (v === 'h') { PR(x, cx - 6, 18, 4, 1, '#6b4a2a'); PR(x, cx + 3, 15, 1, 4, '#6b4a2a'); } else { PR(x, cx - 6, 15, 1, 4, '#6b4a2a'); PR(x, cx + 3, 18, 4, 1, '#6b4a2a'); } }}),
-  e => ({f: Math.floor(e.t / 8) % 2, v: (e.beat || 0) > 8 ? 'h' : ''}));
-dudeDef('operaio', {skin: '#e0b090', body: '#2b5aa8', legs: '#1d2a44', eyes: 'gaper', mouth: 'frown',
-  shirt: (x, cx) => { PR(x, cx - 2, 15, 4, 3, '#f5c400'); PR(x, cx - 6, 17, 1, 1, '#1d2a44'); PR(x, cx + 5, 17, 1, 1, '#1d2a44'); },
-  hat: (x, cx) => { PE(x, cx, 3, 8, 3.8, '#f5c400', '#c89a00', '#fff080'); PR(x, cx - 9, 5, 18, 1, '#d9a400'); },
-  hand: (x, cx, f) => { PR(x, cx + 7, 12 + f, 2, 8, '#9aa3ad'); PR(x, cx + 6, 11 + f, 4, 2, '#9aa3ad'); PR(x, cx + 7, 12 + f, 2, 1, '#2a2a30'); }});
-dudeDef('pescatore', v => ({skin: '#e0b090', body: '#3a6a5a', legs: '#3a3a2a', eyes: 'dot', mouth: 'line',
-  shirt: (x, cx) => { PR(x, cx - 4, 17, 3, 3, '#2a4a3a'); PR(x, cx + 2, 17, 3, 3, '#2a4a3a'); },
-  face: (x, cx) => { PE(x, cx, 13.5, 3.5, 1.6, '#a89a8a'); },
-  hat: (x, cx) => { PE(x, cx, 4, 10, 2.4, '#c9b07a', '#8a7448'); PE(x, cx, 2, 5.5, 3, '#c9b07a', '#8a7448'); PR(x, cx - 5, 3, 11, 1, '#7a1a1a'); },
-  hand: (x, cx) => { const k = v === 'c' ? 1 : 0; for (let i = 0; i < 18; i++) PR(x, cx + 8 + Math.round(i * (k ? 0.25 : 0.08)), 20 - i, 1, 1, '#6b4a2a'); }}),
-  e => ({f: Math.floor(e.t / 10) % 2, v: e.cast > 0 ? 'c' : ''}));
-// the flag-waver: a big canvas, the flag whirling round him in sixteen positions
-enDef('sbandieratore', 44, 44, 28, (x, f, v) => {
-  const a = +v * Math.PI / 8, fx = 22, fy = 22, ex = fx + Math.cos(a) * 14, ey = fy + Math.sin(a) * 14;
-  x.save(); x.translate(12, 12); dude(x, {skin: '#e0b090', body: '#e8b64a', legs: '#1d4fa3', eyes: 'dot', mouth: 'line', shirt: (y, cx) => PR(y, cx - 6, 18, 12, 2, '#1d4fa3'), hat: (y, cx) => { PE(y, cx, 3.5, 7.5, 3.6, '#1d4fa3', '#122e6a'); }}, f); x.restore();
-  vein(x, [[fx, fy], [Math.round(ex), Math.round(ey)]], '#6b4a2a');
-  const nx = -Math.sin(a), ny = Math.cos(a), w = f ? 1 : -1;
-  for (let t = 0.5; t <= 1.001; t += 0.04) { const half = Math.round(5 * (1.15 - t) + 1), wave = Math.sin(t * 9 + f * 3) * 1.2; for (let s = -half; s <= half; s++) PR(x, Math.round(fx + Math.cos(a) * 14 * t + nx * (s + wave)), Math.round(fy + Math.sin(a) * 14 * t + ny * (s + wave)), 1, 1, s < 0 ? (s === -half ? '#a87a1a' : '#e8b64a') : (s === half ? '#122e6a' : '#1d4fa3')); }
-}, e => ({f: Math.floor(e.t / 10) % 2, v: String(((Math.round(((e.ang || 0) % (Math.PI * 2) + Math.PI * 2) / (Math.PI / 8))) % 16)), noflip: true}));
-
 /* ---------- critters ---------- */
 enDef('zanzara', 18, 16, 9, (x, f) => {
   PE(x, 4, 5 - f, 3.5, 2 + f * 0.5, '#d8e8f0'); PE(x, 13, 5 - f, 3.5, 2 + f * 0.5, '#d8e8f0');
@@ -5524,12 +5520,13 @@ enDef('nutria', 34, 20, 12, (x, f) => {
 
 /* ---------- drawing them ---------- */
 function drawPixEnemy(c, e, flip, t) { // returns false to fall back to the old drawing
+  if (DUDE[e.type]) return drawDude(c, e, flip, t);
   const D = ENW[e.type], P = D.pose(e, t, flip);
   if (!P) return false;
   if (P.before) P.before(c);
   const fl = P.noflip ? 1 : P.flip || flip, v = P.v || '', key = 'en' + e.type + (P.f || 0) + v + (e.flash > 0 ? 'w' : '') + (e.champ ? e.champ.col : '');
   const s = spr(key, () => {
-    const base = spr('en' + e.type + (P.f || 0) + v, () => { const [cv, x] = mkc(D.w, D.h); D.build(x, P.f || 0, v); return pixOutline(isaacShade(cv), [24, 10, 10]); });
+    const base = spr('en' + e.type + (P.f || 0) + v, () => { const [cv, x] = mkc(D.w, D.h); D.build(x, P.f || 0, v); return pixOutline(cv); });
     return e.flash > 0 ? tinted(base, '#ffffff', 0.7) : e.champ ? tinted(base, e.champ.col, 0.28) : base;
   });
   const k = c === LIVE.c ? PXS : 1, kx = (P.kx || 1) * k, ky = (P.ky || 1) * k, m = c.getTransform();
