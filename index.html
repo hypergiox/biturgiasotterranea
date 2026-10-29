@@ -432,7 +432,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v2.0.8';
+const VERSION = 'v2.1';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -513,6 +513,7 @@ const Snd = {
   shoot() { this.tone(rr(520, 600), 0.07, 'sine', 0.07, 260); },
   shootKind(kind) { // every kind of tear has its own sound
     switch (kind) {
+      case 'pioggia': this.noise(0.05, 0.05, 3000, 2); this.tone(rr(900, 1100), 0.05, 'sine', 0.04, 600); break;
       case 'riso': this.noise(0.03, 0.08, 6000, 2); this.tone(rr(1800, 2200), 0.03, 'square', 0.03); break;
       case 'birra': this.tone(rr(260, 300), 0.12, 'sine', 0.08, 520); this.noise(0.08, 0.04, 900, 3, 0.03); break;
       case 'bullone': this.tone(rr(1700, 1900), 0.05, 'square', 0.035); this.tone(2600, 0.06, 'triangle', 0.03, null, 0.02); break;
@@ -662,7 +663,7 @@ const CHARS = [
   // the inventor: weak tears made of bolts, but a drone that shoots with him and a 3D printer that makes items
   {id: 'raspo', name: 'Raspo', skin: '#d8a27c', shirt: '#e07a1e', shirt2: '#c9651a', pants: '#3a4a6b', hair: '#2e2620', style: 'inventor', beard: '#2e2620', goggles: true, toolbelt: true,
     red: 2, soul: 2, speed: 1, dmg: 2.9, delay: 15, range: 280, ss: 1.1, luck: 1, tear: 'bullone', active: 'stampante', drone: true, perk: 'Parte con un drone che spara con lui.'},
-  {id: 'piero', name: 'Piero', skin: '#e2a878', shirt: '#f2f2f2', pants: '#1d3557', hair: '#2a1d14', style: 'band', muscle: true,
+  {id: 'piero', name: 'Piero', skin: '#e2a878', shirt: '#f2f2f2', pants: '#1d3557', hair: '#2a1d14', style: 'curly', muscle: true,
     red: 4, soul: 0, speed: 0.85, dmg: 5, delay: 22, range: 240, ss: 0.9, luck: 0, tear: 'grossa', active: 'muscoli', flags: {big: true}, perk: 'Lacrime grosse.'},
   {id: 'pinciu', name: 'Pinciu', skin: '#e3b48e', shirt: '#f5c400', shirt2: '#1d4fa3', pants: '#1d4fa3', hair: '#3a2a1e', style: 'short', mustache: true,
     red: 3, soul: 0, speed: 1.2, dmg: 3.2, delay: 16, range: 270, ss: 1.05, luck: 0, tear: 'pallone', active: 'notifica', flags: {bounce: true}, perk: 'Le lacrime rimbalzano su muri e rocce.'},
@@ -685,6 +686,9 @@ const CHARS = [
   // the programmer: lines of code for tears, a trail of second-hand smoke, a joint that leaves everybody dazed
   {id: 'maiga', name: 'Maiga', skin: '#e6b892', shirt: '#3a3d44', pants: '#3b4a6b', hair: '#4a3020', style: 'messy', beard: '#4a3020', glasses: true, joint: true,
     red: 3, soul: 0, speed: 0.95, dmg: 3, delay: 15, range: 300, ss: 0.95, luck: 0, tear: 'codice', active: 'canna', flags: {smoke: true}, perk: 'Lascia una scia di fumo passivo che intossica e rallenta i nemici.'},
+  // tall, thin and curly, in from London: rain for tears, an umbrella that takes the first hit, a ram's horn
+  {id: 'gabbo', name: 'Gabbo', skin: '#f0c8a8', shirt: '#1d3a6b', shirt2: '#f4f4f4', pants: '#2a2a30', hair: '#4a2c1a', style: 'curly', size: 1.06, thin: true,
+    red: 2, soul: 2, speed: 1.1, dmg: 3.1, delay: 15, range: 300, ss: 1.1, luck: 1, tear: 'pioggia', active: 'shofar', flags: {brolly: true}, perk: 'Ombrello di Londra: in ogni stanza il primo colpo nemico che ti arriva si ferma sull\'ombrello.'},
 ];
 
 /* ---------- active items: charges fill one per cleared room ---------- */
@@ -703,10 +707,12 @@ const ACTIVES = {
   tamburello: {name: 'Tamburello del Palio', sub: 'Lacrime a raggiera', charge: 1, icon: 'drum', col: '#d9a556'},
   bibbia: {name: 'Bibbia del Duomo', sub: 'Voli per tutta la stanza', charge: 3, icon: 'book', col: '#7a1a1a'},
   salvadanaio: {name: 'Salvadanaio', sub: 'Monete!', charge: 2, icon: 'pig', col: '#f08bb0'},
-  moto: {name: 'Moto giapponese', sub: 'In sella: veloce e travolgente', charge: 3, icon: 'moto', col: '#d2202a'},
+  moto: {name: 'Moto', sub: 'In sella: veloce e travolgente', charge: 3, icon: 'moto', col: '#d2202a'},
   sprint: {name: 'Scatto', sub: 'Velocissimo per sei secondi', charge: 2, icon: 'shoe', col: '#f5c400'},
   canna: {name: 'La Canna', sub: 'Tutti fusi, tu più rilassato', charge: 3, icon: 'joint', col: '#7a9a4a'},
   stampante: {name: 'Stampante 3D', sub: 'Stampa un oggetto a caso', charge: 6, icon: 'printer', col: '#9aa3ad'},
+  apax: {name: 'Mikrotik APAX', sub: 'Spegne tutti i proiettili', charge: 2, icon: 'router', col: '#f4f4f4'},
+  shofar: {name: 'Shofar', sub: 'Un suono che stordisce la stanza', charge: 3, icon: 'horn', col: '#d9b27a'},
 };
 
 /* ---------- passive items ---------- */
@@ -715,24 +721,24 @@ const ITEMS = [
   {id: 'bistecca', name: 'Bistecca di Chianina', sub: 'PV in su', icon: 'meat', col: '#a8323a', pools: 'tbsx', fn: p => { addHearts(p, 2); healAll(p); }},
   {id: 'ciaccia', name: 'Ciaccia fritta', sub: 'PV in su', icon: 'bread', col: '#d9a556', pools: 'bsx', fn: p => { addHearts(p, 2); heal(p, 2); }},
   {id: 'cipolla', name: 'Cipolla triste', sub: 'Lacrime in su', icon: 'onion', col: '#c9a2d6', pools: 'tbsx', fn: p => { p.delay -= 2; }},
-  {id: 'caffe', name: 'Caffè ristretto', sub: 'Lacrime e velocità in su', icon: 'cup', col: '#6b4226', pools: 'tbsx', fn: p => { p.delay -= 1.5; p.speed += 0.1; }},
+  {id: 'caffe', name: 'Covfefe', sub: 'Lacrime e velocità in su', icon: 'cup', col: '#6b4226', pools: 'tbsx', fn: p => { p.delay -= 1.5; p.speed += 0.1; }},
   {id: 'campari', name: 'Campari soda', sub: 'Danno in su', icon: 'bottle', col: '#d2202a', pools: 'tbsx', fn: p => { p.dmg += 1; }},
-  {id: 'fiasco', name: 'Fiasco di vino', sub: 'Danno su, mira giù', icon: 'flask', col: '#7a1a2e', pools: 'tbsx', fn: p => { p.dmg += 1.5; p.ss -= 0.15; }},
-  {id: 'scarpe', name: 'Scarpe da corsa', sub: 'Velocità in su', icon: 'shoe', col: '#e94b3c', pools: 'tbsx', fn: p => { p.speed += 0.25; }},
+  {id: 'fiasco', name: 'Mandarinetto', sub: 'Danno su, mira giù', icon: 'flask', col: '#f08a1a', pools: 'tbsx', fn: p => { p.dmg += 1.5; p.ss -= 0.15; }},
+  {id: 'scarpe', name: 'Scarpe del Piero', sub: 'Velocità in su', icon: 'shoe', col: '#e94b3c', pools: 'tbsx', fn: p => { p.speed += 0.25; }},
   {id: 'occhiali', name: 'Occhiali da vista', sub: 'Gittata in su', icon: 'glasses', col: '#4a4a52', pools: 'tbsx', fn: p => { p.range += 90; p.ss += 0.15; }},
   {id: 'prospettiva', name: 'Prospettiva di Piero', sub: 'Vedi doppio', icon: 'frame', col: '#e8b64a', pools: 'tsx', fn: p => { p.flags.double = true; }},
   {id: 'forchettone', name: 'Forchettone del cameriere', sub: 'Tre lacrime alla volta', icon: 'fork', col: '#c9cdd2', pools: 'tsx', fn: p => { p.flags.triple = true; p.delay += 4; }},
   {id: 'balestra', name: 'Balestra del Palio', sub: 'Trapassano tutto', icon: 'crossbow', col: '#8a5a2b', pools: 'tsx', fn: p => { p.flags.pierce = true; p.dmg += 0.5; }},
-  {id: 'pallone', name: 'Pallone del Torneo', sub: 'Rimbalzano', icon: 'ball', col: '#f4f4f4', pools: 'tsx', fn: p => { p.flags.bounce = true; p.range += 40; }},
+  {id: 'pallone', name: 'Pallone del Sacro', sub: 'Rimbalzano', icon: 'ball', col: '#f4f4f4', pools: 'tsx', fn: p => { p.flags.bounce = true; p.range += 40; }},
   {id: 'bussola', name: 'Bussola del pellegrino', sub: 'Lacrime guidate', icon: 'compass', col: '#b07ad6', pools: 'tsx', fn: p => { p.flags.homing = true; }},
   {id: 'pasta', name: 'Pasta Buitoni', sub: 'Lacrime enormi', icon: 'pasta', col: '#2b5aa8', pools: 'tsx', fn: p => { p.flags.big = true; p.dmg += 2; p.delay += 4; }},
-  {id: 'petardo', name: 'Petardo di Capodanno', sub: 'Esplodono!', icon: 'firecracker', col: '#e23b2e', pools: 'txd', fn: p => { p.flags.explode = true; p.dmg += 2; p.delay += 7; }},
-  {id: 'ghiacciolo', name: 'Ghiacciolo del Tevere', sub: 'Rallentano i nemici', icon: 'ice', col: '#9fe3ff', pools: 'tsx', fn: p => { p.flags.slow = true; }},
+  {id: 'petardo', name: '3000 Smanna', sub: 'Esplodono!', icon: 'firecracker', col: '#e23b2e', pools: 'txd', fn: p => { p.flags.explode = true; p.dmg += 2; p.delay += 7; }},
+  {id: 'ghiacciolo', name: 'Gelato del Girasole', sub: 'Rallentano i nemici', icon: 'ice', col: '#9fe3ff', pools: 'tsx', fn: p => { p.flags.slow = true; }},
   {id: 'peperoncino', name: 'Peperoncino', sub: 'Lacrime infuocate', icon: 'pepper', col: '#e0301e', pools: 'tsx', fn: p => { p.flags.burn = true; p.dmg += 0.3; }},
   {id: 'reliquia', name: 'Reliquia del Santo Sepolcro', sub: 'Volo e lacrime spettrali', icon: 'cross', col: '#f0d27a', pools: 'txa', fn: p => { p.flags.flight = true; p.flags.spectral = true; }},
   {id: 'ali', name: 'Ali di piccione', sub: 'Volo', icon: 'wings', col: '#c7ccd4', pools: 'tbx', fn: p => { p.flags.flight = true; p.speed += 0.1; }},
   {id: 'piccione', name: 'Piccione di piazza', sub: 'Ti gira intorno e ti protegge', icon: 'bird', col: '#8d96a3', pools: 'tsx', fn: p => { p.orbitals.push({kind: 'piccione', a: rnd() * 7}); }},
-  {id: 'gatto', name: 'Gatto del Borgo', sub: 'Spara con te', icon: 'cat', col: '#e09a3a', pools: 'tsx', fn: p => { p.pets.push({kind: 'gatto', x: p.x, y: p.y, cd: 0}); }},
+  {id: 'gatto', name: 'Pistacchio', sub: 'Spara con te', icon: 'dog', col: '#d8b07a', pools: 'tsx', fn: p => { p.pets.push({kind: 'gatto', x: p.x, y: p.y, cd: 0}); }},
   {id: 'zanzara', name: 'Zanzara amica', sub: 'Ronza e punge', icon: 'fly', col: '#3a3a3a', pools: 'tsx', fn: p => { p.orbitals.push({kind: 'zanzara', a: rnd() * 7}); }},
   {id: 'rosario', name: 'Rosario della nonna', sub: 'Fede e lacrime in su', icon: 'rosary', col: '#d6c9b0', pools: 'tbsxa', fn: p => { p.soul += 4; p.delay -= 0.7; }},
   {id: 'portafoglio', name: 'Portafoglio smarrito', sub: '25 monete', icon: 'wallet', col: '#6b4a2a', pools: 'tx', fn: p => { p.coins = Math.min(99, p.coins + 25); }},
@@ -761,7 +767,7 @@ const ITEMS = [
   {id: 'colomba', name: 'Colomba della Pace', sub: 'Volo e lacrime spettrali', icon: 'dove', col: '#f4f4f4', pools: 'a', fn: p => { p.flags.flight = true; p.flags.spectral = true; p.soul += 2; }},
   {id: 'ragno', name: 'Ragno della cantina', sub: 'Quattro lacrime', icon: 'spider', col: '#2a2a2e', pools: 'tx', fn: p => { p.flags.quad = true; p.delay += 4; }},
   {id: 'calamita', name: 'Calamita', sub: 'Attira i raccoglibili', icon: 'magnet', col: '#d2202a', pools: 'ts', fn: p => { p.flags.magnet = true; }},
-  {id: 'cioccolata', name: 'Cioccolata calda', sub: 'Lacrime da caricare', icon: 'cup', col: '#4a2a14', pools: 'ts', fn: p => { p.flags.charge = true; }},
+  {id: 'cioccolata', name: 'Cioccococco', sub: 'Lacrime da caricare', icon: 'cup', col: '#4a2a14', pools: 'ts', fn: p => { p.flags.charge = true; }},
   {id: 'funghi', name: 'Funghi del bosco', sub: 'Lacrime velenose', icon: 'mushroom', col: '#b3121b', pools: 'tsx', fn: p => { p.flags.poison = true; p.dmg += 0.3; }},
   {id: 'specchio', name: 'Specchio rotto', sub: 'Sparano anche dietro', icon: 'mirror', col: '#9fd3ff', pools: 'tsx', fn: p => { p.flags.back = true; }},
   {id: 'pianetino', name: 'Pianetino', sub: 'Lacrime in orbita', icon: 'planet', col: '#7a9ad6', pools: 'tx', fn: p => { p.flags.orbit = true; p.dmg += 0.5; }},
@@ -800,10 +806,10 @@ const PILLS = [
 
 /* ---------- floors ---------- */
 const FLOORS = [
-  {name: 'Cantine di Via XX Settembre', floor: '#4a3628', alt: '#523b2c', wall: '#2b1d16', brick: '#5e3526', pools: ['zanzara', 'incappucciato', 'hippie', 'piccione', 'topo', 'ragnetto', 'vespa', 'ubriaco', 'gattonero'], bosses: ['balestriere', 'mattarellone', 'retopi', 'fantasma']},
-  {name: 'Sotterranei della Fortezza', floor: '#3b3a36', alt: '#43413c', wall: '#22211d', brick: '#57544c', pools: ['incappucciato', 'vigile', 'comunista', 'piccione', 'pipistrello', 'scheletro', 'bombarda', 'tamburino', 'sbandieratore', 'topo'], bosses: ['capohippie', 'sbandierone', 'fattucchiera', 'balestriere', 'fantasma', 'mattarellone']},
-  {name: 'Fabbrica Buitoni', floor: '#3a464d', alt: '#414f57', wall: '#1f272b', brick: '#66767d', pools: ['zombie', 'raviolone', 'comunista', 'vigile', 'tortellino', 'operaio', 'pomodoro', 'muletto', 'spaghetto', 'vespa'], bosses: ['mattarellone', 'mostro', 'raviolissimo', 'torchio', 'campanaro', 'capohippie']},
-  {name: 'Diga di Montedoglio', floor: '#2c3d38', alt: '#33463f', wall: '#1a2623', brick: '#4f5e58', pools: ['zombie', 'vigile', 'soldato', 'anguilla', 'rana', 'spirito', 'nutria', 'pescatore', 'scheletro', 'muletto'], bosses: ['mostro', 'biscia', 'guardiano', 'campanaro', 'torchio'], bosses2: ['piero']},
+  {name: 'Cantine di Via XX Settembre', floor: '#4a3628', alt: '#523b2c', wall: '#2b1d16', brick: '#5e3526', pools: ['zanzara', 'incappucciato', 'hippie', 'piccione', 'topo', 'ragnetto', 'vespa', 'ubriaco', 'gattonero'], bosses: ['balestriere', 'mattarellone', 'retopi', 'fantasma', 'erika']},
+  {name: 'Sotterranei della Fortezza', floor: '#3b3a36', alt: '#43413c', wall: '#22211d', brick: '#57544c', pools: ['incappucciato', 'vigile', 'comunista', 'piccione', 'pipistrello', 'scheletro', 'bombarda', 'tamburino', 'sbandieratore', 'topo'], bosses: ['capohippie', 'sbandierone', 'fattucchiera', 'balestriere', 'fantasma', 'mattarellone', 'erika', 'suzuki']},
+  {name: 'Fabbrica Buitoni', floor: '#3a464d', alt: '#414f57', wall: '#1f272b', brick: '#66767d', pools: ['zombie', 'raviolone', 'comunista', 'vigile', 'tortellino', 'operaio', 'pomodoro', 'muletto', 'spaghetto', 'vespa'], bosses: ['mattarellone', 'mostro', 'raviolissimo', 'torchio', 'campanaro', 'capohippie', 'suzuki', 'arcangelo']},
+  {name: 'Diga di Montedoglio', floor: '#2c3d38', alt: '#33463f', wall: '#1a2623', brick: '#4f5e58', pools: ['zombie', 'vigile', 'soldato', 'anguilla', 'rana', 'spirito', 'nutria', 'pescatore', 'scheletro', 'muletto'], bosses: ['mostro', 'biscia', 'guardiano', 'campanaro', 'torchio', 'arcangelo'], bosses2: ['piero']},
 ];
 // two floors per chapter, like Basement I and II: eight floors in all
 const MAX_DEPTH = FLOORS.length * 2;
@@ -1605,6 +1611,14 @@ function useActive() {
       for (let i = 0; i < 12; i++) { const aa = i / 12 * Math.PI * 2; G.tears.push({x: p.x, y: p.y, vx: Math.cos(aa) * 5, vy: Math.sin(aa) * 5, r: 8, life: 40, max: 40, from: 'p', dmg: dmgOf(p) * 1.5, kind: 'fuoco', hits: new Set(), bounces: 0, burn: true, spectral: true, pierce: true, spin: 0}); }
       break;
     case 'dado': rerollRoom(); break;
+    case 'apax': // the access point jams them all: every shot in the air goes out, and new ones for four seconds
+      for (const t of G.tears) if (t.from === 'e') burst(t.x, t.y, '#9fe3ff', 3, 1.2);
+      G.tears = G.tears.filter(t => t.from !== 'e'); p.fx.apax = 240; G.fx.push({kind: 'shock', x: p.x, y: p.y, r: 220, life: 30, max: 30});
+      Snd.tone(2400, 0.08, 'square', 0.05); Snd.tone(1800, 0.12, 'square', 0.05, null, 0.08); Snd.tone(3000, 0.2, 'sine', 0.04, null, 0.16); break;
+    case 'shofar': // the ram's horn: everyone in the room is hurt and stunned
+      Snd.tone(233, 1.1, 'sawtooth', 0.12, 220); Snd.tone(349, 0.9, 'sawtooth', 0.08, 360, 0.5); G.shake = 6;
+      G.fx.push({kind: 'shock', x: p.x, y: p.y, r: 300, life: 40, max: 40});
+      for (const e of live()) { damageEnemy(e, 15, 0, 0, true); e.slow = Math.max(e.slow || 0, e.boss ? 90 : 210); e.conf = Math.max(e.conf || 0, e.boss ? 40 : 120); } break;
     case 'moto': p.fx.moto = 300; Snd.tone(90, 0.8, 'sawtooth', 0.15, 260); Snd.noise(0.6, 0.12, 700); break;
     case 'canna': { // one long drag: every enemy in the room is dazed for a while, and you shoot more calmly and more often
       for (const e of live()) e.conf = e.boss ? 100 : 260;
@@ -1779,7 +1793,8 @@ function update() {
   if (G.slow > 0) G.slow--;
   if (G.shake > 0) G.shake *= 0.85;
   // timers
-  for (const k of ['raffica', 'campari', 'turbo', 'fire', 'moto', 'sprint', 'relax']) if (p.fx[k] > 0) p.fx[k]--;
+  for (const k of ['raffica', 'campari', 'turbo', 'fire', 'moto', 'sprint', 'relax', 'apax']) if (p.fx[k] > 0) p.fx[k]--;
+  if (p.fx.apax > 0 && G.tears.some(t => t.from === 'e')) { for (const t of G.tears) if (t.from === 'e') burst(t.x, t.y, '#9fe3ff', 2, 1); G.tears = G.tears.filter(t => t.from !== 'e'); } // the jammer is on
   if (p.flags.smoke) smokeTrail(p);
   trackRun(p);
   if (p.inv > 0) p.inv--;
@@ -1949,7 +1964,10 @@ function updateTears() {
           if (!t.pierce && !t.boom) { t.life = 0; break; }
         }
       }
-    } else if (Math.hypot(p.x - t.x, p.y - 4 - t.y) < p.r * 0.75 + t.r - 1 && !p.dead) { hurtPlayer(hit2(), 'una lacrima nemica'); t.life = 0; }
+    } else if (Math.hypot(p.x - t.x, p.y - 4 - t.y) < p.r * 0.75 + t.r - 1 && !p.dead) {
+      if (p.flags.brolly && !G.room.brolly && !p.inv) { G.room.brolly = true; t.life = 0; burst(t.x, t.y, '#9fd3e8', 8, 2); Snd.thud(); G.banner = {title: 'Ombrello!', sub: '', t: 50, small: true}; } // Gabbo's umbrella
+      else { hurtPlayer(hit2(), 'una lacrima nemica'); t.life = 0; }
+    }
     if (t.life <= 0 && !t.caught) splashTear(t);
   }
   for (const t of G.tears) if (t.life <= 0 && t.explode && !t.done) { // explosive tears pass their poison, fire or ice to the blast
@@ -2176,6 +2194,7 @@ function drawPill(c, x, y, ci, s) {
   c.restore();
 }
 function drawIcon(c, icon, col, x, y, s) {
+  if (!ICON_RAW) { drawPixIcon(c, icon, col, x, y, s); return; } // in pixels, like everything else
   const k = s / 30;
   c.save(); c.translate(x, y); c.scale(k, k); c.lineCap = 'round'; c.lineJoin = 'round';
   const dark = shade(col, -0.45), light = shade(col, 0.35);
@@ -2523,6 +2542,7 @@ function drawTear(c, t) {
     case 'bullone': c.rotate(t.spin || 0); c.fillStyle = shade(col, -0.35); c.beginPath(); for (let i = 0; i < 6; i++) c.lineTo(Math.cos(i * Math.PI / 3) * r, Math.sin(i * Math.PI / 3) * r); c.fill(); c.fillStyle = col; c.beginPath(); for (let i = 0; i < 6; i++) c.lineTo(Math.cos(i * Math.PI / 3) * (r - 1.3), Math.sin(i * Math.PI / 3) * (r - 1.3)); c.fill(); circ(c, 0, 0, r * 0.38, '#2a2a30'); break;
     case 'santa': c.globalCompositeOperation = 'lighter'; circ(c, 0, 0, r * 1.4, 'rgba(255,240,190,.35)'); circ(c, 0, 0, r, '#fff6d8'); break;
     case 'fuoco': c.globalCompositeOperation = 'lighter'; circ(c, 0, 0, r * 1.3, 'rgba(255,122,26,.4)'); circ(c, 0, 0, r * 0.8, '#ffd34a'); break;
+    case 'pioggia': c.rotate(Math.atan2(t.vy, t.vx) - Math.PI / 2); ell(c, 0, 0, r * 0.8, r, '#7aa8c8'); ell(c, 0, -r * 0.2, r * 0.6, r * 0.75, '#b8dcf0'); circ(c, -r * 0.25, -r * 0.35, r * 0.22, 'rgba(255,255,255,.8)'); break; // London rain
     case 'nera': circ(c, 0, 0, r, '#efe3cf'); circ(c, 0, 0, r - 1.5, col); circ(c, -r * 0.35, -r * 0.35, r * 0.28, 'rgba(255,255,255,.75)'); break;
     default: circ(c, 0, 0, r, shade(col, -0.35)); circ(c, 0, 0, r - 1.3, col); circ(c, -r * 0.35, -r * 0.35, r * 0.3, 'rgba(255,255,255,.7)');
   }
@@ -2575,7 +2595,7 @@ function drawLive(c) {
   for (const b of G.bombs) { const s = 1 + (b.t < 30 && b.t % 6 < 3 ? 0.15 : 0); c.save(); c.translate(b.x, b.y); c.scale(s, s); ell(c, 0, 9, 10, 3, 'rgba(0,0,0,.35)'); drawIcon(c, 'bomb', '#222', 0, 0, 26); if (b.t % 8 < 4) circ(c, 6, -11, 3, '#ffef9a'); c.restore(); }
   // y-sorted bodies
   const list = G.enemies.map(e => ({y: e.y, f: () => drawEnemy(c, e)}));
-  for (const pet of p.pets) list.push({y: pet.y, f: () => outlined(c, pet.x, pet.y, 22, cc => pet.kind === 'angelo' ? drawIcon(cc, 'angel', '#f4f0e0', pet.x, pet.y - 8 + Math.sin(G.tick * 0.1) * 3, 24) : pet.kind === 'drone' ? drawIcon(cc, 'drone', '#e07a1e', pet.x, pet.y - 14 + Math.sin(G.tick * 0.15) * 2, 22) : drawIcon(cc, 'cat', '#e09a3a', pet.x, pet.y, 22))});
+  for (const pet of p.pets) list.push({y: pet.y, f: () => outlined(c, pet.x, pet.y, 22, cc => pet.kind === 'angelo' ? drawIcon(cc, 'angel', '#f4f0e0', pet.x, pet.y - 8 + Math.sin(G.tick * 0.1) * 3, 24) : pet.kind === 'drone' ? drawIcon(cc, 'drone', '#e07a1e', pet.x, pet.y - 14 + Math.sin(G.tick * 0.15) * 2, 22) : drawIcon(cc, 'dog', '#d8b07a', pet.x, pet.y, 22))});
   if (!p.dead || G.deathT > 0) list.push({y: p.y, f: () => drawPlayer(c)});
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   for (const o of p.orbitals) outlined(c, o.x || p.x, o.y || p.y, 16, cc => drawIcon(cc, o.kind === 'piccione' ? 'bird' : 'fly', o.kind === 'piccione' ? '#8d96a3' : '#3a3a3a', o.x || p.x, o.y || p.y, 18));
@@ -2694,7 +2714,7 @@ function drawHUD(c) {
     let kind, fill;
     if (i < nRed) { const f = clamp(p.red - i * 2, 0, 2); kind = f ? 'red' : 'empty'; fill = f === 1 ? 1 : 0; }
     else { const soul = i < nRed + nSoul, si = soul ? i - nRed : i - nRed - nSoul, f = clamp((soul ? p.soul : p.black) - si * 2, 0, 2); kind = soul ? 'soul' : 'black'; fill = f === 1 ? 1 : 0; }
-    if (i >= total - p.gold) c.drawImage(heartPix('gold', 0), hxx - z, hy - z, 13 * z, 12 * z); // the golden rim behind
+    { const end = nRed || total; if (p.gold > 0 && i < end && i >= end - p.gold && kind !== 'empty') kind = 'gold'; } // gold hearts take the place of the rightmost red ones, like Isaac's
     c.drawImage(heartPix(kind, fill), hxx, hy, 11 * z, 10 * z);
     if (p.eternal && i === nRed - 1) { c.fillStyle = '#f4f4f4'; c.fillRect(hxx + 3 * z, hy + 3 * z, 3 * z, 3 * z); }
   }
@@ -3095,6 +3115,10 @@ function drawChest(c, x, y, col, dark, open, lock) {
   else if (!open) { c.fillStyle = '#c9cdd2'; c.fillRect(x - 2, y - 4, 4, 5); }
 }
 function drawCardIcon(c, cd, x, y, s) {
+  { const sp = cardPixSpr(cd), m = c.getTransform(); c.save(); c.imageSmoothingEnabled = false; // in pixels
+    if (isPix(c)) blit(c, sp, x, y, 0.5, 0.5, Math.max(1, Math.round(s)));
+    else { const px = Math.max(1, Math.round(s * m.a * 22 / 20)), w = 16 * px, h = 20 * px; c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(sp, Math.round(m.a * x + m.e - w / 2), Math.round(m.d * y + m.f - h / 2), w, h); }
+    c.restore(); return; }
   c.save(); c.translate(x, y); c.scale(s, s); c.rotate(-0.15);
   if (cd.rune) {
     ell(c, 0, 0, 9, 11, '#8a8f96'); ell(c, -2, -3, 5, 4, 'rgba(255,255,255,.2)');
@@ -3357,6 +3381,7 @@ const ENDINGS = {
   manfro: 'Manfro monta in moto e sparisce verso la E45 gridando «Banzai!». Il riso avanzato lo offre ai piccioni.',
   maiga: 'Maiga chiude il portatile, si accende l\'ultima canna e stappa una birra. Il bug più grosso del Borgo è stato risolto.',
   faif: 'Faif stappa una birra, si liscia i baffi e alza il trofeo come una coppa. Il Borgo canta il suo nome.',
+  gabbo: 'Gabbo prende l\'ultimo volo per Londra. Sotto la pioggia apre l\'ombrello, suona lo shofar una volta sola e sorride: la strada è ancora lunga, ma il primo passo l\'ha fatto.',
 };
 
 /* ---------- unlock tracking during a run ---------- */
@@ -4045,6 +4070,7 @@ function drawSpecialTear(c, t) { // thrown things
   ell(c, 0, 8, 6, 2.5, 'rgba(0,0,0,.3)');
   c.translate(0, -z);
   if (t.lk === 'fiasco') { c.rotate(G.tick * 0.3); drawIcon(c, 'flask', '#7a1a2e', 0, 0, 16); }
+  else if (t.lk === 'bicchiere') { c.rotate(G.tick * 0.3); drawIcon(c, 'glass', '#cfe8f0', 0, 0, 18); }
   else if (t.lk === 'chiave') { c.rotate(G.tick * 0.35); drawIcon(c, 'wrench', '#9aa3ad', 0, 0, 16); }
   else if (t.lk === 'bandiera') { c.rotate(t.spin || 0); c.strokeStyle = '#6b4a2a'; c.lineWidth = 2; c.beginPath(); c.moveTo(-10, 0); c.lineTo(10, 0); c.stroke(); c.fillStyle = '#e8b64a'; c.fillRect(-2, -8, 10, 8); c.fillStyle = '#1d4fa3'; c.fillRect(-2, 0, 10, 8); }
   else { circ(c, 0, 0, t.r, shade(t.col, -0.4)); circ(c, 0, 0, t.r - 1.5, t.col); }
@@ -4416,7 +4442,7 @@ function heroSpr(ch, face = 's', step = 0, o = {}) {
     PR(x, cx - 4, 24 + ly[0], 3, 3, ch.pants); PR(x, cx + 1, 24 + ly[1], 3, 3, ch.pants);
     // the body
     const shirt = ch.shirtless ? ch.skin : ch.shirt;
-    PE(x, cx, 21.5, ch.muscle ? 6 : 5, 4, shirt, shade(shirt, -.35));
+    PE(x, cx, 21.5, ch.muscle ? 6 : ch.thin ? 4 : 5, 4, shirt, shade(shirt, -.35));
     if (ch.shirtless) PR(x, cx - 4, 22, 9, 3, ch.pants);
     if (ch.shirt2) PR(x, cx - 1, 18, 2, 7, ch.shirt2);
     if (ch.tie) { PR(x, cx - 1, 18, 2, 5, '#8e1b3c'); PR(x, cx - 2, 18, 4, 1, '#f4f4f4'); }
@@ -4424,7 +4450,7 @@ function heroSpr(ch, face = 's', step = 0, o = {}) {
     if (ch.toolbelt) { PR(x, cx - 5, 22, 10, 1, '#5a3a1e'); PR(x, cx + 3, 23, 1, 2, '#9aa3ad'); }
     if (ch.robot) PR(x, cx - 2, 20, 4, 2, '#22c3d6');
     const arm = ch.muscle ? 2.2 : 1.6;
-    PE(x, cx - (ch.muscle ? 6 : 5), 21 - (ly[0] ? 0.5 : 0), arm, 2.2, ch.skin === shirt ? ch.skin : ch.skin, skinD); PE(x, cx + (ch.muscle ? 6 : 5), 21, arm, 2.2, ch.skin, skinD);
+    PE(x, cx - (ch.muscle ? 6 : ch.thin ? 4 : 5), 21 - (ly[0] ? 0.5 : 0), arm, 2.2, ch.skin === shirt ? ch.skin : ch.skin, skinD); PE(x, cx + (ch.muscle ? 6 : ch.thin ? 4 : 5), 21, arm, 2.2, ch.skin, skinD);
     wear('body');
     // hair that falls behind the head
     if (ch.style === 'long' && face !== 'n') { PE(x, cx, 11, 10, 9, hc.c); PR(x, cx - 10, 11, 4, 10, hc.c); PR(x, cx + 6, 11, 4, 10, hc.c); }
@@ -5539,6 +5565,226 @@ function drawPixEnemy(c, e, flip, t) { // returns false to fall back to the old 
   c.restore();
   return true;
 }
+/* ================= the item icons in pixels ================= */
+// Every icon is still described once, as a drawing; here it is turned into a sprite at the heroes' pixel size:
+// drawn big, read back a block at a time (the colour most of the block has), rounded with a light rim on the
+// upper left and a dark one on the lower right, then outlined like the characters. Icons redrawn by hand
+// pixel by pixel (PIXICON_HAND) take the place of the converted ones.
+let ICON_RAW = false;
+const ICON_N = 20, PIXICON_HAND = {};
+function iconPixSpr(icon, col) {
+  return spr('ic' + icon + col, () => {
+    const N = ICON_N, R = 8, [big, bx] = mkc(N * R, N * R);
+    if (PIXICON_HAND[icon]) { const [cv, x] = mkc(N + 2, N + 2); PIXICON_HAND[icon](x, col); return pixOutline(iconShade(cv)); }
+    ICON_RAW = true; try { drawIcon(bx, icon, col, N * R / 2, N * R / 2, N * R * 0.92); } finally { ICON_RAW = false; }
+    const src = bx.getImageData(0, 0, N * R, N * R).data, [cv, x] = mkc(N + 2, N + 2), img = x.createImageData(N + 2, N + 2), a = img.data;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const bins = new Map(); let solid = 0;
+      for (let y = 0; y < R; y++) for (let X = 0; X < R; X++) {
+        const k = ((j * R + y) * N * R + i * R + X) * 4; if (src[k + 3] < 128) continue; solid++;
+        const q = (src[k] >> 4) << 8 | (src[k + 1] >> 4) << 4 | src[k + 2] >> 4, b = bins.get(q) || [0, 0, 0, 0];
+        b[0] += src[k]; b[1] += src[k + 1]; b[2] += src[k + 2]; b[3]++; bins.set(q, b);
+      }
+      if (solid < R * R * 0.42) continue;
+      let best = null; for (const b of bins.values()) if (!best || b[3] > best[3]) best = b;
+      const o = ((j + 1) * (N + 2) + i + 1) * 4; a[o] = best[0] / best[3]; a[o + 1] = best[1] / best[3]; a[o + 2] = best[2] / best[3]; a[o + 3] = 255;
+    }
+    x.putImageData(img, 0, 0);
+    return pixOutline(iconShade(cv));
+  });
+}
+function iconShade(cv) { // a light rim where the shape faces the upper left, a dark one where it faces the lower right
+  const x = cv.getContext('2d'), W = cv.width, H = cv.height, d = x.getImageData(0, 0, W, H), a = d.data, src = new Uint8ClampedArray(a);
+  const out = (X, Y) => X < 0 || Y < 0 || X >= W || Y >= H || src[(Y * W + X) * 4 + 3] < 128;
+  for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) {
+    const i = (Y * W + X) * 4; if (src[i + 3] < 128) continue;
+    const k = out(X + 1, Y + 1) || out(X, Y + 1) || out(X + 1, Y) ? 0.72 : out(X - 1, Y - 1) || out(X, Y - 1) || out(X - 1, Y) ? 1.18 : 1;
+    if (k !== 1) for (let c = 0; c < 3; c++) a[i + c] = Math.min(255, src[i + c] * k + (k > 1 ? 10 : 0));
+  }
+  x.putImageData(d, 0, 0); return cv;
+}
+function drawPixIcon(c, icon, col, x, y, s) {
+  const sp = iconPixSpr(icon, col), m = c.getTransform();
+  c.save(); c.imageSmoothingEnabled = false;
+  if (m.b || m.c) { const w = s * (ICON_N + 2) / (ICON_N * 0.92); c.drawImage(sp, x - w / 2, y - w / 2, w, w); } // turned: just draw it turned
+  else if (isPix(c)) blit(c, sp, x, y, 0.5, 0.5, Math.max(1, Math.round(s / 30))); // on the room's canvases: the heroes' pixel size
+  else { // menus and the HUD: whole screen pixels per sprite pixel
+    const px = Math.max(1, Math.round(s * m.a / ICON_N)), w = (ICON_N + 2) * px;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(sp, Math.round(m.a * x + m.e - w / 2), Math.round(m.d * y + m.f - w / 2), w, w);
+  }
+  c.restore();
+}
+// the few whose thin lines don't survive the conversion, drawn by hand on the 22×22 canvas
+Object.assign(PIXICON_HAND, {
+  meat(x, col) { PE(x, 9, 12, 7.5, 6, col, shade(col, -0.35), shade(col, 0.3)); PE(x, 7, 10, 3, 1.6, shade(col, 0.45)); PR(x, 14, 9, 5, 3, '#f4ead6'); PE(x, 19, 8, 1.8, 1.8, '#f4ead6'); PE(x, 19.5, 12, 1.8, 1.8, '#f4ead6'); PR(x, 14, 11, 5, 1, '#c8bca0'); },
+  crossbow(x) { for (let i = -8; i <= 8; i++) PR(x, 11 + i, 6 + Math.round((i / 8) ** 2 * 4), 1, 2, '#6b4a2a'); PR(x, 3, 10, 17, 1, '#d8d0c0'); PR(x, 10, 5, 2, 15, '#8a6a4a'); PR(x, 10, 5, 1, 15, '#a8885a'); PR(x, 11, 1, 1, 9, '#c9cdd2'); PR(x, 10, 1, 3, 1, '#e8eef4'); PR(x, 9, 17, 4, 3, '#5a3a20'); },
+  rosary(x, col) { for (let a = 0; a < 6.28; a += 0.5) PE(x, 11 + Math.cos(a) * 6.5, 8 + Math.sin(a) * 5.5, 1.2, 1.2, col, shade(col, -0.35)); PR(x, 10, 13, 2, 3, col); PR(x, 10, 15, 2, 6, '#e8b64a'); PR(x, 8, 17, 6, 2, '#e8b64a'); PR(x, 10, 15, 1, 6, '#fff0a0'); },
+  fork(x, col) { PR(x, 10, 11, 2, 10, col); PR(x, 10, 11, 1, 10, shade(col, 0.3)); PR(x, 7, 8, 8, 3, col); for (const t of [7, 9, 12, 14]) PR(x, t, 1, 1, 8, col); PR(x, 7, 10, 8, 1, shade(col, -0.3)); },
+});
+// the cards: a little tarot with its number in pixel letters, or a rune stone
+const ROMAN_PX = {I: ['#', '#', '#', '#', '#'], V: ['#.#', '#.#', '#.#', '#.#', '.#.'], X: ['#.#', '#.#', '.#.', '#.#', '#.#']};
+function cardPixSpr(cd) {
+  return spr('card' + cd.id, () => {
+    const [cv, x] = mkc(16, 20);
+    if (cd.rune) { PE(x, 8, 10, 6, 7.5, '#8a8f96', '#5a5f66', '#c0c4ca'); PR(x, 6, 6, 1, 9, '#2a3a5a'); PR(x, 10, 6, 1, 9, '#2a3a5a'); PR(x, 7, 9, 1, 1, '#2a3a5a'); PR(x, 8, 10, 1, 1, '#2a3a5a'); PR(x, 9, 11, 1, 1, '#2a3a5a'); }
+    else {
+      PR(x, 1, 1, 14, 18, '#efe3cf'); PR(x, 1, 1, 14, 1, '#fff6e4'); PR(x, 14, 1, 1, 18, '#c8b898'); PR(x, 1, 18, 14, 1, '#c8b898');
+      PR(x, 3, 3, 10, 8, '#b3121b'); PR(x, 3, 3, 10, 1, '#d83a3a'); PE(x, 8, 7, 2.4, 2.4, '#e8b64a', '#c9952a', '#fff0a0');
+      let w = 0; const n = cd.n || ''; for (const ch of n) w += (ROMAN_PX[ch] || ['']) [0].length + 1; w -= 1;
+      let px = 8 - Math.floor(w / 2); for (const ch of n) { const g = ROMAN_PX[ch]; if (!g) continue; g.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] === '#') PR(x, px + i, 12 + j, 1, 1, '#2a1d14'); }); px += g[0].length + 1; }
+    }
+    return pixOutline(cv);
+  });
+}
+// new icons, drawn straight in pixels
+Object.assign(PIXICON_HAND, {
+  dog(x, col) { // Pistacchio: a little dog, ears down, tongue out
+    const d = shade(col, -0.35), l = shade(col, 0.25);
+    PE(x, 9, 15, 6.5, 4, col, d, l); PR(x, 4, 17, 2, 4, col); PR(x, 8, 18, 2, 3, col); PR(x, 12, 18, 2, 3, col); PR(x, 15, 17, 2, 4, d); // body and legs
+    PR(x, 2, 11, 2, 3, col); PR(x, 1, 10, 2, 2, col); // tail up
+    PE(x, 15, 9, 4.5, 4, col, d, l); PE(x, 18.5, 11, 2.4, 1.8, l); PR(x, 20, 10, 1, 1, '#1a1010'); // head and snout
+    PE(x, 12, 9, 1.6, 3.2, d); PR(x, 15, 8, 1, 2, '#1a1010'); PR(x, 15, 8, 1, 1, '#ffffff'); PR(x, 19, 12, 1, 3, '#e05a6a'); // ear, eye, tongue
+    PR(x, 12, 13, 5, 1, '#3a6aa8'); PR(x, 14, 14, 1, 1, '#e8b64a'); // collar and tag
+  },
+  router(x) { // a Mikrotik access point: white box, antennas, green lights
+    PR(x, 3, 11, 16, 7, '#e8eaee'); PR(x, 3, 11, 16, 1, '#ffffff'); PR(x, 3, 17, 16, 1, '#a8acb4'); PR(x, 18, 11, 1, 7, '#c8ccd4');
+    PR(x, 5, 3, 1, 8, '#3a3a42'); PR(x, 16, 3, 1, 8, '#3a3a42'); PE(x, 5.5, 3, 1, 1, '#3a3a42'); PE(x, 16.5, 3, 1, 1, '#3a3a42');
+    for (const lx of [6, 9, 12]) PR(x, lx, 14, 2, 1, '#25d366'); PR(x, 15, 14, 2, 1, '#f5c400');
+    PR(x, 9, 7, 4, 1, '#22c3d6'); PR(x, 8, 5, 6, 1, '#22c3d6'); PR(x, 10, 9, 2, 1, '#22c3d6'); // the wifi waves
+  },
+  horn(x, col) { // a shofar: a curling ram's horn
+    const d = shade(col, -0.35), l = shade(col, 0.3);
+    for (let i = 0; i <= 14; i++) { const t = i / 14, w = 1 + Math.round(t * 3), px = 3 + i, py = 15 - Math.round(Math.sin(t * Math.PI * 0.9) * 8) + Math.round(t * t * 2); PR(x, px, py - w, 1, w * 2, i % 3 ? col : d); PR(x, px, py - w, 1, 1, l); }
+    PE(x, 18, 11, 2.2, 4, '#2a1a10'); // the open bell
+  },
+});
+PIXICON_HAND.glass = x => { // a bar tumbler, a finger of something in it
+  PR(x, 6, 4, 10, 15, '#cfe8f0'); PR(x, 7, 18, 8, 1, '#a8c8d8'); PR(x, 6, 4, 1, 15, '#ffffff'); PR(x, 15, 4, 1, 15, '#8ab0c0');
+  PR(x, 7, 12, 8, 6, '#e8a83a'); PR(x, 7, 12, 8, 1, '#fff0c0'); PR(x, 8, 6, 1, 4, '#ffffff');
+};
+/* ================= three more bosses: a wrecked Suzuki, Erika at the bar, and Arcangelo risen ================= */
+
+// the green Suzuki: revs, then charges in a straight line; hitting a wall it sheds a ring of loose parts
+beast('suzuki', {name: 'la Suzuki verde', short: 'Suzuki verde', hp: 200, r: 26, boss: true, col: '#3a8a4a'},
+  (e, dx, dy, d, k, half) => {
+    if (e.st === 'rev') { // the engine screams, smoke out of the back
+      e.vx *= 0.8; e.vy *= 0.8; e.shakeX = (G.tick % 4 < 2 ? 1 : -1);
+      if (G.tick % 5 === 0) G.fx.push({kind: 'smoke', x: e.x - Math.sign(dx || 1) * 26, y: e.y + 8, vx: -Math.sign(dx || 1) * 0.6, vy: -0.4, life: 40, max: 40, size: rr(8, 14)});
+      if (--e.st2 <= 0) { e.st = 'charge'; e.cdir = [dx / (d || 1), dy / (d || 1)]; e.st2 = 80; e.shakeX = 0; Snd.tone(90, 0.6, 'sawtooth', 0.12, 300); }
+      return;
+    }
+    if (e.st === 'charge') {
+      const sp = (half ? 6 : 5) * k; e.vx = e.cdir[0] * sp; e.vy = e.cdir[1] * sp;
+      if (e.t % 4 === 0) G.fx.push({kind: 'smoke', x: e.x - e.cdir[0] * 26, y: e.y + 8, vx: 0, vy: -0.3, life: 30, max: 30, size: rr(6, 10)});
+      if (e.bonk || --e.st2 <= 0) {
+        const hit = e.bonk; e.bonk = false; e.st = 'stun'; e.st2 = hit ? 50 : 18; e.vx = e.vy = 0; e.left = (e.left || 1) - 1;
+        if (hit) { ring(e, half ? 14 : 10, 2.6, rnd(), '#9aa3ad'); G.shake = 14; Snd.boom(); burst(e.x, e.y, '#3a8a4a', 12, 3); }
+      }
+      return;
+    }
+    if (e.st === 'stun') { e.vx *= 0.8; e.vy *= 0.8; if (--e.st2 <= 0) { if (e.left > 0) { e.st = 'rev'; e.st2 = 22; } else { e.st = 'idle'; e.cd = 60; } } return; }
+    const [fx, fy] = flowDir(e); e.vx = lerp(e.vx, fx * 0.6 * k, 0.08); e.vy = lerp(e.vy, fy * 0.6 * k, 0.08);
+    if (e.cd > 0) return;
+    e.phase++;
+    if (e.phase % 2) { e.st = 'rev'; e.st2 = 45; e.left = half ? 3 : 1; Snd.tone(70, 0.8, 'sawtooth', 0.1, 140); }
+    else { Snd.tone(440, 0.25, 'square', 0.08); Snd.tone(554, 0.25, 'square', 0.06, null, 0.05); aimAt(e, 3.2, 0.22, half ? 7 : 5, '#9aa3ad'); e.cd = 70; } // the horn, and a spray of bolts
+  }, () => {});
+
+// Erika: keeps her distance behind the bar and throws glasses that burst into shards
+beast('erika', {name: 'Erika', short: 'Erika', hp: 150, r: 22, boss: true, col: '#f07a1a'},
+  (e, dx, dy, d, k, half) => {
+    const want = d > 200 ? 1 : d < 140 ? -1 : 0;
+    e.vx = lerp(e.vx, dx / d * want * 1.0 * k, 0.1); e.vy = lerp(e.vy, dy / d * want * 1.0 * k, 0.1);
+    if (e.throw > 0) e.throw--;
+    if (e.cd > 0) return;
+    e.phase++; e.throw = 16; const p = G.p;
+    const glass = (tx, ty) => lob(e, tx, ty, 44, 60, 'bicchiere', t => { ringAt(t.x, t.y, half ? 8 : 6, 2.4, '#cfe8f0'); Snd.noise(0.15, 0.1, 5000, 2); Snd.tone(2600, 0.08, 'triangle', 0.04); });
+    if (half && e.phase % 4 === 3) { // a beer mug slid down the floor at you
+      const a = Math.atan2(dy, dx); for (const o of [-0.12, 0, 0.12]) enemyTear(e.x, e.y, Math.cos(a + o) * 4.2, Math.sin(a + o) * 4.2, '#e8a83a', 8);
+      Snd.tone(300, 0.2, 'sine', 0.08, 120); e.cd = 70;
+    } else if (e.phase % 3 === 2) { for (const o of [-70, 0, 70]) glass(clamp(p.x + o, T + 20, RW - T - 20), p.y); e.cd = half ? 70 : 95; }
+    else { glass(p.x, p.y); e.cd = half ? 50 : 62; }
+  }, () => {});
+
+// Arcangelo 2: the bald, bearded barman risen from the dead, too fat to walk straight: he spews beer and belly-flops
+beast('arcangelo', {name: 'Arcangelo 2', short: 'Arcangelo 2', hp: 230, r: 28, boss: true, col: '#8a9a6a'},
+  (e, dx, dy, d, k, half) => {
+    if (e.st === 'jump') {
+      e.st2--; e.z = Math.sin((1 - e.st2 / 44) * Math.PI) * 70;
+      if (e.st2 <= 0) { e.z = 0; e.st = 'idle'; e.vx = e.vy = 0; e.cd = 50; ring(e, half ? 16 : 12, 2.6, rnd(), '#c8b84a'); G.shake = 14; Snd.boom(); }
+      return;
+    }
+    if (e.st === 'puke') { // a cone of beer and worse
+      e.vx *= 0.85; e.vy *= 0.85;
+      if (e.st2 % 3 === 0) { const a = Math.atan2(dy, dx) + rr(-1, 1) * (half ? 0.55 : 0.4); enemyTear(e.x, e.y + 4, Math.cos(a) * rr(2.4, 3.4), Math.sin(a) * rr(2.4, 3.4), '#c8b84a', 6); }
+      if (--e.st2 <= 0) { e.st = 'idle'; e.cd = half ? 50 : 70; }
+      return;
+    }
+    const [fx, fy] = flowDir(e); e.vx = lerp(e.vx, fx * 0.5 * k, 0.06); e.vy = lerp(e.vy, fy * 0.5 * k, 0.06);
+    if (e.cd > 0) return;
+    e.phase++;
+    if (e.phase % 3 === 0) { e.st = 'jump'; e.st2 = 44; const hs = Math.min(2.2, d / 44); e.vx = dx / d * hs * k; e.vy = dy / d * hs * k; Snd.tone(160, 0.3, 'sine', 0.1, 80); }
+    else { e.st = 'puke'; e.st2 = half ? 60 : 45; Snd.tone(110, 0.6, 'sawtooth', 0.1, 70); Snd.noise(0.5, 0.08, 600, 1, 0.1); }
+  }, () => {});
+
+/* ---------- their pictures ---------- */
+Object.assign(PIXBOSS, {
+  suzuki: f => isoCanvas(66, 48, x => { // a small green Suzuki, dented, scratched, rusty; the lights are its eyes and the grille its teeth
+    const G1 = '#3a8a4a', GD = '#24602e', GL = '#5aaa6a';
+    for (const wx of [13, 53]) { PE(x, wx, 39 + (f && wx < 30 ? 1 : 0), 7, 6.5, '#1a1a1e', '#0a0a0e', '#3a3a44'); PE(x, wx, 39, 2.6, 2.6, '#7a7e86'); } // wheels
+    PE(x, 33, 30, 29, 10, G1, GD, GL); PR(x, 5, 26, 56, 8, G1); // the body
+    drape(x, 33, 8, 25, t => 13 + t * 6, G1, {dark: GD, light: GL, fray: 0});
+    PR(x, 17, 11, 32, 11, '#9fc8d8'); PR(x, 17, 11, 32, 2, '#d8eef8'); PR(x, 18, 13, 1, 8, '#6a98a8'); // windshield
+    vein(x, [[30, 12], [27, 16], [31, 18], [26, 21]], '#f4f8fc'); vein(x, [[27, 16], [22, 14]], '#f4f8fc'); vein(x, [[31, 18], [36, 20]], '#f4f8fc'); // cracked
+    PE(x, 14, 29, 4.2, 3.4, '#fff0a0', '#e8c040', '#ffffff'); PR(x, 12, 28, 2, 2, '#ffffff'); // one light burning
+    PE(x, 52, 29, 4.2, 3.4, '#0c0808'); PR(x, 51, 28, 2, 1, '#c03020'); // the other smashed
+    PR(x, 22, 27, 22, 7, '#141414'); for (let i = 23; i < 44; i += 3) PR(x, i, 27, 2, 3 + (i % 2), '#c8ccd2'); for (let i = 24; i < 43; i += 4) PR(x, i, 32, 2, 2, '#9aa0a8'); // the grille, like teeth
+    PR(x, 6, 35, 54, 3, '#6a6e76'); PR(x, 42, 36, 16, 3, '#5a5e66'); PR(x, 56, 37, 4, 3, '#5a5e66'); // the bumper, hanging off one side
+    for (const [rx, ry, r] of [[9, 24, 2.5], [57, 22, 2], [40, 9, 1.8], [24, 36, 1.6]]) PE(x, rx, ry, r, r * 0.8, '#8a4a2a', '#5a2a14'); // rust
+    for (const [ax, ay, bx, by] of [[8, 31, 18, 33], [44, 24, 58, 26], [49, 30, 60, 28], [12, 20, 17, 23]]) vein(x, [[ax, ay], [bx, by]], '#9ad0a8'); // scratches
+    PE(x, 47, 23, 4, 2.4, GD); PE(x, 20, 33, 3, 1.6, GD); // dents
+    PR(x, 31, 3 + f, 4, 5, '#2a2a30'); PE(x, 33, 3 + f, 2.4, 1.2, '#4a4a52'); // the bent aerial stump
+    if (f) { PE(x, 2, 34, 2.4, 2, '#8a8a90'); PE(x, 1, 30, 1.8, 1.6, '#a8a8b0'); } // exhaust
+  }),
+  erika: f => isoCanvas(50, 60, x => { // Erika: fifty, hair dyed orange, tattooed arms, a glass ready to fly
+    const skin = '#e8b490', skinD = '#b8846a';
+    sinLegs(x, 17, 27, 50, 5, 8, '#1a1a22', f);
+    drape(x, 24, 30, 52, t => 8 + 3 * t, '#1a1a22', {folds: [-0.3, 0.4], fray: 0, light: '#34343e'}); // black dress
+    drape(x, 24, 37, 52, t => 6 + 2 * t, '#e8e4dc', {folds: [0], fray: 1, dark: '#b8b4ac'}); PE(x, 21, 45, 2, 1.6, '#c8902a'); PE(x, 27, 41, 1.6, 1.2, '#7a1a2e'); // apron with stains
+    // arms: one at her side, one up with the glass; tattoos all over
+    for (let k = 0; k < 6; k++) PE(x, 13 - k * 0.3, 33 + k * 2, 2.6, 2.2, skin, skinD); PR(x, 11, 35, 2, 1, '#2a5aa8'); PR(x, 12, 38, 1, 2, '#c02030'); PR(x, 11, 41, 3, 1, '#2a8a4a');
+    const up = f ? 2 : 0; for (let k = 0; k < 6; k++) PE(x, 35 + k * 1.2, 31 - k * 2.2 - up, 2.6, 2.2, skin, skinD); PR(x, 37, 27 - up, 2, 1, '#2a5aa8'); PR(x, 38, 23 - up, 1, 2, '#c02030'); PR(x, 36, 25 - up, 1, 1, '#1a1a22');
+    PR(x, 39, 13 - up, 6, 8, '#cfe8f0'); PR(x, 39, 13 - up, 6, 1, '#ffffff'); PR(x, 40, 16 - up, 4, 4, '#e8a83a'); PR(x, 40, 15 - up, 4, 1, '#fff6d8'); // the glass, half full
+    // the head: orange hair piled up, roots showing; tired eyes, a smirk
+    PE(x, 24, 15, 13, 12, '#f07a1a', '#b8500a', '#ffa040'); for (const [hx, hy] of [[12, 12], [36, 11], [15, 4], [32, 4], [24, 2]]) PE(x, hx, hy, 4.5, 4, '#f07a1a', '#b8500a');
+    PR(x, 21, 3, 6, 2, '#5a3a2a'); // grey-brown roots
+    PE(x, 24, 18, 8.5, 9, skin, skinD, '#f8d0b0');
+    for (const ex of [20, 28]) { PE(x, ex, 17, 2, 2.2, '#140808'); PR(x, ex - 1, 16, 1, 1, '#ffffff'); PR(x, ex - 2, 20, 4, 1, '#a07068'); PR(x, ex - 2, 14, 4, 1, '#7a3a1a'); }
+    PR(x, 19, 20, 1, 4 + f, '#2a1a30'); // mascara running
+    PR(x, 21, 24, 6, 1, '#a02030'); PR(x, 26, 23, 1, 1, '#a02030'); PR(x, 17, 21, 1, 1, '#c89a80'); PR(x, 30, 21, 1, 1, '#c89a80'); // red lips, a smirk; wrinkles
+    PR(x, 16, 21, 1, 3, '#e8c040'); PR(x, 32, 21, 1, 3, '#e8c040'); // big earrings
+  }),
+  arcangelo: f => isoCanvas(64, 64, x => { // Arcangelo risen: bald, a great black beard, an enormous belly, beer everywhere
+    const skin = '#a8b090', skinD = '#788062';
+    sinLegs(x, 22, 36, 55, 7, 8, '#3a3a4a', f);
+    for (let k = 0; k < 5; k++) PE(x, 12 - k * 0.5, 30 + k * 2.6, 3.6, 3, skin, skinD); // arms, behind
+    for (let k = 0; k < 5; k++) PE(x, 52 + k * 0.5, 30 + k * 2.4, 3.6, 3, skin, skinD);
+    drape(x, 32, 25, 38, t => 11 + 7 * Math.sqrt(t), '#e8e4d8', {folds: [-0.4, 0.4], fray: 2, dark: '#b8b4a4'}); // a vest too small for him
+    PE(x, 32, 45, 21 + f * 0.5, 14 - f * 0.5, skin, skinD, '#c4cca8'); // the belly, hanging out of it
+    PE(x, 32, 38, 15, 3, '#d8d4c8', '#b8b4a4'); // the vest's hem riding up
+    PE(x, 32, 47, 1.8, 1.4, '#4a5038'); vein(x, [[18, 42], [22, 46], [21, 50]], '#6a8058'); vein(x, [[44, 41], [47, 45]], '#6a8058'); // navel, veins
+    for (const [sx, sy, r] of [[26, 31, 2.4], [38, 33, 2]]) PE(x, sx, sy, r, r * 0.8, '#d8b050'); // beer stains
+    stitches(x, 40, 50, 3); PE(x, 24, 50, 2, 1.4, BLOOD);
+    PR(x, 52, 34 - f, 4, 12, '#2a6a3a'); PR(x, 53, 30 - f, 2, 4, '#2a6a3a'); PR(x, 52, 38 - f, 4, 4, '#e8e4c8'); PR(x, 53, 34 - f, 1, 10, '#4a9a5a'); // a beer bottle
+    PE(x, 32, 15, 11, 11, skin, skinD, '#c8d0b0'); PE(x, 27, 9, 4, 2, '#d0d8b8'); // the bald head, shining
+    PE(x, 32, 25, 12, 8, '#1a1410', '#0a0806', '#2e2620'); for (let k = 0; k < 7; k++) PR(x, 22 + k * 3, 30 + (k % 2), 2, 3 + (k % 3), '#1a1410'); // the beard
+    for (const ex of [27, 37]) { PE(x, ex, 15, 2.6, 3, '#0a0404'); PR(x, ex, 15, 1, 1, '#c8c050'); } bloodTear(x, 27, 18, 4 + f); // empty eyes
+    PE(x, 32, 22, 4, 2 + f, '#2a0808'); PR(x, 30, 21, 1, 1, '#e8e0b0'); PR(x, 33, 21, 1, 1, '#e8e0b0'); drool(x, 34, 24 + f, 3 + f, '#d8c870'); // mouth and dribble
+    PE(x, 32, 19, 2.4, 1.8, '#c08878'); // a red nose
+    vein(x, [[23, 10], [25, 14]], '#6a8058'); pustule(x, 40, 9, 1.4);
+    fly(x, 8, 12 + f * 2); fly(x, 56, 16 - f * 2); fly(x, 46, 4 + f);
+  }),
+});
 /* ================= profile, unlocks, achievements, collection and the cloud ================= */
 // Filled in by build.sh for the GitHub copy; empty here, so the artifact keeps everything on the device
 const FIREBASE = {projectId: 'biturgiasotterranea', apiKey: 'AIzaSyD9KcmjPkkVnEBc2wnghVJAifY5GIEqOkU'};
@@ -5575,6 +5821,7 @@ const UNLOCKS = {
   manfro: {cond: 'Dona 50 monete ai mendicanti.', test: P => P.stats.donated >= 50, v: 1},
   faif: {cond: 'Vinci una partita in modalità difficile.', test: P => P.stats.hardWins >= 1, v: 1},
   maiga: {cond: 'Prendi 15 pillole (anche in partite diverse).', test: P => (P.stats.pillsUsed || 0) >= 15, v: 1},
+  gabbo: {cond: 'Ottieni una trasformazione.', test: P => (P.stats.transforms || 0) >= 1, v: 1},
 };
 const winners = P => CHARS.filter(c => (P.stats.winsBy[c.id] || 0) > 0).length;
 // debug mode (for the author): every character is playable, and nothing played counts for progress or boards
@@ -5591,7 +5838,7 @@ const INFO = {
   pasta: 'Lacrime enormi: danno +2, ma spari più piano.', petardo: 'Le lacrime esplodono e rompono le rocce. Danno +2, cadenza molto più lenta.',
   ghiacciolo: 'I nemici colpiti rallentano per due secondi.', peperoncino: 'I nemici colpiti bruciano e perdono vita per qualche secondo.',
   reliquia: 'Voli sopra rocce, buche e spuntoni, e le lacrime passano attraverso le rocce.', ali: 'Voli sopra rocce, buche e spuntoni. Velocità +0,1.',
-  piccione: 'Un piccione ti gira intorno: blocca le lacrime nemiche e becca chi tocca.', gatto: 'Un gatto ti segue e spara nella tua stessa direzione.',
+  piccione: 'Un piccione ti gira intorno: blocca le lacrime nemiche e becca chi tocca.', gatto: 'Pistacchio, un cane, ti segue e spara nella tua stessa direzione.',
   zanzara: 'Una zanzara ti gira intorno e punge i nemici.', rosario: 'Due cuori anima e cadenza un po\' più alta.',
   portafoglio: '25 monete subito.', chiavi: '5 chiavi subito.', petardi: '5 bombe subito.', ferro: 'Fortuna +2: più premi dalle stanze.',
   mantello: 'In ogni stanza il primo colpo che prendi viene parato.', mappa: 'Vedi tutta la mappa del piano, tranne la stanza segreta.',
@@ -5623,7 +5870,7 @@ const ACT_INFO = {
   campari: 'Per sei secondi danno e velocità salgono, ma i comandi si invertono.', fagioli: 'Una nube velenosa respinge e avvelena chi ti sta vicino.',
   postbruciatore: 'Spari un anello di fuoco e per qualche secondo bruci chi ti tocca.', busta: 'Escono due premi a caso: monete, bombe, chiavi, cuori o pillole.',
   dado: 'Ogni oggetto sui piedistalli della stanza diventa un altro oggetto, preso dalla stessa riserva.', tamburello: 'Spari dieci lacrime tutte intorno a te.',
-  bibbia: 'Voli fino all\'uscita dalla stanza.', moto: 'Monti sulla moto giapponese di Manfro per cinque secondi: vai molto più veloce e travolgi i nemici che tocchi.', sprint: 'Per sei secondi corri velocissimo e spari più spesso.', canna: 'Una boccata lunga: tutti i nemici della stanza restano storditi per qualche secondo (i boss meno) e vagano senza attaccare, e per sette secondi spari più spesso.', stampante: 'La stampante 3D di Raspo crea un oggetto a caso, preso dalla stanza del tesoro, su un piedistallo accanto a te.', salvadanaio: 'Escono da due a cinque monete.',
+  bibbia: 'Voli fino all\'uscita dalla stanza.', moto: 'Monti sulla moto di Manfro per cinque secondi: vai molto più veloce e travolgi i nemici che tocchi.', apax: 'Spegne tutte le lacrime e i proiettili nemici in volo e per quattro secondi annulla quelli nuovi appena partono.', shofar: 'Suoni lo shofar: tutti i nemici della stanza perdono 15 di vita e restano storditi per qualche secondo.', sprint: 'Per sei secondi corri velocissimo e spari più spesso.', canna: 'Una boccata lunga: tutti i nemici della stanza restano storditi per qualche secondo (i boss meno) e vagano senza attaccare, e per sette secondi spari più spesso.', stampante: 'La stampante 3D di Raspo crea un oggetto a caso, preso dalla stanza del tesoro, su un piedistallo accanto a te.', salvadanaio: 'Escono da due a cinque monete.',
 };
 const COLLECTION = [...Object.keys(ACTIVES).map(id => ({key: 'a_' + id, id, act: true})), ...ITEMS.map(i => ({key: 'i_' + i.id, id: i.id, act: false})), ...TRINKETS.map(t => ({key: 'n_' + t.id, id: t.id, trk: true}))];
 
@@ -6968,6 +7215,18 @@ const ENDING_SCENES = {
     hero(c, ch, 240, 196, 2.5);
     drawIcon(c, 'trophy', '#e8b64a', 240, 120 - up * 30, 40); drawIcon(c, 'can', '#e8a83a', 280, 160, 20);
     if (t > 3.5) { confetti(c, t); if (once('crowd')) Snd.noise(2.5, 0.12, 1800, 0.6); }
+  },
+  gabbo(c, t, ch) { // London in the rain: the clock tower, the umbrella opening, one long note on the shofar
+    c.fillStyle = '#1a2236'; c.fillRect(0, 0, STAGE_W, 270); c.fillStyle = '#2a3046'; c.fillRect(0, 196, STAGE_W, 74);
+    c.fillStyle = '#121828'; c.fillRect(60, 60, 40, 136); c.fillRect(66, 40, 28, 24); c.beginPath(); c.moveTo(66, 40); c.lineTo(80, 14); c.lineTo(94, 40); c.fill(); // the clock tower
+    circ(c, 80, 74, 10, '#e8d8a0'); c.strokeStyle = '#3a3020'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(80, 74); c.lineTo(80, 67); c.moveTo(80, 74); c.lineTo(85, 76); c.stroke();
+    c.fillStyle = '#121828'; c.fillRect(380, 120, 90, 76); c.fillRect(392, 96, 18, 26); c.fillRect(440, 96, 18, 26); // and a bridge's towers
+    const open = smooth((t - 1.8) / 0.8);
+    hero(c, ch, 240, 196, 2.5);
+    c.save(); c.translate(272, 96); c.fillStyle = '#1a1a22'; c.fillRect(-1.5, 0, 3, 70);
+    c.beginPath(); c.ellipse(0, 0, 62 * open + 6, 28 * open + 4, 0, Math.PI, 0); c.fill(); c.fillStyle = '#2a2a36'; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(0, -28 * open - 4); c.lineTo(i * 25 * open, 0); c.lineTo(i * 25 * open + 4, 0); c.fill(); } c.restore(); // the umbrella over his head
+    if (t > 3.2) { drawIcon(c, 'horn', '#d9b27a', 196, 150, 48); if (once('shofar')) { Snd.tone(233, 1.4, 'sawtooth', 0.1, 220); Snd.tone(349, 1, 'sawtooth', 0.07, 360, 0.6); } }
+    c.strokeStyle = 'rgba(170,200,230,.45)'; c.lineWidth = 1; c.beginPath(); for (let i = 0; i < 70; i++) { const x = (hash(i, 1) * STAGE_W + t * 40) % STAGE_W, y = (hash(i, 2) * 270 + t * 260) % 270; if (Math.abs(x - 272) < 64 * open && y > 96 && y < 200) continue; c.moveTo(x, y); c.lineTo(x - 3, y + 10); } c.stroke(); // rain, but not under the umbrella
   },
   maiga(c, t, ch) { // closes the laptop, one last joint, one beer
     roomBack(c, '#22242a', '#2c2e34');
