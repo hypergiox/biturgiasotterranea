@@ -432,7 +432,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v1.10';
+const VERSION = 'v1.10.2';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -5481,63 +5481,167 @@ function introStudio(c, w, h, t, waiting) {
   c.globalAlpha = 1;
   if (!waiting && t > 0.6 && once('chime')) [784, 988, 1175, 1568].forEach((f, i) => Snd.tone(f, 0.8, 'triangle', 0.05, null, i * 0.12));
 }
-// four calm scenes, one per floor: the friends step in one at a time and say who they are
-const INTRO_GROUPS = [[0, 1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]];
-const SCENE = 3.6, INTRO_START = 3.4, INTRO_TITLE = INTRO_START + SCENE * 4;
+// the opening: the camera goes in through Porta Fiorentina, along the street to Piazza Torre di Berta,
+// down a manhole into the dark, and the title bursts out of it. No characters: the locked ones stay a surprise.
+const INTRO_START = 3.4, JOURNEY = 9.2, INTRO_LEN = INTRO_START + JOURNEY + 3.2;
 function introDraw(c, w, h, t) {
   if (t < INTRO_START) { introStudio(c, w, h, t); return; }
-  if (t < INTRO_TITLE) { const k = Math.floor((t - INTRO_START) / SCENE); introScene(c, w, h, k, (t - INTRO_START - k * SCENE) / SCENE, t); return; }
-  introTitle(c, w, h, t - INTRO_TITLE);
+  const u = t - INTRO_START;
+  if (u < JOURNEY) {
+    onStage(c, w, h, cc => journey(cc, u));
+    const dark = Math.max(1 - smooth(u / 0.8), u > 8.2 ? 1 : 0); // fades in from black, ends in the dark of the sewer
+    if (dark > 0) { c.fillStyle = `rgba(7,5,4,${dark})`; c.fillRect(0, 0, w, h); }
+    return;
+  }
+  introTitle(c, w, h, u - JOURNEY);
 }
-function introScene(c, w, h, k, u, t) {
-  const fl = FLOORS[k], group = INTRO_GROUPS[k].map(i => CHARS[i]).filter(Boolean);
-  const a = Math.min(smooth(u / 0.16), smooth((1 - u) / 0.16)); // fade in, fade out: no flashes
-  c.globalAlpha = a;
-  // the floor of that level, lit by torches at the sides
-  c.fillStyle = fl.wall; c.fillRect(0, 0, w, h);
-  c.fillStyle = fl.floor; c.fillRect(0, h * 0.58, w, h * 0.42);
-  c.fillStyle = 'rgba(0,0,0,.25)'; for (let x = (-(u * 60) % 80); x < w; x += 80) c.fillRect(x, h * 0.58, 2, h * 0.42);
-  c.fillStyle = fl.brick; c.globalAlpha = a * 0.35; for (let y = 0; y < h * 0.58; y += 26) for (let x = (y / 26 % 2) * 30 - 60; x < w; x += 60) c.fillRect(x + 2, y + 2, 56, 22); c.globalAlpha = a;
-  for (const tx of [0.08, 0.92]) { const g = c.createRadialGradient(w * tx, h * 0.3, 4, w * tx, h * 0.3, h * 0.6); g.addColorStop(0, 'rgba(255,170,80,.35)'); g.addColorStop(1, 'rgba(255,170,80,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); circ(c, w * tx, h * 0.3, 6 + Math.sin(t * 6 + tx * 9) * 1.2, '#ffcf6a'); }
-  const v = c.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)'); c.fillStyle = v; c.fillRect(0, 0, w, h);
-  // the floor's name
-  c.textAlign = 'center'; c.fillStyle = '#e8b64a'; c.font = `600 ${Math.round(Math.min(w, h) * 0.032)}px ${BODY_FONT}`; c.globalAlpha = a * smooth((u - 0.05) / 0.15);
-  c.fillText('PIANO ' + (k * 2 + 1), w / 2, h * 0.12);
-  c.fillStyle = '#efe3cf'; c.font = `800 ${Math.round(Math.min(w * 0.07, h * 0.09))}px ${DISPLAY_FONT}`; c.fillText(fl.name, w / 2, h * 0.22);
-  // the friends, one after another
-  const sz = Math.min(h * 0.42, w / (group.length + 1.2)), gap = Math.min(w / (group.length + 0.6), sz * 1.15);
-  group.forEach((ch, j) => {
-    const at = 0.12 + j * 0.13, e = ease((u - at) / 0.12);
-    if (e <= 0) return;
-    if (once('in' + k + j)) Snd.tone(330 + j * 110, 0.35, 'triangle', 0.04);
-    const x = w / 2 + (j - (group.length - 1) / 2) * gap, y = h * 0.86 - (1 - e) * 30 + Math.sin(t * 2.2 + j) * 3;
-    c.globalAlpha = a * e;
-    ell(c, x, h * 0.86 + 2, sz * 0.22, sz * 0.05, 'rgba(0,0,0,.4)');
-    drawSprite(c, charSprite(ch, false), x, y, sz);
-    c.fillStyle = 'rgba(233,220,192,.92)'; const lw = Math.max(70, sz * 0.62), lh = Math.min(30, sz * 0.15);
-    c.fillRect(x - lw / 2, h * 0.88, lw, lh); c.fillStyle = '#2a1d14'; c.font = `800 ${Math.round(lh * 0.75)}px ${DISPLAY_FONT}`; c.fillText(ch.name, x, h * 0.88 + lh * 0.78);
+function onStage(c, w, h, fn) { const s = Math.max(w / STAGE_W, h / STAGE_H); c.save(); c.translate((w - STAGE_W * s) / 2, (h - STAGE_H * s) / 2); c.scale(s, s); fn(c); c.restore(); }
+function zoomAt(c, cx, cy, z, fn) { // keeps the stage covered: never shows past its edges
+  cx = clamp(cx, STAGE_W / 2 / z, STAGE_W - STAGE_W / 2 / z); cy = clamp(cy, STAGE_H / 2 / z, STAGE_H - STAGE_H / 2 / z);
+  c.save(); c.translate(STAGE_W / 2, STAGE_H / 2); c.scale(z, z); c.translate(-cx, -cy); fn(); c.restore(); }
+const FACADES = ['#6a5240', '#5a4636', '#7a6048', '#5e4a38'];
+// townsfolk, drawn like the heroes but in ordinary clothes
+const NPC_SKIN = ['#f0c9a8', '#e3b48e', '#d8a27c', '#c98e66'], NPC_STYLE = ['short', 'long', 'curly', 'slick', 'short'];
+const NPC_COL = ['#2b5aa8', '#7a1a2e', '#3e8a3a', '#d9a556', '#4a4a52', '#8a3ad5', '#c9cdd2', '#b3121b'];
+const npc = n => ({skin: NPC_SKIN[n % 4], shirt: NPC_COL[(n * 3) % 8], pants: ['#1c1c21', '#2e3140', '#3b4a6b'][n % 3], hair: ['#2a1d14', '#4a2c1a', '#c9a26b', '#8a8f96'][(n * 5) % 4], style: NPC_STYLE[n % 5], size: 0.92 + (n % 3) * 0.06});
+function walker(c, n, x, feet, sc, dir, t, moving = true) { drawChar(c, npc(n), x, feet - 13.5 * sc, {scale: sc, face: dir > 0 ? 'e' : dir < 0 ? 'w' : 's', walk: moving ? t * 9 + n : 0, shadow: true}); }
+function car(c, x, y, col, dir, sc = 1) { // a small Italian hatchback, lights on
+  c.save(); c.translate(x, y); c.scale(dir * sc, sc);
+  const g = c.createLinearGradient(30, 0, 120, 0); g.addColorStop(0, 'rgba(255,240,180,.35)'); g.addColorStop(1, 'rgba(255,240,180,0)');
+  c.fillStyle = g; c.beginPath(); c.moveTo(30, -6); c.lineTo(120, -20); c.lineTo(120, 12); c.closePath(); c.fill();
+  ell(c, 0, 9, 34, 4, 'rgba(0,0,0,.4)');
+  c.fillStyle = col; rrect(c, -32, -10, 64, 16, 4); c.fill(); rrect(c, -20, -22, 36, 14, [6, 8, 0, 0]); c.fill();
+  c.fillStyle = 'rgba(160,200,230,.55)'; c.fillRect(-16, -19, 13, 9); c.fillRect(0, -19, 13, 9);
+  c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(-32, -2, 64, 2);
+  circ(c, -19, 6, 6, '#141417'); circ(c, 19, 6, 6, '#141417'); circ(c, -19, 6, 2.4, '#8a8f96'); circ(c, 19, 6, 2.4, '#8a8f96');
+  circ(c, 30, -5, 2.6, '#fff6c8'); c.fillStyle = '#d2202a'; c.fillRect(-33, -7, 3, 5);
+  c.restore();
+}
+function streetLamp(c, x, base) { // a cast-iron lamp standing on the pavement
+  c.fillStyle = '#16120f'; c.fillRect(x - 2, base - 92, 4, 92); c.fillRect(x - 5, base - 6, 10, 6); c.fillRect(x - 12, base - 94, 16, 3);
+  const g = c.createRadialGradient(x - 8, base - 86, 2, x - 8, base - 70, 62); g.addColorStop(0, 'rgba(255,210,120,.5)'); g.addColorStop(1, 'rgba(255,210,120,0)'); c.fillStyle = g; c.fillRect(x - 70, base - 130, 124, 140);
+  c.fillStyle = '#16120f'; c.beginPath(); c.moveTo(x - 14, base - 91); c.lineTo(x - 2, base - 91); c.lineTo(x - 4, base - 83); c.lineTo(x - 12, base - 83); c.fill(); circ(c, x - 8, base - 82, 3, '#ffe0a0');
+}
+function clouds(c, t) { c.fillStyle = 'rgba(120,110,150,.18)'; for (let i = 0; i < 5; i++) { const x = ((hash(i, 8) * 600 + t * (4 + i)) % 640) - 80, y = 20 + hash(i, 9) * 50; ell(c, x, y, 50, 9); ell(c, x + 30, y - 5, 30, 8); } }
+function facade(c, x, y, wd, ht, seed, base = y + ht) { // a Sansepolcro house at night: stone, shutters, balconies, a few lit windows
+  c.fillStyle = FACADES[seed % 4]; c.fillRect(x, y, wd, ht);
+  c.fillStyle = 'rgba(0,0,0,.08)'; for (let yy = y + 8; yy < y + ht; yy += 8) c.fillRect(x, yy, wd, 1);
+  c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(x, y, wd, 4); c.fillRect(x + wd - 3, y, 3, ht); c.fillStyle = shade(FACADES[seed % 4], -0.35); c.fillRect(x - 3, y - 6, wd + 6, 7);
+  const cols = Math.max(2, Math.floor(wd / 36));
+  for (let r = 0; r < 3; r++) for (let k = 0; k < cols; k++) {
+    const wx = x + 12 + k * (wd - 24) / cols, wy = y + 14 + r * 36, lit = hash(seed * 7 + k, r) > 0.5;
+    c.fillStyle = lit ? 'rgba(255,196,110,.9)' : '#1c140f'; c.fillRect(wx, wy, 12, 20);
+    if (lit) { c.fillStyle = 'rgba(120,60,20,.5)'; c.fillRect(wx + 5, wy, 2, 20); }
+    c.fillStyle = '#3a4a2a'; c.fillRect(wx - 5, wy, 4, 20); c.fillRect(wx + 13, wy, 4, 20);
+    if (r === 1 && hash(seed, k) > 0.6) { c.fillStyle = '#1a1414'; c.fillRect(wx - 6, wy + 20, 24, 2); for (let b = 0; b < 6; b++) c.fillRect(wx - 5 + b * 4, wy + 14, 1, 6); circ(c, wx - 2, wy + 13, 2.5, '#3e8a3a'); circ(c, wx + 14, wy + 13, 2.5, '#d2202a'); }
+  }
+  const shop = seed % 3; // the ground floor: a bar with an awning, a chemist's, or a doorway
+  if (shop === 0) { c.fillStyle = 'rgba(255,200,120,.85)'; c.fillRect(x + 10, base - 30, wd - 20, 26); c.fillStyle = '#2a1a10'; c.fillRect(x + wd / 2 - 1, base - 30, 2, 26); for (let k = 0; k < 8; k++) { c.fillStyle = k % 2 ? '#efe3cf' : '#b3121b'; c.fillRect(x + 6 + k * (wd - 12) / 8, base - 40, (wd - 12) / 8, 9); } c.fillStyle = '#efe3cf'; c.font = `800 9px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText('BAR', x + wd / 2, base - 44); }
+  else if (shop === 1) { c.fillStyle = '#2a1a10'; c.fillRect(x + 14, base - 28, wd - 28, 28); c.fillStyle = 'rgba(200,240,200,.5)'; c.fillRect(x + 18, base - 24, wd - 36, 20); c.fillStyle = Math.sin(G.tick * 0.05) > -0.5 ? '#25d366' : '#1a8a46'; c.fillRect(x + wd - 20, base - 52, 4, 12); c.fillRect(x + wd - 24, base - 48, 12, 4); }
+  else { c.fillStyle = '#2a1a10'; c.fillRect(x + wd / 2 - 9, base - 28, 18, 28); c.beginPath(); c.arc(x + wd / 2, base - 28, 9, Math.PI, 0); c.fill(); circ(c, x + wd / 2 + 5, base - 14, 1, '#e8b64a'); }
+}
+function pavement(c, top, off, road = '#34303a') { // sidewalk with a kerb, then the cobbled road
+  c.fillStyle = '#6a6460'; c.fillRect(0, top, STAGE_W, 9); c.fillStyle = '#4a4440'; c.fillRect(0, top + 9, STAGE_W, 3);
+  c.fillStyle = 'rgba(0,0,0,.2)'; for (let x = -(off % 22); x < STAGE_W; x += 22) c.fillRect(x, top, 1, 9);
+  c.fillStyle = road; c.fillRect(0, top + 12, STAGE_W, STAGE_H - top - 12);
+  c.fillStyle = 'rgba(0,0,0,.2)'; for (let r = 0; r < 6; r++) { const yy = top + 16 + r * r * 2.5 + r * 4, sz = 8 + r * 4; for (let x = -((off * 1.15) % sz) - sz; x < STAGE_W; x += sz) c.fillRect(x, yy, sz - 2, 1 + r * 0.5); }
+}
+function journey(c, u) {
+  if (u < 2.6) { // Porta Fiorentina: a moment to read the gate, then in through the arch
+    if (once('wind')) Snd.noise(2.5, 0.05, 500, 0.6);
+    zoomAt(c, 240, 150, 1 + Math.pow(smooth((u - 0.7) / 1.9), 2) * 2.2, () => gate(c, u));
+    if (u > 2.1) { c.fillStyle = `rgba(7,5,4,${smooth((u - 2.1) / 0.5)})`; c.fillRect(0, 0, STAGE_W, STAGE_H); }
+    return;
+  }
+  if (u < 5.6) { street(c, (u - 2.6) / 3, u); if (u < 2.9) { c.fillStyle = `rgba(7,5,4,${1 - (u - 2.6) / 0.3})`; c.fillRect(0, 0, STAGE_W, STAGE_H); } return; }
+  piazza(c, u - 5.6, u);
+}
+function gate(c, u) {
+  skyNight(c); clouds(c, u);
+  c.save(); c.beginPath(); c.moveTo(180, 205); c.lineTo(180, 120); c.arc(240, 120, 60, Math.PI, 0); c.lineTo(300, 205); c.closePath(); c.clip();
+  facade(c, 150, 104, 82, 101, 1); facade(c, 252, 96, 92, 109, 3); c.fillStyle = '#34303a'; c.fillRect(150, 200, 200, 10);
+  walker(c, 4, 232 + u * 6, 203, 0.55, 1, u); c.restore();
+  // the city wall with the gate and its crenellations
+  c.fillStyle = '#7a5a44';
+  c.beginPath(); c.moveTo(0, 40); c.lineTo(480, 40); c.lineTo(480, 210); c.lineTo(300, 210); c.lineTo(300, 120); c.arc(240, 120, 60, 0, Math.PI, true); c.lineTo(180, 210); c.lineTo(0, 210); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(0,0,0,.16)'; for (let y = 44; y < 210; y += 12) for (let x = (y / 12 % 2) * 12; x < 480; x += 24) { if (x > 172 && x < 300 && y > 56) continue; c.fillRect(x, y, 22, 10); }
+  c.fillStyle = '#6a4a38'; for (let x = 0; x < 480; x += 36) c.fillRect(x, 26, 22, 16);
+  c.strokeStyle = '#a07a5a'; c.lineWidth = 7; c.beginPath(); c.arc(240, 120, 64, Math.PI, 0); c.stroke(); c.fillStyle = '#a07a5a'; c.fillRect(234, 52, 12, 10);
+  c.fillStyle = '#efe3cf'; c.font = `800 13px ${DISPLAY_FONT}`; c.textAlign = 'center'; c.fillText('PORTA FIORENTINA', 240, 76);
+  c.fillStyle = '#3a2a20'; c.fillRect(60, 120, 30, 34); c.fillStyle = '#efe3cf'; c.font = `700 6px ${BODY_FONT}`; c.fillText('SANSEPOLCRO', 75, 134); c.fillText('Città di Piero', 75, 143);
+  pavement(c, 205, 0);
+  streetLamp(c, 120, 214); streetLamp(c, 380, 214);
+  car(c, 410, 238, '#2b5aa8', -1, 0.9); // parked
+  car(c, -80 + u * 150, 252, '#d2202a', 1); // one driving past
+  walker(c, 1, 60 + u * 18, 214, 0.75, 1, u); walker(c, 2, 330 - u * 14, 214, 0.75, -1, u);
+}
+function street(c, k, t) { // Via XX Settembre, the camera gliding along it
+  skyNight(c); clouds(c, t);
+  const off = k * 700;
+  c.fillStyle = '#1e141a'; for (let i = 0; i < 12; i++) { const x = i * 70 - (off * 0.3) % 70 - 70; c.fillRect(x, 50 + hash(i, 3) * 20, 72, 160); c.fillRect(x + 20, 40 + hash(i, 3) * 20, 8, 12); }
+  for (let i = 0; i < 9; i++) { const seed = i + Math.floor(off / 110), x = i * 110 - off % 110 - 110; facade(c, x, 46 + hash(seed, 1) * 16, 108, 159 - hash(seed, 1) * 16, seed, 205); }
+  pavement(c, 205, off);
+  for (let i = 0; i < 5; i++) streetLamp(c, i * 160 - (off % 160) + 70, 214);
+  // people strolling on the pavement, cars on the road
+  for (let n = 0; n < 9; n++) { const wx = n * 130 + 40 + (n % 2 ? 1 : -1) * t * 16; walker(c, n + 3, wx - off, 214, 0.75, n % 2 ? 1 : -1, t); }
+  car(c, 620 - t * 180 - off * 0.2, 236, '#e8b64a', -1);
+  car(c, -200 + t * 140, 254, '#3e8a3a', 1);
+  if (once('car')) Snd.tone(80, 1.6, 'sawtooth', 0.025, 120);
+}
+function piazza(c, v, t) { // Piazza Torre di Berta: the tower, people out for the evening, then down the manhole
+  const z = v < 1.3 ? 1 + v * 0.04 : 1.05 + Math.pow(smooth((v - 1.3) / 1.9), 2) * 9;
+  zoomAt(c, 240, v < 1.3 ? 150 : lerp(150, 238, smooth((v - 1.3) / 1.2)), z, () => {
+    skyNight(c, '#0e1430', '#2a2448'); clouds(c, t); circ(c, 400, 46, 14, '#f4ead6');
+    facade(c, -30, 104, 140, 110, 0, 214); facade(c, 370, 96, 140, 118, 4, 214);
+    // the tower of Berta, as it stood before 1944
+    c.fillStyle = '#6a5240'; c.fillRect(200, 34, 80, 180); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(268, 34, 12, 180);
+    c.fillStyle = 'rgba(0,0,0,.1)'; for (let yy = 40; yy < 214; yy += 9) c.fillRect(200, yy, 68, 1);
+    c.fillStyle = '#5a4636'; for (let k = 0; k < 5; k++) c.fillRect(196 + k * 18, 24, 12, 12);
+    circ(c, 240, 52, 9, '#e8d8a8'); c.strokeStyle = '#2a1d14'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(240, 52); c.lineTo(240, 46); c.moveTo(240, 52); c.lineTo(245, 54); c.stroke();
+    c.fillStyle = '#1c140f'; for (let k = 0; k < 3; k++) c.fillRect(236, 76 + k * 38, 8, 20); c.fillRect(230, 190, 20, 24);
+    c.fillStyle = '#5a5250'; c.fillRect(0, 214, STAGE_W, STAGE_H - 214); c.fillStyle = 'rgba(0,0,0,.16)'; for (let r = 0; r < 6; r++) for (let x = (r % 2) * 10; x < STAGE_W; x += 20) c.fillRect(x, 218 + r * 9, 18, 1);
+    streetLamp(c, 150, 222); streetLamp(c, 330, 222);
+    // a bar's tables, a bench, a Vespa, people chatting, pigeons
+    c.fillStyle = '#b3121b'; c.beginPath(); c.moveTo(40, 196); c.lineTo(80, 186); c.lineTo(120, 196); c.fill(); c.fillStyle = '#3a2a20'; c.fillRect(79, 196, 2, 26); c.fillRect(66, 212, 28, 3);
+    walker(c, 11, 62, 230, 0.7, 1, t, false); walker(c, 12, 98, 230, 0.7, -1, t, false);
+    c.fillStyle = '#5a3a1e'; c.fillRect(392, 222, 46, 4); c.fillRect(394, 226, 3, 8); c.fillRect(433, 226, 3, 8); walker(c, 13, 415, 230, 0.7, 0, t, false);
+    drawIcon(c, 'moto', '#9fd3ff', 360, 236, 30);
+    walker(c, 14, 170 + Math.sin(t) * 4, 246, 0.8, 1, t, false); walker(c, 15, 196, 246, 0.8, -1, t, false);
+    walker(c, 16, 470 - t * 10, 254, 0.8, -1, t);
+    for (let k = 0; k < 4; k++) drawIcon(c, 'bird', '#8d96a3', 120 + k * 14, 258 - Math.abs(Math.sin(t * 5 + k)) * 2, 12);
+    // the manhole: its lid slides away
+    const open = smooth((v - 1.9) / 0.4);
+    ell(c, 240, 238, 26, 8, '#050303');
+    c.save(); c.translate(open * 50, 0); ell(c, 240, 238, 26, 8, '#3a3a3e'); c.strokeStyle = '#5a5f66'; c.lineWidth = 1; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(240 + k * 8, 231); c.lineTo(240 + k * 8, 245); c.stroke(); } c.restore();
   });
-  c.globalAlpha = 1;
+  if (v > 1.9 && once('lid')) { Snd.tone(320, 0.25, 'square', 0.06, 180); Snd.noise(0.3, 0.12, 3000, 2); }
+  if (v > 2.4 && once('fall')) Snd.noise(1.2, 0.1, 2000, 0.8, 0, 200);
 }
-function introTitle(c, w, h, t) {
-  const a = Math.min(smooth(t / 0.8), smooth((3.4 - t) / 0.8)), zoom = 1.08 - smooth(t / 2.5) * 0.08;
+function introTitle(c, w, h, t) { // the title bursts out of the dark, like an explosion
+  const slam = ease(t / 0.35), sh = t < 0.7 ? (0.7 - t) * 12 : 0, a = smooth((3.2 - t) / 0.7);
+  if (once('boom')) { Snd.boom(); Snd.tone(146.83, 1.8, 'sawtooth', 0.1, 73); }
   c.globalAlpha = a;
   c.fillStyle = '#130d0b'; c.fillRect(0, 0, w, h);
-  const g = c.createRadialGradient(w / 2, h * 0.42, 10, w / 2, h * 0.42, Math.max(w, h) * 0.6); g.addColorStop(0, 'rgba(232,182,74,.25)'); g.addColorStop(1, 'rgba(232,182,74,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
-  if (t > 0.2 && once('title')) { Snd.tone(146.83, 2.2, 'sine', 0.12, 110); Snd.noise(1.2, 0.08, 400, 1); }
-  c.save(); c.translate(w / 2, h * 0.45); c.scale(zoom, zoom);
+  const g = c.createRadialGradient(w / 2, h * 0.45, 10, w / 2, h * 0.45, Math.max(w, h) * 0.6); g.addColorStop(0, 'rgba(255,160,60,.35)'); g.addColorStop(1, 'rgba(232,182,74,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  for (let i = 0; i < 40; i++) { // debris and sparks flying out
+    const ang = hash(i, 1) * 6.28, sp = 0.3 + hash(i, 2), d = ease(t / 1.6) * sp * Math.max(w, h) * 0.6;
+    c.globalAlpha = a * Math.max(0, 1 - t / 1.8); circ(c, w / 2 + Math.cos(ang) * d, h * 0.45 + Math.sin(ang) * d * 0.7, 2 + hash(i, 3) * 4, i % 3 ? '#ffb02a' : '#5a4636');
+  }
+  c.globalAlpha = a;
+  c.save(); c.translate(w / 2 + rr(-sh, sh), h * 0.45 + rr(-sh, sh)); const sc = 1 + (1 - slam) * 1.4; c.scale(sc, sc);
   c.textAlign = 'center'; const fs = Math.min(w * 0.12, h * 0.17);
   c.font = `800 ${Math.round(fs)}px ${DISPLAY_FONT}`;
   c.fillStyle = '#b3121b'; c.fillText('Biturgia', fs * 0.04, -fs * 0.42 + fs * 0.05); c.fillText('Sotterranea', fs * 0.04, fs * 0.5 + fs * 0.05);
   c.fillStyle = '#efe3cf'; c.fillText('Biturgia', 0, -fs * 0.42); c.fillText('Sotterranea', 0, fs * 0.5);
   c.restore();
-  c.globalAlpha = a * smooth((t - 0.8) / 0.8); c.textAlign = 'center'; c.fillStyle = '#e8b64a'; c.font = `600 ${Math.round(Math.min(w, h) * 0.035)}px ${BODY_FONT}`;
+  c.globalAlpha = a * smooth((t - 0.6) / 0.6); c.textAlign = 'center'; c.fillStyle = '#e8b64a'; c.font = `600 ${Math.round(Math.min(w, h) * 0.035)}px ${BODY_FONT}`;
   c.fillText('LE CANTINE DI SANSEPOLCRO', w / 2, h * 0.45 + Math.min(w * 0.12, h * 0.17) * 1.1);
   c.globalAlpha = 1;
+  if (t > 0.25 && t < 0.6) { c.fillStyle = `rgba(255,236,200,${(0.6 - t) * 1.4})`; c.fillRect(0, 0, w, h); } // one soft flash, no strobing
 }
 function startIntro() {
   if (/nointro/.test(location.search) || location.hash.includes('feedback')) return;
-  playFilm('intro', INTRO_TITLE + 3.4, introDraw, () => { Snd.init(); Music.play('menu'); }, true);
+  playFilm('intro', INTRO_LEN, introDraw, () => { Snd.init(); Music.play('menu'); }, true);
 }
 
 /* ================= endings: a short scene for every character, then the last will ================= */
