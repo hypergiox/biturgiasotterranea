@@ -44,7 +44,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .title{font-family:var(--display);font-weight:800;font-size:clamp(44px,min(11vw,17vh),112px);line-height:.86;margin:0;text-align:center;color:var(--paper);
   text-shadow:0 0 .35em rgba(232,182,74,.35),.04em .05em 0 var(--blood);text-wrap:balance}
 .title small{display:block;font-family:var(--body);font-weight:600;font-size:clamp(14px,2.4vh,18px);letter-spacing:.32em;text-transform:uppercase;color:var(--gold);text-shadow:none;margin-top:.9em}
-#tCast{width:min(720px,100%,calc(20vh * 720 / 110));height:auto}
+#tCast{width:min(864px,100%,calc(20vh * 864 / 110));height:auto}
 .big{font-family:var(--display);font-weight:800;font-size:28px;background:var(--blood);border:0;border-radius:4px;padding:10px 28px;box-shadow:0 4px 0 #5e0a0f}
 .big:active{transform:translateY(3px);box-shadow:0 1px 0 #5e0a0f}
 .ghost{background:transparent;border:2px solid var(--line);border-radius:4px;padding:8px 16px;font-size:17px}
@@ -133,6 +133,15 @@ html.touch .tonly{display:inline}
 #boardTable td{padding:5px 8px;border-bottom:1px solid rgba(90,69,54,.5)}
 #boardTable tr.me td{color:var(--gold)}
 #boardNote{margin:0;color:var(--muted);font-size:14px;text-align:center}
+#chalList{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+#chalList li{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:2px 12px;align-items:center;background:var(--stone);border:2px solid var(--line);border-radius:4px;padding:8px 10px}
+#chalList li canvas{width:48px;height:48px;grid-row:span 2}
+#chalList li b{font-size:17px}
+#chalList li span{font-size:14px;color:var(--muted);line-height:1.25;grid-column:2}
+#chalList li button{grid-row:span 2;grid-column:3;background:var(--blood);border:0;border-radius:4px;padding:6px 12px;font-size:15px}
+#chalList li.done{border-color:#8a6a2a}
+#chalList li.done b::after{content:" ✓";color:var(--gold)}
+.seed input[type=checkbox]{width:18px;height:18px;accent-color:var(--blood)}
 #toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:60;transform:translate(-50%,160%) rotate(-1deg);background:#e9dcc0;color:#2a1d14;border-radius:3px;
   box-shadow:0 10px 30px rgba(0,0,0,.6);padding:8px 16px 8px 8px;display:flex;gap:10px;align-items:center;transition:transform .35s cubic-bezier(.2,1.4,.4,1);max-width:calc(100% - 32px);box-sizing:border-box;pointer-events:none}
 #toast.in{transform:translate(-50%,0) rotate(-1deg)}
@@ -199,6 +208,8 @@ html.portrait-play #rotate{display:flex}
     <button type="button" class="ghost" id="tColl">Collezione</button>
     <button type="button" class="ghost" id="tAch">Traguardi</button>
     <button type="button" class="ghost" id="tBoard">Classifica</button>
+    <button type="button" class="ghost" id="tChal">Sfide</button>
+    <button type="button" class="ghost" id="tDaily">Partita del giorno</button>
   </div>
   <p class="who">Giocatore: <b id="whoName">Ospite</b> <button type="button" class="link" id="whoChange">cambia</button></p>
   <p id="cloudNote"></p>
@@ -241,6 +252,16 @@ html.portrait-play #rotate{display:flex}
     <button type="button" class="ghost" id="selBack">Indietro</button>
     <button type="button" class="big" id="selGo">Gioca</button>
     <label class="seed" for="seedIn">Seme <input id="seedIn" maxlength="8" placeholder="casuale" autocomplete="off" spellcheck="false"></label>
+    <label class="seed" for="hardIn"><input type="checkbox" id="hardIn"> Difficile</label>
+  </div>
+</section>
+
+<section id="chal" class="sheet top" hidden aria-label="Sfide">
+  <div class="panel">
+    <h2 class="hd">Sfide</h2>
+    <p class="count" id="chalCount"></p>
+    <ul id="chalList"></ul>
+    <div class="row"><button type="button" class="ghost back">Indietro</button></div>
   </div>
 </section>
 
@@ -269,6 +290,7 @@ html.portrait-play #rotate{display:flex}
     <div class="tabs" role="tablist">
       <button type="button" role="tab" id="tabTimes" aria-selected="true">Vittorie più veloci</button>
       <button type="button" role="tab" id="tabPlayers" aria-selected="false">Giocatori</button>
+      <button type="button" role="tab" id="tabDaily" aria-selected="false">Oggi</button>
     </div>
     <div class="tablewrap"><table id="boardTable"></table></div>
     <p id="boardNote"></p>
@@ -309,7 +331,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v1.3';
+const VERSION = 'v1.4';
 const $ = id => document.getElementById(id);
 const STEP = 1 / 60;
 const T = 40, COLS = 13, ROWS = 7;          // a room is 13x7 floor tiles inside a one-tile wall
@@ -509,6 +531,10 @@ const CHARS = [
     red: 0, soul: 6, speed: 1, dmg: 3.3, delay: 14, range: 290, ss: 1.3, luck: 0, tear: 'laser', active: 'postbruciatore', noRed: true},
   {id: 'pake', name: 'Pake', skin: '#e9bf9c', shirt: '#1f2a44', pants: '#1f2a44', hair: '#2a1d14', style: 'slick', beard: '#2a1d14', tie: true,
     red: 3, soul: 0, speed: 1.05, dmg: 3, delay: 17, range: 300, ss: 1, luck: 1, tear: 'carta', active: 'busta', flags: {boomerang: true}},
+  {id: 'manfro', name: 'Manfro', skin: '#e8b48e', shirt: '#1a1a1e', pants: '#2e3140', hair: '#2a1a10', style: 'curly', muscle: true, hachimaki: true,
+    red: 3, soul: 0, speed: 1.1, dmg: 2.8, delay: 11, range: 250, ss: 1.2, luck: 0, tear: 'riso', active: 'moto'},
+  {id: 'faif', name: 'Faif', skin: '#e3b48e', shirt: '#d2202a', shirt2: '#141417', pants: '#141417', hair: '#3a2a1e', style: 'short', mustache: true,
+    red: 3, soul: 0, speed: 1.15, dmg: 3.4, delay: 16, range: 260, ss: 1, luck: 0, tear: 'birra', active: 'sprint'},
 ];
 
 /* ---------- active items: charges fill one per cleared room ---------- */
@@ -527,6 +553,8 @@ const ACTIVES = {
   tamburello: {name: 'Tamburello del Palio', sub: 'Lacrime a raggiera', charge: 1, icon: 'drum', col: '#d9a556'},
   bibbia: {name: 'Bibbia del Duomo', sub: 'Voli per tutta la stanza', charge: 3, icon: 'book', col: '#7a1a1a'},
   salvadanaio: {name: 'Salvadanaio', sub: 'Monete!', charge: 2, icon: 'pig', col: '#f08bb0'},
+  moto: {name: 'Moto giapponese', sub: 'In sella: veloce e travolgente', charge: 3, icon: 'moto', col: '#d2202a'},
+  sprint: {name: 'Scatto', sub: 'Velocissimo per sei secondi', charge: 2, icon: 'shoe', col: '#f5c400'},
 };
 
 /* ---------- passive items ---------- */
@@ -590,6 +618,9 @@ const ITEMS = [
   {id: 'banconota', name: 'Banconota da 100', sub: '99 monete', icon: 'wallet', col: '#3a7a4a', pools: 'x', fn: p => { p.coins = 99; }},
   {id: 'lardo', name: 'Lardo di Colonnata', sub: 'Due cuori in più, velocità giù', icon: 'meat', col: '#f4ead6', pools: 'b', fn: p => { addHearts(p, 4); heal(p, 4); p.speed -= 0.1; }},
   {id: 'candela', name: 'Candela nera', sub: 'Niente maledizioni', icon: 'candle', col: '#2a2a30', pools: 'tsd', fn: p => { p.flags.nocurse = true; if (G.floor) G.floor.curse = null; }},
+  {id: 'tech', name: 'Laser del Duomo', sub: 'Spari laser', icon: 'tech', col: '#22c3d6', pools: 'ts', fn: p => { p.flags.tech = true; }},
+  {id: 'coltello', name: 'Coltello del norcino', sub: 'Carica e lancia', icon: 'knife', col: '#c9cdd2', pools: 'td', fn: p => { p.flags.knife = true; }},
+  {id: 'fuochi', name: 'Fuochi di San Giovanni', sub: 'Spari bombe', icon: 'bomb', col: '#e8b64a', pools: 'td', fn: p => { p.flags.fetus = true; p.delay += 12; p.dmg += 1; }},
   {id: 'pila', name: 'Pila da 9 volt', sub: 'Oggetto attivo più rapido', icon: 'battery', col: '#d9a556', pools: 'ts', fn: p => { p.flags.ninevolt = true; const A = ACTIVES[p.active.id]; p.active.charge = A.charge; }},
 ];
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
@@ -614,10 +645,15 @@ const PILLS = [
 /* ---------- floors ---------- */
 const FLOORS = [
   {name: 'Cantine di Via XX Settembre', floor: '#4a3628', alt: '#523b2c', wall: '#2b1d16', brick: '#5e3526', pools: ['zanzara', 'incappucciato', 'hippie', 'piccione', 'zanzara'], bosses: ['balestriere', 'mattarellone']},
-  {name: 'Sotterranei della Fortezza', floor: '#3b3a36', alt: '#43413c', wall: '#22211d', brick: '#57544c', pools: ['incappucciato', 'vigile', 'comunista', 'piccione', 'zanzara', 'hippie'], bosses: ['capohippie', 'balestriere']},
+  {name: 'Sotterranei della Fortezza', floor: '#3b3a36', alt: '#43413c', wall: '#22211d', brick: '#57544c', pools: ['incappucciato', 'vigile', 'comunista', 'piccione', 'zanzara', 'hippie'], bosses: ['capohippie', 'balestriere', 'mattarellone']},
   {name: 'Fabbrica Buitoni', floor: '#3a464d', alt: '#414f57', wall: '#1f272b', brick: '#66767d', pools: ['zombie', 'raviolone', 'comunista', 'vigile', 'zanzara'], bosses: ['mattarellone', 'mostro', 'capohippie']},
-  {name: 'Diga di Montedoglio', floor: '#2c3d38', alt: '#33463f', wall: '#1a2623', brick: '#4f5e58', pools: ['zombie', 'raviolone', 'vigile', 'comunista', 'hippie', 'piccione', 'soldato'], bosses: ['piero']},
+  {name: 'Diga di Montedoglio', floor: '#2c3d38', alt: '#33463f', wall: '#1a2623', brick: '#4f5e58', pools: ['zombie', 'raviolone', 'vigile', 'comunista', 'hippie', 'piccione', 'soldato'], bosses: ['mostro', 'capohippie'], bosses2: ['piero']},
 ];
+// two floors per chapter, like Basement I and II: eight floors in all
+const MAX_DEPTH = FLOORS.length * 2;
+const chap = depth => Math.ceil(depth / 2);
+const floorTheme = depth => FLOORS[chap(depth) - 1];
+const floorName = depth => floorTheme(depth).name + (depth % 2 ? ' I' : ' II');
 /* ================= floor generation ================= */
 const MAPW = 11, MAPH = 9;
 const DIRS = {n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0]};
@@ -629,7 +665,7 @@ const DOOR_POS = {n: {x: CX, y: T}, s: {x: CX, y: RH - T}, w: {x: T, y: CY}, e: 
 function genFloor(depth, rng, run) {
   const key = (x, y) => x + ',' + y;
   for (let attempt = 0; attempt < 400; attempt++) {
-    const target = Math.min(18, rng.i(0, 1) + 5 + Math.floor(depth * 2.6));
+    const target = Math.min(18, rng.i(0, 1) + 5 + Math.floor(chap(depth) * 2.6) + (depth % 2 ? 0 : 1));
     const cells = new Map();
     const sx = 5, sy = 4;
     cells.set(key(sx, sy), {gx: sx, gy: sy});
@@ -662,6 +698,10 @@ function genFloor(depth, rng, run) {
     const boss = ends[0];
     const rest = rng.shuffle(ends.slice(1));
     const treasure = rest[0], shop = rest[1];
+    // spare dead ends become the rarer rooms
+    const extra = rest.slice(2), special = new Map();
+    for (const [type, ok] of [['sfida', depth > 1 && rng.f() < 0.4], ['sacrificio', rng.f() < 0.3], ['sala', (run.coinsNow || 0) >= 5 && rng.f() < 0.55], ['maledetta', rng.f() < 0.3]])
+      if (ok && extra.length) special.set(extra.shift(), type);
     // the secret room hides next to as many rooms as possible, never beside the boss
     let secret = null, best = 1;
     for (let x = 0; x < MAPW; x++) for (let y = 0; y < MAPH; y++) {
@@ -671,6 +711,15 @@ function genFloor(depth, rng, run) {
       const score = nb.length + rng.f() * 0.5;
       if (score > best) { best = score; secret = {gx: x, gy: y}; }
     }
+    // the super secret room touches exactly one ordinary room
+    const supers = [];
+    for (let x = 0; x < MAPW; x++) for (let y = 0; y < MAPH; y++) {
+      if (cells.has(key(x, y)) || (secret && secret.gx === x && secret.gy === y)) continue;
+      const nb = Object.values(DIRS).map(([dx, dy]) => cells.get(key(x + dx, y + dy))).filter(Boolean);
+      const near = Object.values(DIRS).some(([dx, dy]) => secret && secret.gx === x + dx && secret.gy === y + dy);
+      if (nb.length === 1 && !near && ![boss, treasure, shop].includes(nb[0]) && !special.has(nb[0]) && !(nb[0].gx === sx && nb[0].gy === sy)) supers.push({gx: x, gy: y});
+    }
+    const superSecret = supers.length ? rng.pick(supers) : null;
     const rooms = [];
     const make = (c, type) => {
       const r = {gx: c.gx, gy: c.gy, type, depth, cleared: type !== 'normal' && type !== 'boss', visited: false, seen: false,
@@ -678,23 +727,25 @@ function genFloor(depth, rng, run) {
       rooms.push(r); c.room = r; return r;
     };
     for (const c of cells.values()) {
-      const type = c === boss ? 'boss' : c === treasure ? 'treasure' : c === shop ? 'shop' : (c.gx === sx && c.gy === sy) ? 'start' : 'normal';
+      const type = c === boss ? 'boss' : c === treasure ? 'treasure' : c === shop ? 'shop' : special.get(c) || ((c.gx === sx && c.gy === sy) ? 'start' : 'normal');
       make(c, type);
     }
     if (secret) { make(secret, 'secret'); cells.set(key(secret.gx, secret.gy), secret); }
+    if (superSecret) { make(superSecret, 'supersegreta'); cells.set(key(superSecret.gx, superSecret.gy), superSecret); }
     // doors are shared links between two rooms, so unlocking one side unlocks both
     for (const r of rooms) for (const [dir, [dx, dy]] of Object.entries(DIRS)) {
       const c = cells.get(key(r.gx + dx, r.gy + dy));
       if (!c || r.doors[dir]) continue;
       const o = c.room, types = [r.type, o.type];
-      const kind = types.includes('secret') ? 'secret' : types.includes('boss') ? 'boss' : types.includes('treasure') ? 'treasure' : types.includes('shop') ? 'shop' : 'normal';
+      const kind = types.includes('secret') || types.includes('supersegreta') ? 'secret' : types.includes('boss') ? 'boss' : types.includes('treasure') ? 'treasure' : types.includes('shop') ? 'shop'
+        : types.includes('sfida') ? 'sfida' : types.includes('maledetta') ? 'maledetta' : 'normal';
       const link = {a: r, b: o, kind, hidden: kind === 'secret', locked: (kind === 'treasure' && depth >= 2) || (kind === 'shop' && depth >= 2)};
       r.doors[dir] = link; o.doors[OPP[dir]] = link;
     }
     for (const r of rooms) fillRoom(r, rng, run);
     const start = rooms.find(r => r.type === 'start');
     start.visited = true; start.cleared = true;
-    return {rooms, start, depth, name: FLOORS[depth - 1].name, theme: FLOORS[depth - 1]};
+    return {rooms, start, depth, name: floorName(depth), theme: floorTheme(depth)};
   }
   throw new Error('floor generation failed');
 }
@@ -765,10 +816,16 @@ function pickItem(pools, rng, run) {
   return {kind: 'item', id: it.id};
 }
 function fillRoom(room, rng, run) {
-  const depth = room.depth, floor = FLOORS[depth - 1];
+  const depth = room.depth, floor = floorTheme(depth);
   if (room.type === 'normal') {
     layoutRoom(room, rng);
+    if (depth > 1 && rng.f() < 0.07) { // a deadly sin waits here
+      room.mini = rng.pick(SINS.filter(x => x !== 'invidiola'));
+      room.spawns.push({type: room.mini, x: CX, y: CY});
+      return;
+    }
     if (rng.f() < 0.1) { // a quiet room with something lying around
+      if (rng.f() < 0.35) room.pickups.push({kind: 'beggar', x: tileX(6), y: tileY(1) + 6, static: true, need: rng.i(4, 9)});
       const tiles = freeTiles(room, false);
       for (let i = rng.i(1, 2); i > 0 && tiles.length; i--) {
         const [c, r] = tiles.splice(rng.i(0, tiles.length - 1), 1)[0];
@@ -778,7 +835,7 @@ function fillRoom(room, rng, run) {
     } else {
       const tiles = freeTiles(room, true), all = freeTiles(room, false);
       const swarm = rng.f() < 0.15;
-      const n = swarm ? rng.i(4, 6) : rng.i(2, 3 + Math.min(3, depth));
+      const n = swarm ? rng.i(4, 6) : rng.i(2, 3 + Math.min(3, chap(depth)));
       const t1 = rng.pick(floor.pools), t2 = rng.pick(floor.pools);
       for (let i = 0; i < n; i++) {
         const type = swarm ? 'zanzara' : (i % 2 ? t2 : t1);
@@ -798,13 +855,29 @@ function fillRoom(room, rng, run) {
     wares.forEach((w, i) => room.pickups.push({...w, x: tileX(3 + i * 2), y: tileY(3) + 6, price: PRICE[w.kind], ped: w.kind === 'item' || w.kind === 'active', c: w.kind === 'pill' ? rng.i(0, PILL_COLS.length - 1) : undefined, id: w.kind === 'card' ? rng.pick(CARDS).id : w.id}));
   } else if (room.type === 'boss') {
     if (rng.f() < 0.4) { const g = room.grid; [[2, 1], [10, 1], [2, 5], [10, 5]].forEach(([c, r]) => g[at(c, r)] = 1); }
-    room.boss = rng.pick(floor.bosses);
+    room.boss = rng.pick(depth % 2 === 0 && floor.bosses2 ? floor.bosses2 : floor.bosses);
     room.spawns.push({type: room.boss, x: CX, y: CY - 20});
     room.reward = pickItem('b', rng, run);
   } else if (room.type === 'secret') {
     if (rng.f() < 0.4) room.pickups.push({...pickItem('x', rng, run), x: CX, y: CY, ped: true});
     else for (let i = 0; i < 5; i++) room.pickups.push({kind: rng.f() < 0.25 ? 'soul' : rng.f() < 0.3 ? 'nickel' : 'coin', x: CX + (i - 2) * 34, y: CY});
     if (rng.f() < 0.5) room.pickups.push({kind: rng.pick(['chest', 'goldchest', 'redchest', 'sack']), x: CX, y: CY + 50});
+  } else if (room.type === 'sfida') {
+    room.pickups.push({...pickItem(rng.f() < 0.7 ? 't' : 'b', rng, run), x: CX, y: CY, ped: true});
+    room.challenge = {state: 'idle', wave: 0};
+  } else if (room.type === 'sacrificio') {
+    room.grid[at(6, 3)] = 4; room.sac = 0;
+  } else if (room.type === 'sala') {
+    room.pickups.push({kind: 'slot', x: tileX(3), y: tileY(2), static: true}, {kind: 'blood', x: tileX(9), y: tileY(2), static: true},
+      {kind: 'beggar', x: tileX(6), y: tileY(4), static: true, need: rng.i(4, 9)}, {kind: 'coin', x: tileX(2), y: tileY(5)}, {kind: 'coin', x: tileX(10), y: tileY(5)});
+  } else if (room.type === 'maledetta') {
+    const x = rng.f();
+    if (x < 0.5) room.pickups.push({...pickItem('d', rng, run), x: CX, y: CY, ped: true});
+    else if (x < 0.8) room.pickups.push({kind: 'redchest', x: CX - 40, y: CY}, {kind: 'redchest', x: CX + 40, y: CY});
+    else { for (let i = 0; i < 4; i++) room.spawns.push({type: rng.pick(floor.pools), x: tileX(2 + i * 3), y: tileY(i % 2 ? 1 : 5)}); room.cleared = false; room.pickups.push({kind: 'redchest', x: CX, y: CY}); }
+  } else if (room.type === 'supersegreta') {
+    if (rng.f() < 0.6) room.pickups.push({...pickItem('t', rng, run), x: CX, y: CY, ped: true});
+    else room.pickups.push({kind: 'heart', x: CX - 30, y: CY}, {kind: 'heart', x: CX, y: CY}, {kind: 'soul', x: CX + 30, y: CY});
   } else if (room.type === 'start' && depth === 1) {
     room.hint = true;
   }
@@ -815,12 +888,14 @@ const G = {state: 'title', tick: 0, run: null, floor: null, room: null, p: null,
 const SOLID = v => v === 1 || v === 2 || v === 3 || v === 5 || v === 6;   // stops walkers
 const TEARSTOP = v => v === 1 || v === 2 || v === 5 || v === 6;           // stops tears (pits do not)
 
-function newRun(ch, seedStr) {
+function newRun(ch, seedStr, opts = {}) {
   const seed = (seedStr || newSeed()).toUpperCase();
   const r = makeRng(seedNum(seed));
   const order = r.shuffle(PILLS.map((_, i) => i));
-  G.run = {seed, rng: r, ch, depth: 1, taken: new Set(), pillMap: order, pillKnown: new Set(), kills: 0, killer: '', frames: 0, tookDeal: false, devilSeen: 0};
+  G.run = {seed, rng: r, ch, depth: 1, taken: new Set(), pillMap: order, pillKnown: new Set(), kills: 0, killer: '', frames: 0, tookDeal: false, devilSeen: 0, deals: 0,
+    hard: !!opts.hard, challenge: opts.challenge || null, daily: opts.daily || null, curses: null};
   G.p = newPlayer(ch);
+  if (opts.challenge) CHAL[opts.challenge].setup(G.run, G.p);
   G.slow = 0; G.shake = 0; G.deathT = 0;
   meta('run');
   goFloor(1);
@@ -830,19 +905,19 @@ function newPlayer(ch) {
   const p = {ch, x: CX, y: CY, vx: 0, vy: 0, r: ch.id === 'capa' ? 9 : ch.id === 'davidone' ? 13 : 11,
     maxRed: ch.red * 2, red: ch.red * 2, soul: ch.soul * 2, speed: ch.speed, dmg: ch.dmg, delay: ch.delay, range: ch.range, ss: ch.ss, luck: ch.luck,
     flags: {...(ch.flags || {})}, items: [], orbitals: [], pets: [], active: {id: ch.active, charge: ACTIVES[ch.active].charge},
-    coins: 0, bombs: 1, keys: 0, pill: null, card: null, inv: 0, cd: 0, eye: 1, face: 's', walk: 0, hold: null, shield: false,
+    coins: 0, bombs: 1, keys: 0, pill: null, card: null, trinket: null, trans: [], inv: 0, cd: 0, eye: 1, face: 's', walk: 0, hold: null, shield: false,
     black: 0, gold: 0, eternal: 0, mult: 1, charge: 0,
-    fx: {muscoli: 0, raffica: 0, campari: 0, turbo: 0, fire: 0, carro: 0, mago: 0, forza: 0, diavolo: 0, imp: 0, volo: 0}, dash: null, hitOnDash: new Set(), dead: false};
+    fx: {muscoli: 0, raffica: 0, campari: 0, turbo: 0, fire: 0, carro: 0, mago: 0, forza: 0, diavolo: 0, imp: 0, volo: 0, moto: 0, sprint: 0}, dash: null, hitOnDash: new Set(), dead: false};
   return p;
 }
-const dmgOf = p => Math.max(0.5, p.dmg + (p.fx.diavolo ? 2 : 0) + (p.fx.imp ? 1.5 : 0)) * p.mult * (p.fx.muscoli ? 1.8 : 1) * (p.fx.campari ? 1.6 : 1) * (p.fx.forza ? 1.5 : 1);
-const delayOf = p => Math.max(4, p.delay) / (p.fx.raffica ? 3 : 1);
-const speedOf = p => clamp(p.speed + (p.fx.imp ? 0.3 : 0), 0.5, 2) * (p.fx.campari ? 1.3 : 1);
+const dmgOf = p => Math.max(0.5, p.dmg + (p.fx.diavolo ? 2 : 0) + (p.fx.imp ? 1.5 : 0) + (p.trinket === 'dente' ? 0.6 : 0)) * p.mult * (p.fx.muscoli ? 1.8 : 1) * (p.fx.campari ? 1.6 : 1) * (p.fx.forza ? 1.5 : 1);
+const delayOf = p => Math.max(4, p.delay - (p.trinket === 'petalo' ? 1.5 : 0)) / (p.fx.raffica ? 3 : 1) / (p.fx.sprint ? 1.5 : 1);
+const speedOf = p => clamp(p.speed + (p.fx.imp ? 0.3 : 0) + (p.trinket === 'tappo' ? 0.15 : 0), 0.5, 2) * (p.fx.campari ? 1.3 : 1) * (p.fx.moto ? 1.7 : 1) * (p.fx.sprint ? 1.9 : 1);
 const flying = p => !!(p.flags.flight || p.fx.volo);
 const ssOf = p => clamp(p.ss, 0.6, 2.2);
 const rangeOf = p => Math.max(90, p.range);
 const hearts = p => p.red + p.soul + p.black;
-const hit2 = () => G.run.depth >= 3 ? 2 : 1;      // later floors bite harder, like the real thing
+const hit2 = () => G.run.depth >= 5 ? 2 : 1;      // later floors bite harder, like the real thing
 
 function addHearts(p, n) { if (p.ch.noRed) p.soul = Math.min(24 - p.maxRed - p.black, p.soul + n); else p.maxRed = Math.min(24, p.maxRed + n); capHearts(p); }
 function addBlack(p, n) { p.black = Math.min(24 - p.maxRed - p.soul, p.black + n); }
@@ -854,6 +929,7 @@ function healAll(p) { p.red = p.maxRed; }
 
 function goFloor(depth) {
   G.run.depth = depth;
+  G.run.coinsNow = G.p.coins;
   G.floor = genFloor(depth, G.run.rng, G.run);
   const p = G.p;
   G.floor.curse = depth > 1 && !p.flags.nocurse && G.run.rng.f() < 0.35 ? G.run.rng.pick(Object.keys(CURSES)) : null;
@@ -864,7 +940,7 @@ function goFloor(depth) {
   G.banner = {title: G.floor.name, sub: 'Piano ' + depth + (G.floor.curse ? ' · ' + CURSES[G.floor.curse].name : ''), t: 200, big: true};
   enterRoom(G.floor.start, null);
 }
-function revealMap() { if (G.floor) G.floor.rooms.forEach(r => { if (r.type !== 'secret') r.seen = true; }); }
+function revealMap() { if (G.floor) G.floor.rooms.forEach(r => { if (r.type !== 'secret' && r.type !== 'supersegreta') r.seen = true; }); }
 
 /* ---------- rooms ---------- */
 function enterRoom(room, fromDir, slide = true) {
@@ -890,13 +966,14 @@ function enterRoom(room, fromDir, slide = true) {
     for (const s of room.spawns) spawnEnemy(s.type, s.x, s.y);
     Snd.door(false);
     if (room.type === 'boss') { G.vs = 110; Snd.boss(); }
+    if (room.mini) { const n = EN[room.mini].name; G.banner = {title: n.replace(/^(la |l'|il |lo )/, '').replace(/^./, x => x.toUpperCase()), sub: 'Peccato capitale', t: 120, big: true}; Snd.boss(); }
   }
   if (slide && prev && fromDir) G.trans = {from: prev, to: room, dir: fromDir, t: 0};
-  Music.play(room.type === 'boss' && !room.cleared ? 'boss' : 'f' + room.depth);
+  Music.play(room.type === 'boss' && !room.cleared ? 'boss' : 'f' + chap(room.depth));
   G.flowT = -99;
 }
 function teleportRandom() {
-  const list = G.floor.rooms.filter(r => r !== G.room && r.type !== 'boss' && r.type !== 'secret');
+  const list = G.floor.rooms.filter(r => r !== G.room && !['boss', 'secret', 'supersegreta', 'sfida'].includes(r.type));
   if (!list.length) return;
   const r = pick(list);
   r.cleared = true; // a teleport never drops you into a fight
@@ -910,17 +987,17 @@ function roomCleared() {
   if (a.charge < A.charge) a.charge = Math.min(A.charge, a.charge + (p.flags.ninevolt ? 2 : 1));
   if (room.type === 'boss') {
     if (G.floor.curse) meta('cursed');
-    if (G.run.depth < FLOORS.length) trySpawnDeal(room);
+    if (G.run.depth < MAX_DEPTH) trySpawnDeal(room);
     room.pickups.push({...room.reward, x: CX, y: CY + 10, ped: true});
-    dropPickup(p.ch.noRed ? 'soul' : 'heart', CX + 50, CY + 30);
-    if (G.run.depth < FLOORS.length) room.pickups.push({kind: 'trapdoor', x: CX, y: tileY(1)});
+    if (!G.run.hard) dropPickup(p.ch.noRed ? 'soul' : 'heart', CX + 50, CY + 30);
+    if (G.run.depth < MAX_DEPTH) room.pickups.push({kind: 'trapdoor', x: CX, y: tileY(1)});
     else room.pickups.push({kind: 'trofeo', x: CX, y: tileY(1)});
     meta('floor', G.run.depth);
-    Music.play('f' + G.run.depth);
-    G.banner = {title: 'Boss sconfitto', sub: G.run.depth < FLOORS.length ? 'Scendi dalla botola' : 'Prendi il trofeo', t: 160};
+    Music.play('f' + chap(G.run.depth));
+    G.banner = {title: 'Boss sconfitto', sub: G.run.depth < MAX_DEPTH ? 'Scendi dalla botola' : 'Prendi il trofeo', t: 160};
     return;
   }
-  for (let roll = p.flags.contract ? 2 : 1; roll > 0; roll--) if (rnd() < 0.45 + p.luck * 0.04) {
+  for (let roll = p.flags.contract ? 2 : 1; roll > 0; roll--) if (rnd() < 0.45 + luckOf(p) * 0.04 + (p.trinket === 'biglia' ? 0.12 : 0)) {
     const spot = freeSpot(CX + (roll - 1) * 60, CY);
     dropPickup(rollReward(p), spot.x, spot.y);
   }
@@ -938,6 +1015,7 @@ function dropPickup(kind, x, y, extra = {}) {
   const pk = {kind, x: clamp(x, T + 12, RW - T - 12), y: clamp(y, T + 12, RH - T - 12), vx: rr(-1.5, 1.5), vy: rr(-1.5, 1.5), t: 0, ...extra};
   if (kind === 'pill') pk.c = ri(0, PILL_COLS.length - 1); // a colour; the run maps each colour to one effect
   if (kind === 'card' && !pk.id) pk.id = pick(CARDS).id;
+  if (kind === 'trinket' && !pk.id) pk.id = pick(TRINKETS).id;
   G.room.pickups.push(pk);
   return pk;
 }
@@ -982,7 +1060,7 @@ function breakTile(c, r, quiet, bomb) {
   room.decals.push({kind: 'rubble', x, y, a: rnd() * 6, s: rr(0.8, 1.2)});
   if (bomb && (v === 1 || v === 5)) meta('rock');
   if (v === 5) { dropPickup('soul', x, y); if (rnd() < 0.5) dropPickup('bomb', x, y); }
-  if (v === 2 && rnd() < 0.18 + G.p.luck * 0.02) dropPickup(rnd() < 0.8 ? 'coin' : 'heart', x, y);
+  if (v === 2 && rnd() < 0.18 + luckOf(G.p) * 0.02) dropPickup(rnd() < 0.8 ? 'coin' : 'heart', x, y);
   if (!quiet) Snd.noise(0.2, 0.15, 500);
   G.flowT = -99;
 }
@@ -1037,12 +1115,12 @@ const EN = {
   soldato: {name: 'un soldato della Resurrezione', hp: 16, r: 13},
   mostro: {name: 'il Mostro della Diga', hp: 235, r: 30, boss: true},
   capohippie: {name: 'il Grande Capo Hippie', hp: 200, r: 26, boss: true, fly: true},
-  piero: {name: 'Piero della Francesca', hp: 360, r: 26, boss: true},
+  piero: {name: 'Piero della Francesca', hp: 340, r: 26, boss: true},
 };
 function spawnEnemy(type, x, y, appear = 40) {
-  const d = EN[type], scale = 1 + 0.2 * (G.run.depth - 1);
-  const hp = Math.round(d.hp * (d.boss ? 1 + 0.15 * (G.run.depth - 1) : scale));
-  const e = {type, x, y, vx: 0, vy: 0, hp, max: hp, r: d.r, fly: !!d.fly, boss: !!d.boss, t: 0, appear, cd: ri(30, 90), st: 'idle', st2: 0,
+  const d = EN[type], scale = (1 + 0.1 * (G.run.depth - 1)) * (G.run.hard ? 1.3 : 1);
+  const hp = Math.round(d.hp * (d.boss ? (1 + 0.075 * (G.run.depth - 1)) * (G.run.hard ? 1.2 : 1) : scale));
+  const e = {type, x, y, vx: 0, vy: 0, hp, max: hp, r: d.r, fly: !!d.fly, boss: !!d.boss, mini: !!d.mini, t: 0, appear, cd: ri(30, 90), st: 'idle', st2: 0,
     flash: 0, burn: 0, slow: 0, poison: 0, dir: pick(Object.values(DIRS)), z: 0, ang: 0, phase: 0, hitT: 0};
   makeChampion(e);
   G.enemies.push(e);
@@ -1136,7 +1214,10 @@ function updateEnemy(e) {
       if (e.t % 60 < 20) { [mvx, mvy] = flowDir(e); sp = 2.2; } // hops
       break;
     }
-    default: bossAI(e, dx, dy, d, k); break;
+    default:
+      if (e.mini) { [mvx, mvy, sp] = sinAI(e, dx, dy, d, k); if (e.st === 'lunge' || e.st === 'charge' && !sp) sp = 0; }
+      else bossAI(e, dx, dy, d, k);
+      break;
   }
   if (sp) { e.vx = lerp(e.vx, mvx * sp * k, 0.2); e.vy = lerp(e.vy, mvy * sp * k, 0.2); }
   else if (e.type !== 'zanzara' && e.st !== 'lunge' && !e.boss) { e.vx *= 0.85; e.vy *= 0.85; }
@@ -1146,6 +1227,7 @@ function updateEnemy(e) {
     const hitRock = collideGrid(e, e.fly);
     const wall = clampWalls(e);
     if ((hitRock || wall) && e.st === 'charge') e.bonk = true;
+    if ((hitRock || wall) && e.mini && e.type === 'invidia') e.dir = pick(Object.values(DIRS));
     if (wall && e.type === 'zanzara') { e.vx *= -0.6; e.vy *= -0.6; }
   }
   // touching the player hurts
@@ -1240,20 +1322,23 @@ function killEnemy(e) {
   G.room.decals.push({kind: 'blood', x: e.x, y: e.y, a: rnd() * 6, s: e.boss ? 2.4 : rr(0.7, 1.2)});
   if (e.type === 'raviolone') { spawnEnemy('raviolino', e.x - 12, e.y, 6); spawnEnemy('raviolino', e.x + 12, e.y, 6); }
   if (e.champ) championDeath(e);
+  if (e.mini) sinDeath(e);
   if (e.boss) { G.shake = 18; G.hitstop = 26; G.flash = 1; for (const o of G.enemies) if (o !== e && !o.boss) o.hp = 0; G.tears = G.tears.filter(t => t.from !== 'e'); }
-  else if (rnd() < 0.03 + G.p.luck * 0.01) dropPickup(rnd() < 0.6 ? 'coin' : 'heart', e.x, e.y);
+  else if (rnd() < 0.03 + luckOf(G.p) * 0.01) dropPickup(rnd() < 0.6 ? 'coin' : 'heart', e.x, e.y);
 }
 
 /* ---------- player ---------- */
 function hurtPlayer(n, cause, self) {
   const p = G.p;
   if (p.dead || p.inv > 0 || (!self && (p.fx.turbo > 0 || p.fx.carro > 0 || G.trans || G.vs > 0))) return;
+  if (!self && p.trinket === 'bottone' && rnd() < 0.125) { p.inv = 40; Snd.tone(1200, 0.1, 'triangle', 0.1); burst(p.x, p.y, '#8a5a2b', 6, 2); return; }
+  if (p.trinket === 'moneta') dropPickup('coin', p.x + rr(-20, 20), p.y + 24);
   if (p.shield && !self) { p.shield = false; p.inv = 60; Snd.tone(900, 0.3, 'triangle', 0.15, 400); burst(p.x, p.y, '#f4f0e0', 14, 3); return; }
   const before = p.black;
   const fromBlack = Math.min(p.black, n); p.black -= fromBlack; n -= fromBlack;
   if (Math.ceil(before / 2) > Math.ceil(p.black / 2)) blackBlast();
   const fromSoul = Math.min(p.soul, n); p.soul -= fromSoul; n -= fromSoul;
-  if (n > 0) { p.red -= n; if (p.gold > 0) { p.gold--; for (let i = 0; i < 3; i++) dropPickup('coin', p.x + rr(-20, 20), p.y + rr(-20, 20)); Snd.coin(); } }
+  if (n > 0) { p.red -= n; G.run.redLostFloor = true; if (p.gold > 0) { p.gold--; for (let i = 0; i < 3; i++) dropPickup('coin', p.x + rr(-20, 20), p.y + rr(-20, 20)); Snd.coin(); } }
   if (!self) G.run.floorHit = true;
   p.inv = 66; G.shake = 7; G.hurtFlash = 1; G.hitstop = 5;
   if (G.room.type === 'boss') G.run.hitInBoss = true;
@@ -1263,6 +1348,11 @@ function hurtPlayer(n, cause, self) {
 }
 function fire(dx, dy, power = 1) {
   const p = G.p;
+  if (p.flags.noshoot) return;
+  if (p.flags.tech) { // a thin laser instead of a tear
+    for (const a of p.flags.triple || p.flags.quad ? [-0.15, 0, 0.15] : [0]) { const b = Math.atan2(dy, dx) + a; G.beams.push({dx: Math.cos(b), dy: Math.sin(b), t: 7, dmg: dmgOf(p) * power * 0.6, thin: true}); }
+    Snd.tone(1400, 0.08, 'sawtooth', 0.05, 700); return;
+  }
   const sp = 6.2 * ssOf(p), life = rangeOf(p) / sp, dmg = dmgOf(p) * power;
   let r = clamp(4.5 + dmg * 0.45, 4.5, 14) * (p.flags.big ? 1.5 : 1);
   let angs = p.flags.quad ? [-0.3, -0.1, 0.1, 0.3] : p.flags.triple ? [-0.17, 0, 0.17] : [0];
@@ -1278,6 +1368,8 @@ function fire(dx, dy, power = 1) {
       pierce: p.flags.pierce || p.fx.raffica > 0, spectral: !!p.flags.spectral, bounce: !!p.flags.bounce, homing: !!p.flags.homing, explode: !!p.flags.explode,
       slow: !!p.flags.slow, burn: !!p.flags.burn || p.fx.fire > 0, boom: !!p.flags.boomerang, poison: !!p.flags.poison, spin: rnd() * 6});
     if (p.fx.mago) G.tears[G.tears.length - 1].homing = true;
+    if (p.flags.fetus) { const t = G.tears[G.tears.length - 1]; t.kind = 'bomba'; t.explode = true; t.r = 7; }
+    if (p.trinket === 'fiammifero' && rnd() < 0.17) G.tears[G.tears.length - 1].burn = true;
     if (p.flags.orbit) { const t = G.tears[G.tears.length - 1]; t.orbit = {a: aa, r: 16}; t.life = t.max = life * 2.2; t.spectral = true; }
   }
   Snd.shoot();
@@ -1311,6 +1403,8 @@ function useActive() {
       for (let i = 0; i < 12; i++) { const aa = i / 12 * Math.PI * 2; G.tears.push({x: p.x, y: p.y, vx: Math.cos(aa) * 5, vy: Math.sin(aa) * 5, r: 8, life: 40, max: 40, from: 'p', dmg: dmgOf(p) * 1.5, kind: 'fuoco', hits: new Set(), bounces: 0, burn: true, spectral: true, pierce: true, spin: 0}); }
       break;
     case 'dado': rerollRoom(); break;
+    case 'moto': p.fx.moto = 300; Snd.tone(90, 0.8, 'sawtooth', 0.15, 260); Snd.noise(0.6, 0.12, 700); break;
+    case 'sprint': p.fx.sprint = 360; Snd.tone(500, 0.2, 'triangle', 0.12, 1000); Snd.noise(0.25, 0.1, 3000); break;
     case 'tamburello': for (let i = 0; i < 10; i++) { const aa = i / 10 * Math.PI * 2; fire(Math.cos(aa), Math.sin(aa)); } Snd.tone(200, 0.2, 'square', 0.1); Snd.noise(0.15, 0.15, 3000); break;
     case 'bibbia': p.fx.volo = 1; Snd.item(); break;
     case 'salvadanaio': for (let i = ri(2, 5); i > 0; i--) dropPickup(rnd() < 0.15 ? 'nickel' : 'coin', p.x + rr(-24, 24), p.y + rr(-24, 24)); Snd.noise(0.2, 0.2, 2500); Snd.coin(); break;
@@ -1339,6 +1433,7 @@ function explode(x, y, rad, dmg, hurtsPlayer, cause = 'la sua stessa bomba', sel
     if (c < 0 || r < 0 || c >= COLS || r >= ROWS) continue;
     if (Math.hypot(tileX(c) - x, tileY(r) - y) < rad + 14) breakTile(c, r, true, true);
   }
+  blastMachines(x, y, rad);
   for (const [dir, link] of Object.entries(G.room.doors)) {
     if (!link.hidden) continue;
     const dp = DOOR_POS[dir];
@@ -1370,16 +1465,16 @@ function touchPickup(pk) {
     Snd.fall(); G.fall = 50; return false;
   }
   if (pk.taken || pk.kind.endsWith('open')) return false;
-  if (pk.price && p.coins < pk.price) return false;
+  if (pk.price && p.coins < priceOf(pk)) return false;
   if (pk.hearts && !payHearts(pk.hearts)) return false;
   const k = pk.kind;
-  if (EXTRA_PICKUPS[k]) { if (pk.price) { p.coins -= pk.price; Snd.buy(); meta('buy'); } return EXTRA_PICKUPS[k](pk, p); }
+  if (EXTRA_PICKUPS[k]) { if (pk.price) { p.coins -= priceOf(pk); Snd.buy(); meta('buy'); } return EXTRA_PICKUPS[k](pk, p); }
   if (k === 'heart' || k === 'half') {
     if (p.ch.noRed) { if (!pk.price) return false; }
     else if (p.red >= p.maxRed) return false;
   }
   if (k === 'soul' && p.maxRed + p.soul + p.black >= 24) return false;
-  if (pk.price) { p.coins -= pk.price; Snd.buy(); meta('buy'); }
+  if (pk.price) { p.coins -= priceOf(pk); Snd.buy(); meta('buy'); }
   switch (k) {
     case 'coin': p.coins = Math.min(99, p.coins + 1); Snd.coin(); meta('coins', p.coins); break;
     case 'nickel': p.coins = Math.min(99, p.coins + 5); Snd.coin(); meta('coins', p.coins); break;
@@ -1397,6 +1492,8 @@ function touchPickup(pk) {
       const it = ITEM[pk.id];
       p.items.push(it.id); it.fn(p); capHearts(p); meta('item', 'i_' + it.id);
       if (pk.hearts) meta('deal'); if (G.room.type === 'angel') meta('angel');
+      checkTransform(p);
+      if (G.room.type === 'sfida') startChallengeRoom(G.room);
       p.hold = {icon: it.icon, col: it.col, t: 70};
       G.banner = {title: it.name, sub: it.sub, t: 170};
       Snd.item();
@@ -1417,7 +1514,8 @@ function touchPickup(pk) {
 function winRun() {
   if (G.state !== 'play') return;
   G.state = 'won'; Snd.win();
-  meta('win');
+  floorDone();
+  meta('win'); submitDaily(true);
   showNote(true);
 }
 
@@ -1442,10 +1540,10 @@ function update() {
   if (G.trans) { G.trans.t++; if (G.trans.t >= 16) G.trans = null; return; }
   if (G.vs > 0) { G.vs--; return; }
   const p = G.p, room = G.room;
-  if (G.fall) { if (--G.fall <= 0) { G.fall = 0; goFloor(G.run.depth + 1); G.fadeIn = 30; } return; }
+  if (G.fall) { if (--G.fall <= 0) { G.fall = 0; floorDone(); goFloor(G.run.depth + 1); G.fadeIn = 30; } return; }
   if (p.dead) {
     G.deathT--; updateFx();
-    if (G.deathT <= 0 && G.state === 'play') { G.state = 'dead'; meta('death'); showNote(false); }
+    if (G.deathT <= 0 && G.state === 'play') { G.state = 'dead'; meta('death'); submitDaily(false); showNote(false); }
     return;
   }
   G.run.frames++;
@@ -1453,7 +1551,8 @@ function update() {
   if (G.slow > 0) G.slow--;
   if (G.shake > 0) G.shake *= 0.85;
   // timers
-  for (const k of ['raffica', 'campari', 'turbo', 'fire']) if (p.fx[k] > 0) p.fx[k]--;
+  for (const k of ['raffica', 'campari', 'turbo', 'fire', 'moto', 'sprint']) if (p.fx[k] > 0) p.fx[k]--;
+  trackRun(p);
   if (p.inv > 0) p.inv--;
   if (p.hold) { p.hold.t--; if (p.hold.t <= 0) p.hold = null; }
   // movement
@@ -1476,13 +1575,14 @@ function update() {
   doorsAndWalls(p);
   if (G.trans || !G.room) return;
   // spikes
-  if (!fly) { const c = Math.floor((p.x - T) / T), r = Math.floor((p.y - T) / T); if (c >= 0 && r >= 0 && c < COLS && r < ROWS && room.grid[at(c, r)] === 4) hurtPlayer(2, 'gli spuntoni'); }
+  if (!fly) { const c = Math.floor((p.x - T) / T), r = Math.floor((p.y - T) / T); if (c >= 0 && r >= 0 && c < COLS && r < ROWS && room.grid[at(c, r)] === 4) { if (room.type === 'sacrificio' && p.inv <= 0) sacrificeHit(room); hurtPlayer(2, room.type === 'sacrificio' ? 'il sacrificio' : 'gli spuntoni', room.type === 'sacrificio'); } }
   // shooting
   p.cd--;
-  if (p.flags.beam || p.flags.charge) chargeShot(p, sx, sy);
+  if (p.flags.beam || p.flags.charge || p.flags.knife) chargeShot(p, sx, sy);
   else if ((sx || sy) && p.cd <= 0 && !p.hold) { fire(sx, sy); p.cd = delayOf(p); }
   updateBeams();
   if (p.flags.magnet) for (const pk of room.pickups) if (!pk.ped && !pk.price && !pk.kind.includes('chest') && pk.kind !== 'trapdoor' && pk.kind !== 'trofeo') { const d = Math.hypot(p.x - pk.x, p.y - pk.y); if (d < 150 && d > 4) { pk.x += (p.x - pk.x) / d * 1.6; pk.y += (p.y - pk.y) / d * 1.6; } }
+  if (p.fx.moto > 0) for (const e of G.enemies) if (e.hp > 0 && e.appear <= 0 && dist(e, p) < e.r + p.r + 6 && G.tick % 6 === 0) damageEnemy(e, 8, (e.x - p.x) / 3, (e.y - p.y) / 3);
   if (p.fx.carro > 0) { p.fx.carro--; for (const e of G.enemies) if (e.hp > 0 && e.appear <= 0 && dist(e, p) < e.r + p.r + 4 && G.tick % 6 === 0) damageEnemy(e, 6, (e.x - p.x) / 4, (e.y - p.y) / 4); }
   // familiars
   for (const o of p.orbitals) {
@@ -1536,6 +1636,7 @@ function update() {
   }
   room.pickups = room.pickups.filter(pk => !pk.taken);
   // room cleared?
+  challengeTick(room);
   if (!room.cleared && !G.enemies.length) roomCleared();
   updateFx();
   if (G.banner && --G.banner.t <= 0) G.banner = null;
@@ -1544,7 +1645,8 @@ function doorsAndWalls(p) {
   const room = G.room;
   for (const [dir, link] of Object.entries(room.doors)) {
     if (link.hidden) continue;
-    const open = room.cleared && !link.locked;
+    const fullHp = p.ch.noRed ? p.soul >= 6 : p.red >= p.maxRed;
+    const open = room.cleared && !link.locked && !(link.kind === 'sfida' && room.type !== 'sfida' && !fullHp);
     const dp = DOOR_POS[dir];
     const along = dir === 'n' || dir === 's' ? Math.abs(p.x - dp.x) : Math.abs(p.y - dp.y);
     const toward = dir === 'n' ? -p.vy : dir === 's' ? p.vy : dir === 'w' ? -p.vx : p.vx;
@@ -1552,6 +1654,7 @@ function doorsAndWalls(p) {
     if (link.locked && room.cleared && along < 24 && edge < 4 && toward > 0.2 && p.keys > 0) { p.keys--; link.locked = false; Snd.unlock(); }
     if (open && along < 22 && edge < 3 && toward > 0.3) {
       const next = other(link, room);
+      if (link.kind === 'maledetta' && !(flying(p) && next.type === 'maledetta')) { p.inv = 0; hurtPlayer(2, 'la porta maledetta', true); if (p.dead) return; }
       enterRoom(next, dir);
       return;
     }
@@ -1619,7 +1722,7 @@ function splashTear(t) {
   if (t.from === 'p' && rnd() < 0.25) G.room.decals.push({kind: 'drop', x: t.x, y: t.y, a: 0, s: 0.5, col});
 }
 function updateBombs() {
-  for (const b of G.bombs) { b.t--; if (b.t % 12 === 0) Snd.fuse(); if (b.t <= 0) explode(b.x, b.y, b.mega ? 110 : 74, b.mega ? 90 : 50, true); }
+  for (const b of G.bombs) { b.t--; if (b.t % 12 === 0) Snd.fuse(); if (b.t <= 0) explode(b.x, b.y, b.mega ? 110 : 74, b.mega ? 90 : 50, true, b.troll || undefined, !b.troll); }
   G.bombs = G.bombs.filter(b => b.t > 0);
 }
 function updateFx() {
@@ -1643,7 +1746,7 @@ function updateFx() {
 const canvas = $('game'), ctx = canvas.getContext('2d');
 let W = 0, H = 0, DPR = 1, S = 1, OX = 0, OY = 0;
 const TEAR_COL = {normale: '#8fd3ff', nera: '#2a2433', scarica: '#22c3d6', grossa: '#6fb6ec', pallone: '#f4f4f4', piatto: '#f4f4f4', proiettile: '#f0c040',
-  campari: '#d2202a', laser: '#ff3b3b', carta: '#f5c400', fuoco: '#ff7a1a'};
+  campari: '#d2202a', laser: '#ff3b3b', carta: '#f5c400', fuoco: '#ff7a1a', riso: '#f8f6ee', birra: '#e8a83a', coltello: '#c9cdd2', bomba: '#2a2a2e', santa: '#fff6d8'};
 const hash = (a, b = 0) => { let h = Math.imul(a * 374761393 + b * 668265263, 1274126177); h ^= h >>> 13; h = Math.imul(h, 1103515245); return ((h ^ h >>> 16) >>> 0) / 4294967296; };
 function shade(hex, f) { // f < 0 darkens, f > 0 lightens
   const n = parseInt(hex.slice(1), 16), r = n >> 16, g = n >> 8 & 255, b = n & 255;
@@ -1676,7 +1779,7 @@ const DEAL_THEME = {
   angel: {floor: '#c9c4b8', alt: '#d6d1c4', wall: '#8a8478', brick: '#b8b2a4'},
 };
 function drawRoomBase(c, room) {
-  const th = DEAL_THEME[room.type] || FLOORS[room.depth - 1], d = DEAL_THEME[room.type] ? 0 : room.depth;
+  const th = DEAL_THEME[room.type] || floorTheme(room.depth), d = DEAL_THEME[room.type] ? 0 : chap(room.depth);
   // walls
   c.fillStyle = th.wall; c.fillRect(0, 0, RW, RH);
   const bw = 20, bh = 10;
@@ -1720,7 +1823,7 @@ function drawRoomBase(c, room) {
   if (room.type === 'angel') drawStatue(c, false);
 }
 function drawWallDecor(c, room) {
-  const d = room.depth;
+  const d = chap(room.depth);
   for (let i = 0; i < 4; i++) {
     const h = hash(room.gx * 3 + i, room.gy * 7 + d);
     const top = i < 2, x = top ? T * 2 + h * (RW - T * 6) + (h > 0.4 && h < 0.6 ? 80 : 0) : (i === 2 ? T * 0.5 : RW - T * 0.5), y = top ? T * 0.5 : T * 2 + h * (RH - T * 5);
@@ -1793,7 +1896,7 @@ function drawDoors(c, room) {
       ell(c, 0, -10, 22, 24, '#0a0706'); c.strokeStyle = '#3a2b23'; c.lineWidth = 3; c.stroke();
       c.restore(); continue;
     }
-    const frame = {normal: '#6b4a2a', treasure: '#e8b64a', shop: '#7a8a96', boss: '#7a1010', devil: '#3a0a0a', angel: '#f4f0e6'}[link.kind];
+    const frame = {normal: '#6b4a2a', treasure: '#e8b64a', shop: '#7a8a96', boss: '#7a1010', devil: '#3a0a0a', angel: '#f4f0e6', sfida: '#8a8f96', maledetta: '#2a0808'}[link.kind];
     // opening
     c.fillStyle = '#0a0706'; rrect(c, -20, -T + 2, 40, T + 2, [14, 14, 0, 0]); c.fill();
     if (link.op < 0.98) { // leaves slide into the wall
@@ -1814,13 +1917,15 @@ function drawDoors(c, room) {
       c.fillStyle = '#d9c8a8';
       for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 20, -T + 2); c.quadraticCurveTo(s * 36, -T - 4, s * 34, -T - 16); c.quadraticCurveTo(s * 30, -T - 4, s * 14, -T - 2); c.fill(); }
     }
+    if (link.kind === 'maledetta') { c.fillStyle = '#c9cdd2'; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(i * 9 - 3, -T - 2); c.lineTo(i * 9, -T - 12); c.lineTo(i * 9 + 3, -T - 2); c.fill(); } }
+    if (link.kind === 'sfida') { c.strokeStyle = '#c9cdd2'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(-8, -T - 12); c.lineTo(8, -T + 2); c.moveTo(8, -T - 12); c.lineTo(-8, -T + 2); c.stroke(); }
     if (link.kind === 'treasure') { c.fillStyle = '#e8b64a'; c.beginPath(); c.moveTo(-9, -T - 4); c.lineTo(-9, -T - 12); c.lineTo(-4, -T - 7); c.lineTo(0, -T - 14); c.lineTo(4, -T - 7); c.lineTo(9, -T - 12); c.lineTo(9, -T - 4); c.fill(); }
     if (link.kind === 'shop') { circ(c, 0, -T - 6, 6, '#e8b64a'); c.fillStyle = '#5a4a1a'; c.font = '700 9px sans-serif'; c.textAlign = 'center'; c.fillText('€', 0, -T - 3); }
     c.restore();
   }
 }
 function drawTile(c, v, col, r, room) {
-  const x = T + col * T, y = T + r * T, th = room.depth - 1, h = hash(col * 13 + room.gx, r * 7 + room.gy);
+  const x = T + col * T, y = T + r * T, th = chap(room.depth) - 1, h = hash(col * 13 + room.gx, r * 7 + room.gy);
   if (v === 1 || v === 5) {
     const base = ROCK[th];
     ell(c, x + T / 2, y + T - 6, 17, 6, 'rgba(0,0,0,.35)');
@@ -1913,7 +2018,7 @@ function drawPickup(c, pk, live) {
   if (pk.hearts) { for (let i = 0; i < pk.hearts; i++) { heartPath(c, x + (i - (pk.hearts - 1) / 2) * 16, y + 26, 6); c.fillStyle = '#d2202a'; c.fill(); c.strokeStyle = '#1a0606'; c.lineWidth = 1.2; c.stroke(); } }
   if (pk.price) {
     c.fillStyle = '#efe3cf'; c.font = '700 13px sans-serif'; c.textAlign = 'center';
-    c.fillText(pk.price + ' ¢', x, y + 26);
+    c.fillText(priceOf(pk) + ' ¢', x, y + 26);
   }
 }
 function drawPill(c, x, y, ci, s) {
@@ -2000,6 +2105,19 @@ function drawIcon(c, icon, col, x, y, s) {
     case 'book': c.fillStyle = col; rrect(c, -10, -13, 20, 26, 2); c.fill(); c.fillStyle = '#efe3cf'; c.fillRect(8, -11, 3, 22); c.fillStyle = '#e8b64a'; c.fillRect(-1.5, -8, 3, 13); c.fillRect(-5, -4, 10, 3); break;
     case 'pig': ell(c, 0, 2, 13, 10, col); circ(c, 9, 0, 5, shade(col, 0.2)); circ(c, 8, -1, 1, '#7a3a4a'); circ(c, 10, 1, 1, '#7a3a4a'); circ(c, 2, -3, 1.6, '#1a1a1a'); c.fillStyle = '#5a3a1a'; c.fillRect(-4, -10, 8, 2.5); c.fillStyle = col; c.beginPath(); c.moveTo(-4, -8); c.lineTo(-8, -12); c.lineTo(-1, -9); c.fill(); break;
     case 'unknown': c.fillStyle = 'rgba(232,182,74,.18)'; circ(c, 0, 0, 13, 'rgba(232,182,74,.18)'); c.fillStyle = col; c.font = '800 24px ' + DISPLAY_FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('?', 0, 1); break;
+    case 'moto': c.fillStyle = '#222'; circ(c, -10, 6, 6, '#222'); circ(c, 10, 6, 6, '#222'); circ(c, -10, 6, 2.5, '#9aa3ad'); circ(c, 10, 6, 2.5, '#9aa3ad'); c.fillStyle = col; c.beginPath(); c.moveTo(-10, 4); c.lineTo(-4, -4); c.lineTo(6, -4); c.lineTo(11, 4); c.closePath(); c.fill(); c.fillStyle = '#3a3a3e'; c.fillRect(-4, -7, 8, 3); c.strokeStyle = '#c9cdd2'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(6, -4); c.lineTo(9, -10); c.stroke(); break;
+    case 'tech': circ(c, 0, 0, 10, '#2a3a4a'); c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 10, 0, 7); c.stroke(); c.fillStyle = col; c.fillRect(-14, -1.5, 28, 3); circ(c, 0, 0, 4, '#dffbff'); break;
+    case 'knife': c.save(); c.rotate(-0.6); c.fillStyle = col; c.beginPath(); c.moveTo(-2, -14); c.quadraticCurveTo(7, -4, 2, 3); c.lineTo(-2, 3); c.closePath(); c.fill(); c.fillStyle = '#6b4a2a'; c.fillRect(-2.5, 3, 5, 11); c.restore(); break;
+    case 'coinhole': circ(c, 0, 0, 11, col); circ(c, 0, 0, 8.5, '#e8b64a'); circ(c, 0, 0, 3, 'rgba(0,0,0,.6)'); break;
+    case 'clover': for (const [a, b] of [[0, -6], [6, 0], [0, 6], [-6, 0]]) heartPath(c, a, b, 5.5), c.fillStyle = col, c.fill(); c.strokeStyle = shade(col, -0.3); c.lineWidth = 2; c.beginPath(); c.moveTo(2, 4); c.quadraticCurveTo(6, 10, 4, 14); c.stroke(); break;
+    case 'petal': c.beginPath(); c.moveTo(0, 12); c.quadraticCurveTo(-13, 0, -4, -12); c.quadraticCurveTo(0, -6, 4, -12); c.quadraticCurveTo(13, 0, 0, 12); c.fillStyle = col; c.fill(); line(1.2); break;
+    case 'tooth': c.beginPath(); c.moveTo(-8, -9); c.quadraticCurveTo(0, -13, 8, -9); c.lineTo(6, 4); c.lineTo(3, 12); c.lineTo(0, 5); c.lineTo(-3, 12); c.lineTo(-6, 4); c.closePath(); c.fillStyle = col; c.fill(); line(1.4, '#b8b2a4'); break;
+    case 'clip': c.beginPath(); c.moveTo(-3, 10); c.lineTo(-3, -8); c.arc(0, -8, 3, Math.PI, 0); c.lineTo(3, 8); c.arc(0, 8, 2, 0, Math.PI); c.lineTo(-1, -5); line(2, col); break;
+    case 'button': circ(c, 0, 0, 11, col); circ(c, 0, 0, 8, shade(col, 0.15)); for (const [a, b] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) circ(c, a, b, 1.6, shade(col, -0.5)); break;
+    case 'match': c.fillStyle = '#c9a26b'; c.save(); c.rotate(0.5); c.fillRect(-1.5, -6, 3, 18); circ(c, 0, -8, 3.5, col); c.restore(); break;
+    case 'cap': circ(c, 0, 0, 11, col); for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; circ(c, Math.cos(a) * 11, Math.sin(a) * 11, 2, shade(col, -0.2)); } circ(c, 0, 0, 6, shade(col, 0.2)); break;
+    case 'shell': c.beginPath(); c.moveTo(0, 10); c.lineTo(-12, -4); c.quadraticCurveTo(0, -16, 12, -4); c.closePath(); c.fillStyle = col; c.fill(); line(1.2); for (const a of [-6, -2, 2, 6]) { c.beginPath(); c.moveTo(0, 10); c.lineTo(a * 1.6, -7); line(1, shade(col, -0.35)); } break;
+    case 'marble': circ(c, 0, 0, 10, col); c.strokeStyle = '#2b5aa8'; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 6, 0.5, 3); c.stroke(); circ(c, -3, -4, 2.5, 'rgba(255,255,255,.7)'); break;
     case 'lock': c.fillStyle = col; rrect(c, -10, -3, 20, 16, 3); c.fill(); c.beginPath(); c.arc(0, -4, 7, Math.PI, 0); line(3.5, col); circ(c, 0, 4, 2.5, dark); c.fillStyle = dark; c.fillRect(-1, 4, 2, 5); break;
     default: circ(c, 0, 0, 10, col);
   }
@@ -2075,6 +2193,7 @@ function drawChar(c, ch, x, y, o = {}) {
       c.fillStyle = ch.hair; c.beginPath(); c.moveTo(-4, hy - R + 3); c.lineTo(0, hy - R - 11); c.lineTo(4, hy - R + 3); c.fill();
       break;
     case 'curly':
+      if (ch.hachimaki) { c.save(); c.fillStyle = '#f4f4f4'; c.fillRect(-R, hy - 7, R * 2, 4); if (face === 's') circ(c, 0, hy - 5, 2, '#d2202a'); c.restore(); }
       if (face !== 'n') for (let i = 0; i < 7; i++) { const a = Math.PI * (1.02 + i * 0.16); circ(c, Math.cos(a) * (R - 1), hy + Math.sin(a) * (R - 1) - 1, 5, ch.hair); }
       else circ(c, 0, hy, R + 1, ch.hair);
       break;
@@ -2228,6 +2347,7 @@ function drawEnemy(c, e) {
     case 'piero': {
       const b = Math.sin(e.t * 0.12) * 1.5;
       c.scale(1.75, 1.75);
+      if (e.p2) { c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = 'rgba(240,210,122,' + (0.6 + Math.sin(e.t * 0.2) * 0.3) + ')'; c.lineWidth = 2.5; c.beginPath(); c.ellipse(0, -34, 12, 4, 0, 0, Math.PI * 2); c.stroke(); c.restore(); }
       // long robe and the tall red hat of the self-portrait
       c.fillStyle = '#4a1414'; c.beginPath(); c.moveTo(-11, -2); c.lineTo(-14, 13 + b); c.lineTo(14, 13 - b); c.lineTo(11, -2); c.closePath(); c.fill();
       c.fillStyle = '#7a1a1a'; rrect(c, -11, -5, 22, 10, 4); c.fill();
@@ -2241,6 +2361,7 @@ function drawEnemy(c, e) {
       c.save(); c.translate(13 * flip, 0); c.rotate(flip * 0.6); c.fillStyle = '#6b4a2a'; c.fillRect(-1, -10, 2, 14); circ(c, 0, -11, 2, PALETTE[Math.floor(e.t / 20) % PALETTE.length]); c.restore();
       break;
     }
+    default: if (e.mini) drawSin(c, e, flip); break;
     case 'mostro': {
       const sq = e.st === 'hop' || e.st === 'air' ? 1.08 : 1 + Math.sin(e.t * 0.1) * 0.04;
       c.scale(1 / sq, sq);
@@ -2292,6 +2413,10 @@ function drawTear(c, t) {
     case 'laser': c.rotate(Math.atan2(t.vy, t.vx)); c.globalCompositeOperation = 'lighter'; ell(c, 0, 0, r * 2.2, r * 0.9, 'rgba(255,60,60,.5)'); ell(c, 0, 0, r * 1.6, r * 0.45, '#ffe0e0'); break;
     case 'carta': c.rotate(t.spin); c.fillStyle = '#f5c400'; rrect(c, -r * 0.8, -r * 1.1, r * 1.6, r * 2.2, 1.5); c.fill(); c.fillStyle = '#2b5aa8'; c.fillRect(-r * 0.6, -r * 0.9, r * 1.2, r * 1.8); circ(c, 0, 0, r * 0.35, '#f4f4f4'); break;
     case 'scarica': c.globalCompositeOperation = 'lighter'; circ(c, 0, 0, r * 1.5, 'rgba(34,195,214,.3)'); circ(c, 0, 0, r, col); circ(c, 0, 0, r * 0.5, '#e0fbff'); break;
+    case 'riso': c.rotate(Math.atan2(t.vy, t.vx)); ell(c, 0, 0, r * 1.3, r * 0.6, '#f8f6ee'); ell(c, -r * 0.3, -r * 0.15, r * 0.5, r * 0.2, '#ffffff'); c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(0, 0, r * 1.3, r * 0.6, 0, 0, Math.PI * 2); c.stroke(); break;
+    case 'birra': circ(c, 0, 0, r, '#b8761a'); circ(c, 0, 0, r - 1.2, '#e8a83a'); ell(c, 0, -r * 0.55, r * 0.85, r * 0.4, '#fff8e8'); circ(c, r * 0.3, r * 0.2, r * 0.15, 'rgba(255,255,255,.7)'); break;
+    case 'coltello': c.rotate(t.spin * 1.5); c.fillStyle = '#c9cdd2'; c.beginPath(); c.moveTo(-2, -r * 1.6); c.quadraticCurveTo(r * 0.8, -r * 0.4, 2, r * 0.3); c.lineTo(-2, r * 0.3); c.closePath(); c.fill(); c.fillStyle = '#6b4a2a'; c.fillRect(-2.2, r * 0.3, 4.4, r * 1.1); break;
+    case 'bomba': drawIcon(c, 'bomb', '#222', 0, 0, r * 2.6); break;
     case 'santa': c.globalCompositeOperation = 'lighter'; circ(c, 0, 0, r * 1.4, 'rgba(255,240,190,.35)'); circ(c, 0, 0, r, '#fff6d8'); break;
     case 'fuoco': c.globalCompositeOperation = 'lighter'; circ(c, 0, 0, r * 1.3, 'rgba(255,122,26,.4)'); circ(c, 0, 0, r * 0.8, '#ffd34a'); break;
     case 'nera': circ(c, 0, 0, r, '#efe3cf'); circ(c, 0, 0, r - 1.5, col); circ(c, -r * 0.35, -r * 0.35, r * 0.28, 'rgba(255,255,255,.75)'); break;
@@ -2338,7 +2463,8 @@ function drawLive(c) {
   for (const o of p.orbitals) drawIcon(c, o.kind === 'piccione' ? 'bird' : 'fly', o.kind === 'piccione' ? '#8d96a3' : '#3a3a3a', o.x || p.x, o.y || p.y, 18);
   for (const t of G.tears) drawTear(c, t);
   for (const b of G.beams) { // the brimstone beam runs to the wall
-    const len = Math.max(RW, RH), x2 = p.x + b.dx * len, y2 = p.y - 8 + b.dy * len, w = 10 + Math.sin(G.tick * 0.8) * 3;
+    const len = Math.max(RW, RH), x2 = p.x + b.dx * len, y2 = p.y - 8 + b.dy * len, w = b.thin ? 3 + b.t * 0.4 : 10 + Math.sin(G.tick * 0.8) * 3;
+    if (b.thin) { c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = 'rgba(34,195,214,.6)'; c.lineWidth = w * 2; c.beginPath(); c.moveTo(p.x, p.y - 8); c.lineTo(x2, y2); c.stroke(); c.strokeStyle = '#dffbff'; c.lineWidth = w * 0.6; c.stroke(); c.restore(); continue; }
     c.save(); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
     c.strokeStyle = 'rgba(255,40,30,.45)'; c.lineWidth = w * 2.2; c.beginPath(); c.moveTo(p.x, p.y - 8); c.lineTo(x2, y2); c.stroke();
     c.strokeStyle = '#ff6a4a'; c.lineWidth = w; c.stroke(); c.strokeStyle = '#ffe0d0'; c.lineWidth = w * 0.35; c.stroke(); c.restore();
@@ -2391,10 +2517,16 @@ function drawPlayer(c) {
   if (p.inv > 0 && !p.dead && Math.floor(p.inv / 4) % 2) return;
   if (p.fx.turbo > 0) { c.save(); c.translate(p.x, p.y); c.rotate(Math.atan2(p.dash.dy, p.dash.dx)); drawIcon(c, 'car', '#c9cdd2', 0, 0, 40); c.restore(); return; }
   const fly = flying(p) ? Math.sin(G.tick * 0.1) * 2 - 4 : 0;
+  if (p.fx.moto > 0) { c.save(); c.translate(p.x, p.y + 6); if (p.vx < -0.2) c.scale(-1, 1); drawIcon(c, 'moto', '#d2202a', 0, 0, 46); c.restore(); }
+  if (p.fx.sprint > 0 && Math.hypot(p.vx, p.vy) > 1) { c.strokeStyle = 'rgba(245,196,0,.5)'; c.lineWidth = 2; for (let i = -1; i <= 1; i++) { c.beginPath(); c.moveTo(p.x - p.vx * 4 + i * 6, p.y - 6 - p.vy * 4); c.lineTo(p.x - p.vx * 9 + i * 6, p.y - 6 - p.vy * 9); c.stroke(); } }
+  if (p.trans.includes('santo')) { c.strokeStyle = '#f0d27a'; c.lineWidth = 2; c.beginPath(); c.ellipse(p.x, p.y - 32 + fly, 10, 3, 0, 0, Math.PI * 2); c.stroke(); }
   if (p.fx.carro > 0) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.3 + Math.sin(G.tick * 0.4) * 0.15; circ(c, p.x, p.y - 6, 24, '#e8b64a'); c.restore(); }
   if (flying(p)) { for (const s of [-1, 1]) ell(c, p.x + s * 12, p.y - 2 + fly, 9, 5, 'rgba(240,240,240,.75)', s * (0.4 + Math.sin(G.tick * 0.3) * 0.3)); }
   if (p.shield) { c.save(); c.globalAlpha = 0.25; circ(c, p.x, p.y - 6, 22, '#fff6d8'); c.restore(); }
   drawChar(c, p.ch, p.x, p.y - 4 + fly, {face: p.hold ? 's' : p.face, walk: p.walk, shoot: p.cd > delayOf(p) - 4, hurt: p.inv > 50, dead: p.dead, breath: true, scale: p.fx.forza ? 1.3 : 1});
+  if (p.trans.includes('diavolo')) { c.fillStyle = '#3a0a0a'; for (const sg of [-1, 1]) { c.beginPath(); c.moveTo(p.x + sg * 6, p.y - 26 + fly); c.lineTo(p.x + sg * 11, p.y - 36 + fly); c.lineTo(p.x + sg * 2, p.y - 28 + fly); c.fill(); } }
+  if (p.trans.includes('campione')) { c.fillStyle = '#e8b64a'; c.beginPath(); c.arc(p.x, p.y + 2, 3, 0, 7); c.fill(); }
+  if (p.trans.includes('sciame') && G.tick % 3 === 0) G.fx.push({kind: 'p', x: p.x + rr(-14, 14), y: p.y - 20 + rr(-8, 8), vx: rr(-0.5, 0.5), vy: -0.3, life: 14, col: '#2a2a2e', size: 2});
   if (p.hold) { drawIcon(c, p.hold.icon, p.hold.col, p.x, p.y - 44, 26); }
 }
 
@@ -2450,6 +2582,14 @@ function drawHUD(c) {
     c.font = `600 ${Math.round(13 * u)}px ${BODY_FONT}`;
     st.forEach(([k, v], i) => { const yy = OY + RH * S * 0.35 + i * 18 * u; c.fillStyle = '#a8988a'; c.fillText(k, OX - 82, yy); c.fillStyle = '#efe3cf'; c.fillText(String(v), OX - 44, yy); });
   }
+  if (p.trinket) { const t = TRINKET[p.trinket]; c.fillStyle = 'rgba(0,0,0,.35)'; rrect(c, OX + 8 * u, OY + RH * S - 40 * u, 32 * u, 32 * u, 4 * u); c.fill(); drawIcon(c, t.icon, t.col, OX + 24 * u, OY + RH * S - 24 * u, 24 * u); }
+  if (run.limit || run.hard || run.challenge || run.daily) {
+    const tags = [run.hard && 'Difficile', run.challenge && CHAL[run.challenge].name, run.daily && 'Partita del giorno'].filter(Boolean).join(' · ');
+    let txt = tags;
+    if (run.limit) { const left = Math.max(0, run.limit - run.frames) / 60; txt += ' · ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'); }
+    c.textAlign = 'center'; c.fillStyle = run.limit && run.limit - run.frames < 3600 ? '#ff5a4a' : '#e8b64a'; c.font = `700 ${Math.round(13 * u)}px ${BODY_FONT}`;
+    c.fillText(txt, OX + RW * S / 2, OY + 14 * u); c.textAlign = 'left';
+  }
   // pocket: a card or a pill
   if (p.card) {
     const px = OX + RW * S - 30 * u, py = OY + RH * S - 28 * u, cd = CARD[p.card];
@@ -2495,7 +2635,7 @@ function drawMinimap(c, u) {
     const x = x0 + (r.gx - minx) * cw, y = y0 + (r.gy - miny) * chh;
     c.fillStyle = r === G.room ? '#efe3cf' : r.visited ? '#7d6e62' : '#3a2b23';
     c.fillRect(x + 1, y + 1, cw - 2, chh - 2);
-    const ic = {treasure: '#e8b64a', shop: '#9aa3ad', boss: '#d2202a', secret: '#b07ad6', devil: '#5e0a0f', angel: '#fff6d0'}[r.type];
+    const ic = {treasure: '#e8b64a', shop: '#9aa3ad', boss: '#d2202a', secret: '#b07ad6', supersegreta: '#d68af0', devil: '#5e0a0f', angel: '#fff6d0', sfida: '#c9cdd2', sacrificio: '#9b111e', sala: '#25d366', maledetta: '#3a0a0a'}[r.type];
     if (ic) circ(c, x + cw / 2, y + chh / 2, 2.6 * u, ic);
   }
 }
@@ -2530,17 +2670,17 @@ const CURSES = {
   cieco: {name: 'Maledizione del Cieco', info: 'Gli oggetti sono nascosti finché non li prendi.'},
   ignoto: {name: 'Maledizione dell\'Ignoto', info: 'Non vedi quanti cuori ti restano.'},
 };
-const curse = id => G.floor && G.floor.curse === id;
+const curse = id => !!(G.floor && G.floor.curse === id || G.run && G.run.curses && G.run.curses.includes(id));
 
 /* ---------- room rewards ---------- */
 function rollReward(p) {
-  const table = [['coin', 26], ['nickel', 5], [p.ch.noRed ? 'soul' : 'heart', 13], ['bomb', 11], ['key', 13], ['pill', 6], ['card', 6], ['soul', 4],
-    ['black', 2], ['gold', p.ch.noRed ? 0 : 2], ['eternal', 1], ['battery', 3], ['chest', 4], ['goldchest', 2], ['redchest', 1], ['sack', 3]];
+  const table = [['coin', 26], ['nickel', 5], [p.ch.noRed ? 'soul' : 'heart', G.run.hard ? 6 : 13], ['bomb', 11], ['key', 13], ['pill', 6], ['card', 6], ['soul', 4],
+    ['black', 2], ['gold', p.ch.noRed ? 0 : 2], ['eternal', 1], ['battery', 3], ['chest', 4], ['goldchest', 2], ['redchest', 1], ['sack', 3], ['trinket', 3]];
   let x = rnd() * table.reduce((s, [, w]) => s + w, 0);
   for (const [k, w] of table) { if ((x -= w) < 0) return k; }
   return 'coin';
 }
-const CHEST_STUFF = ['coin', 'coin', 'coin', 'nickel', 'heart', 'bomb', 'key', 'pill', 'card', 'battery'];
+const CHEST_STUFF = ['coin', 'coin', 'coin', 'nickel', 'heart', 'bomb', 'key', 'pill', 'card', 'battery', 'trinket'];
 function spill(p, n, from, x, y) { for (let i = 0; i < n; i++) { let k = pick(from); if (k === 'heart' && p.ch.noRed) k = 'soul'; dropPickup(k, x + rr(-16, 16), y + rr(-16, 16)); } }
 
 /* ---------- consumables: one pocket for a pill or a card ---------- */
@@ -2562,8 +2702,9 @@ const EXTRA_PICKUPS = {
   },
   chest(pk, p) { pk.kind = 'chestopen'; Snd.unlock(); spill(p, ri(2, 4), CHEST_STUFF, pk.x, pk.y); return false; },
   goldchest(pk, p) {
-    if (p.keys <= 0) return false;
-    p.keys--; pk.kind = 'goldchestopen'; Snd.unlock(); Snd.coin();
+    if (p.keys <= 0 && p.trinket !== 'graffetta') return false;
+    if (p.trinket !== 'graffetta') p.keys--;
+    pk.kind = 'goldchestopen'; Snd.unlock(); Snd.coin();
     if (rnd() < 0.18) G.room.pickups.push({...pickItem('t', RND, G.run), x: pk.x, y: pk.y - 34, ped: true});
     else spill(p, ri(3, 5), CHEST_STUFF, pk.x, pk.y);
     return false;
@@ -2575,7 +2716,7 @@ const EXTRA_PICKUPS = {
     else if (x < 0.6) spill(p, 2, ['card', 'pill'], pk.x, pk.y);
     else if (x < 0.78) { for (let i = 0; i < 3; i++) spawnEnemy('zanzara', pk.x + rr(-14, 14), pk.y + rr(-14, 14), 20); G.banner = {title: 'Zanzare!', sub: '', t: 70, small: true}; }
     else if (x < 0.9) G.room.pickups.push({...pickItem('d', RND, G.run), x: pk.x, y: pk.y - 34, ped: true});
-    else G.bombs.push({x: pk.x, y: pk.y + 6, t: 50});
+    else G.bombs.push({x: pk.x, y: pk.y + 6, t: 50, troll: 'un baule rosso'});
     return false;
   },
 };
@@ -2597,7 +2738,7 @@ const CHAMPS = [
   {id: 'blu', col: '#4a8cff', hp: 1.5, flies: true},
 ];
 function makeChampion(e) {
-  if (e.boss || !G.room || G.room.type !== 'normal' || e.type === 'raviolino' || rnd() > 0.04 + 0.03 * G.run.depth) return;
+  if (e.boss || e.mini || !G.room || G.room.type !== 'normal' || e.type === 'raviolino' || rnd() > (0.04 + 0.03 * chap(G.run.depth)) * (G.run.hard ? 2 : 1)) return;
   e.champ = pick(CHAMPS); e.hp = e.max = Math.round(e.hp * e.champ.hp); e.r = Math.round(e.r * 1.12);
 }
 function championDeath(e) {
@@ -2613,6 +2754,7 @@ function trySpawnDeal(boss) {
   const run = G.run, p = G.p;
   let chance = run.floorHit ? 0.3 : 0.6;
   if (run.depth === 1) chance *= 0.6;
+  if (run.hard) chance -= 0.1;
   if (p.flags.goat) chance = 1;
   if (rnd() >= chance) return;
   const angel = !run.tookDeal && !p.flags.goat && rnd() < 0.3 + run.devilSeen * 0.12;
@@ -2640,6 +2782,7 @@ function payHearts(n) {
   else if (p.soul + p.black >= 6) { let c = 6; const s = Math.min(p.soul, c); p.soul -= s; c -= s; p.black -= c; } // no red hearts: three soul hearts instead
   else return false;
   G.run.tookDeal = true; Snd.tone(110, 0.8, 'sawtooth', 0.15, 55);
+  if (++G.run.deals >= 3) meta('deals3');
   if (hearts(p) <= 0) { p.dead = true; G.run.killer = 'un patto col diavolo'; G.deathT = 90; }
   return true;
 }
@@ -2678,18 +2821,18 @@ const CARDS = [
   {id: 'morte', n: 'XIII', name: 'La Morte', sub: 'Falcia la stanza', fn: () => { for (const e of G.enemies) damageEnemy(e, 40, 0, 0, true); G.flash = 0.5; Snd.kill(); }},
   {id: 'temperanza', n: 'XIV', name: 'La Temperanza', sub: 'Due pillole', fn: p => spill(p, 2, ['pill'], p.x, p.y + 30)},
   {id: 'diavolo', n: 'XV', name: 'Il Diavolo', sub: 'Danno +2 per la stanza', fn: p => { p.fx.diavolo = 1; }},
-  {id: 'torre', n: 'XVI', name: 'La Torre', sub: 'Esplosioni ovunque', fn: () => { for (let i = 0; i < 6; i++) G.bombs.push({x: rr(T * 2, RW - T * 2), y: rr(T * 2, RH - T * 2), t: ri(30, 90)}); }},
+  {id: 'torre', n: 'XVI', name: 'La Torre', sub: 'Esplosioni ovunque', fn: () => { for (let i = 0; i < 6; i++) G.bombs.push({x: rr(T * 2, RW - T * 2), y: rr(T * 2, RH - T * 2), t: ri(30, 90), troll: 'la Torre'}); }},
   {id: 'stella', n: 'XVII', name: 'La Stella', sub: 'Al tesoro', fn: () => teleportTo('treasure')},
   {id: 'luna', n: 'XVIII', name: 'La Luna', sub: 'Alla stanza segreta', fn: () => teleportTo('secret')},
   {id: 'sole', n: 'XIX', name: 'Il Sole', sub: 'Luce e salute', fn: p => { healAll(p); revealMap(); for (const e of G.enemies) damageEnemy(e, 100, 0, 0, true); G.flash = 1; }},
   {id: 'giudizio', n: 'XX', name: 'Il Giudizio', sub: 'Una batteria e una chiave', fn: p => { dropPickup('battery', p.x - 20, p.y + 30); dropPickup('key', p.x + 20, p.y + 30); }},
   {id: 'mondo', n: 'XXI', name: 'Il Mondo', sub: 'Tutta la mappa', fn: () => revealMap()},
   {id: 'hagalaz', rune: true, name: 'Runa Hagalaz', sub: 'Sbriciola le rocce', fn: () => { for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) breakTile(c, r, true); G.shake = 12; Snd.boom(); }},
-  {id: 'jera', rune: true, name: 'Runa Jera', sub: 'Raddoppia i raccoglibili', fn: () => { for (const pk of G.room.pickups.slice()) if (!pk.ped && !pk.price && !pk.kind.endsWith('open') && pk.kind !== 'trapdoor' && pk.kind !== 'trofeo') dropPickup(pk.kind, pk.x + 14, pk.y, {id: pk.id, c: pk.c}); }},
+  {id: 'jera', rune: true, name: 'Runa Jera', sub: 'Raddoppia i raccoglibili', fn: () => { for (const pk of G.room.pickups.slice()) if (!pk.ped && !pk.price && !pk.static && !pk.kind.endsWith('open') && pk.kind !== 'trapdoor' && pk.kind !== 'trofeo') dropPickup(pk.kind, pk.x + 14, pk.y, {id: pk.id, c: pk.c}); }},
   {id: 'ansuz', rune: true, name: 'Runa Ansuz', sub: 'Svela ogni segreto', fn: () => { G.floor.rooms.forEach(r => { r.seen = true; if (r.type === 'secret') Object.values(r.doors).forEach(l => { l.hidden = false; }); }); }},
   {id: 'dagaz', rune: true, name: 'Runa Dagaz', sub: 'Purifica il piano', fn: p => { G.floor.curse = null; p.soul += 2; capHearts(p); }},
   {id: 'berkano', rune: true, name: 'Runa Berkano', sub: 'Zanzare amiche per il piano', fn: p => { for (let i = 0; i < 3; i++) p.orbitals.push({kind: 'zanzara', a: i * 2.1, temp: true}); }},
-  {id: 'ehwaz', rune: true, name: 'Runa Ehwaz', sub: 'Una botola sotto i piedi', fn: p => { if (G.run.depth < FLOORS.length) G.room.pickups.push({kind: 'trapdoor', x: p.x, y: p.y + 40}); }},
+  {id: 'ehwaz', rune: true, name: 'Runa Ehwaz', sub: 'Una botola sotto i piedi', fn: p => { if (G.run.depth < MAX_DEPTH) G.room.pickups.push({kind: 'trapdoor', x: p.x, y: p.y + 40}); }},
 ];
 const CARD = Object.fromEntries(CARDS.map(c => [c.id, c]));
 function useCard() {
@@ -2707,7 +2850,11 @@ function chargeShot(p, sx, sy) {
   if (sx || sy) { p.chDir = [sx, sy]; if (!p.hold && !G.beams.length) p.charge = Math.min(full, p.charge + 1); return; }
   if (p.charge <= 0) return;
   const f = p.charge / full, [dx, dy] = p.chDir || [0, 1];
-  if (p.flags.beam) { if (f >= 1) { G.beams.push({dx, dy, t: 22, dmg: dmgOf(p) * 0.8}); Snd.tone(90, 0.6, 'sawtooth', 0.2, 50); Snd.noise(0.5, 0.2, 800); G.shake = 6; } }
+  if (p.flags.knife) {
+    const sp = 7.5, life = 14 + f * 30;
+    G.tears.push({x: p.x, y: p.y - 6, vx: dx * sp, vy: dy * sp, r: 9, life, max: life, from: 'p', dmg: dmgOf(p) * (1 + f * 2.5), kind: 'coltello', hits: new Set(), bounces: 0, pierce: true, boom: true, spectral: true, spin: 0});
+    Snd.tone(900, 0.12, 'sawtooth', 0.06, 300);
+  } else if (p.flags.beam) { if (f >= 1) { G.beams.push({dx, dy, t: 22, dmg: dmgOf(p) * 0.8}); Snd.tone(90, 0.6, 'sawtooth', 0.2, 50); Snd.noise(0.5, 0.2, 800); G.shake = 6; } }
   else fire(dx, dy, 0.3 + f * 2.2);
   p.charge = 0;
 }
@@ -2732,6 +2879,11 @@ function pieroAI(e, dx, dy, d, k, half) {
   const want = d > 220 ? 1 : d < 140 ? -1 : 0;
   e.vx = lerp(e.vx, (dx / d * want + Math.sin(e.t * 0.02) * 0.4) * 0.95 * k, 0.08);
   e.vy = lerp(e.vy, dy / d * want * 0.95 * k, 0.08);
+  if (half && !e.p2) { // second form: Piero paints his own halo
+    e.p2 = true; G.flash = 1; G.shake = 14; ring(e, 24, 3.2, 0, '#f0d27a'); Snd.boss();
+    G.banner = {title: 'Il capolavoro', sub: 'Piero si dipinge l\'aureola', t: 140, big: true};
+  }
+  if (e.p2) k *= 1.25;
   if (e.st === 'persp') { // lines of perspective converge on the spot where you stood
     if (--e.st2 <= 0) {
       const n = half ? 14 : 10;
@@ -2797,20 +2949,298 @@ function drawCardIcon(c, cd, x, y, s) {
   }
   c.restore();
 }
+/* ================= more of the Isaac layer: trinkets, transformations, special rooms, sins, challenges, daily ================= */
+
+/* ---------- trinkets: one small passive you can swap ---------- */
+const TRINKETS = [
+  {id: 'moneta', name: 'Moneta bucata', sub: 'Ferito? Ti cade una moneta', icon: 'coinhole', col: '#c9952a', info: 'Ogni volta che ti colpiscono cade una moneta.'},
+  {id: 'quadrifoglio', name: 'Quadrifoglio', sub: 'Fortuna in su', icon: 'clover', col: '#3e8a3a', info: 'Fortuna +2 finché lo tieni.'},
+  {id: 'petalo', name: 'Petalo di rosa', sub: 'Lacrime in su', icon: 'petal', col: '#e05a7a', info: 'Spari un po\' più spesso finché lo tieni.'},
+  {id: 'dente', name: 'Dente da latte', sub: 'Danno in su', icon: 'tooth', col: '#f4f0e6', info: 'Danno +0,6 finché lo tieni.'},
+  {id: 'graffetta', name: 'Graffetta', sub: 'Apre i bauli dorati', icon: 'clip', col: '#c9cdd2', info: 'I bauli dorati si aprono senza chiave.'},
+  {id: 'bottone', name: 'Bottone del gilet', sub: 'A volte para un colpo', icon: 'button', col: '#8a5a2b', info: 'Una volta su otto un colpo non ti fa niente.'},
+  {id: 'pane', name: 'Pane secco', sub: 'Ogni piano cura', icon: 'bread', col: '#c9a26b', info: 'Ogni volta che scendi di piano recuperi un cuore.'},
+  {id: 'fiammifero', name: 'Fiammifero', sub: 'Lacrime a volte infuocate', icon: 'match', col: '#e23b2e', info: 'Una lacrima su sei incendia il nemico.'},
+  {id: 'tappo', name: 'Tappo di birra', sub: 'Velocità in su', icon: 'cap', col: '#d2202a', info: 'Velocità +0,15 finché lo tieni.'},
+  {id: 'conchiglia', name: 'Conchiglia del Tevere', sub: 'Ogni piano un po\' di fede', icon: 'shell', col: '#f0c8a8', info: 'Ogni volta che scendi di piano ottieni mezzo cuore anima.'},
+  {id: 'biglia', name: 'Biglia di vetro', sub: 'Più premi', icon: 'marble', col: '#7fb0d6', info: 'Le stanze ripulite danno un premio più spesso.'},
+  {id: 'tessera', name: 'Tessera del bar', sub: 'Sconti al negozio', icon: 'card', col: '#3a7a4a', info: 'Nel negozio tutto costa 2 monete in meno.'},
+];
+const TRINKET = Object.fromEntries(TRINKETS.map(t => [t.id, t]));
+const has = id => G.p && G.p.trinket === id;
+const luckOf = p => p.luck + (p.trinket === 'quadrifoglio' ? 2 : 0);
+const priceOf = pk => pk.price ? Math.max(1, pk.price - (has('tessera') ? 2 : 0)) : 0;
+EXTRA_PICKUPS.trinket = (pk, p) => {
+  if (p.trinket) { const o = dropPickup('trinket', p.x, p.y + 30, {id: p.trinket}); o.wait = true; }
+  p.trinket = pk.id; const t = TRINKET[pk.id];
+  meta('item', 'n_' + pk.id); Snd.pill();
+  G.banner = {title: t.name, sub: t.sub, t: 140, small: true};
+  return true;
+};
+EXTRA_DRAW.trinket = (c, x, y, pk) => { const t = TRINKET[pk.id]; drawIcon(c, t.icon, t.col, x, y - 2, 22); };
+
+/* ---------- transformations: three items from one family change you ---------- */
+const TRANSFORMS = [
+  {id: 'sciame', name: 'Signore delle Zanzare', set: ['zanzara', 'ali', 'piccione', 'ragno', 'colomba'], fn: p => { p.flags.flight = true; for (let i = 0; i < 2; i++) p.orbitals.push({kind: 'zanzara', a: i * 3}); }},
+  {id: 'santo', name: 'Il Santo', set: ['reliquia', 'rosario', 'mantello', 'santino', 'aureola', 'sacrocuore', 'acquasanta', 'angioletto', 'cuore'], fn: p => { p.flags.flight = true; p.soul += 6; capHearts(p); }},
+  {id: 'diavolo', name: 'Il Diavolo', set: ['zolfo', 'pentagramma', 'caprone', 'patto', 'pece', 'contratto', 'coltello', 'fuochi'], fn: p => { p.flags.flight = true; addBlack(p, 4); }},
+  {id: 'buongustaio', name: 'Il Buongustaio', set: ['bistecca', 'ciaccia', 'lardo', 'pasta', 'caffe', 'cioccolata', 'campari', 'fiasco', 'latte', 'energy', 'peperoncino', 'funghi', 'cipolla'], fn: p => { addHearts(p, 2); healAll(p); p.dmg += 0.5; }},
+  {id: 'campione', name: 'Il Campione del Borgo', set: ['scarpe', 'pallone', 'medaglia', 'balestra', 'energy', 'ferro', 'olografica'], fn: p => { p.speed += 0.3; p.dmg += 0.5; }},
+];
+function checkTransform(p) {
+  for (const tr of TRANSFORMS) {
+    if (p.trans.includes(tr.id)) continue;
+    if (tr.set.filter(id => p.items.includes(id)).length < 3) continue;
+    p.trans.push(tr.id); tr.fn(p);
+    G.banner = {title: tr.name, sub: 'Trasformazione!', t: 200, big: true};
+    G.flash = 0.8; Snd.win(); meta('transform');
+  }
+}
+
+/* ---------- arcade machines and beggars ---------- */
+const later = (pk, f) => { pk.next = G.tick + f; };
+const ready = pk => !pk.next || G.tick >= pk.next;
+EXTRA_PICKUPS.slot = (pk, p) => {
+  if (!ready(pk) || p.coins < 1) return false;
+  p.coins--; later(pk, 40); pk.spin = 30;
+  Snd.tone(600, 0.08, 'square', 0.05); Snd.tone(800, 0.08, 'square', 0.05, null, 0.1);
+  const x = rnd() + luckOf(p) * 0.02;
+  const win = x > 0.99 ? 'trinket' : x > 0.96 ? 'pill' : x > 0.92 ? 'key' : x > 0.86 ? 'bomb' : x > 0.80 ? (p.ch.noRed ? 'soul' : 'heart') : x > 0.62 ? 'coin' : null;
+  if (win) { const pkk = dropPickup(win, pk.x, pk.y + 26); if (win === 'trinket') pkk.id = pick(TRINKETS).id; if (win === 'coin') dropPickup('coin', pk.x + 10, pk.y + 26); Snd.coin(); }
+  return false;
+};
+EXTRA_PICKUPS.blood = (pk, p) => {
+  if (!ready(pk) || p.inv > 0 || hearts(p) <= 1) return false;
+  later(pk, 50); hurtPlayer(1, 'la macchina del sangue', true);
+  for (let i = ri(1, 2); i > 0; i--) dropPickup('coin', pk.x + rr(-12, 12), pk.y + 26);
+  return false;
+};
+EXTRA_PICKUPS.beggar = (pk, p) => {
+  if (!ready(pk) || p.coins < 1) return false;
+  p.coins--; later(pk, 30); pk.got = (pk.got || 0) + 1; meta('donate');
+  Snd.coin();
+  if (pk.got >= (pk.need || 6)) { // pays out and walks away
+    if (rnd() < 0.45) G.room.pickups.push({...pickItem('t', RND, G.run), x: pk.x, y: pk.y, ped: true});
+    else spill(p, 3, ['heart', 'bomb', 'key', 'battery', 'card'], pk.x, pk.y + 20);
+    pk.taken = true; burst(pk.x, pk.y, '#efe3cf', 12, 2);
+    G.banner = {title: 'Grazie!', sub: 'Il mendicante ricambia', t: 90, small: true};
+  } else if (rnd() < 0.12) dropPickup(pick(['coin', 'heart', 'key']), pk.x, pk.y + 26);
+  return false;
+};
+function blastMachines(x, y, rad) {
+  for (const pk of G.room.pickups) {
+    if (!pk.static || pk.taken || Math.hypot(pk.x - x, pk.y - y) > rad + 16) continue;
+    pk.taken = true; burst(pk.x, pk.y, '#8a8f96', 14, 3);
+    if (pk.kind === 'slot') spill(G.p, 3, ['coin'], pk.x, pk.y);
+    if (pk.kind === 'blood') spill(G.p, 1, ['heart'], pk.x, pk.y);
+  }
+}
+EXTRA_DRAW.slot = (c, x, y, pk) => {
+  c.fillStyle = '#5a1a1a'; rrect(c, x - 14, y - 26, 28, 34, 3); c.fill();
+  c.fillStyle = '#e8b64a'; c.fillRect(x - 14, y - 26, 28, 6);
+  c.fillStyle = '#f4f0e6'; c.fillRect(x - 10, y - 16, 20, 10);
+  const sp = pk.spin > 0 ? (pk.spin--, G.tick) : 0;
+  ['#d2202a', '#25d366', '#2b5aa8'].forEach((cc, i) => circ(c, x - 6 + i * 6, y - 11 + (sp ? Math.sin(sp + i) * 2 : 0), 2.4, cc));
+  c.fillStyle = '#3a3a3e'; c.fillRect(x + 14, y - 18, 3, 12); circ(c, x + 15.5, y - 20, 3, '#d2202a');
+};
+EXTRA_DRAW.blood = (c, x, y) => {
+  c.fillStyle = '#3a3a3e'; rrect(c, x - 13, y - 26, 26, 34, 3); c.fill();
+  c.fillStyle = '#9b111e'; rrect(c, x - 8, y - 20, 16, 16, 8); c.fill();
+  c.fillStyle = '#efe3cf'; c.font = '700 9px sans-serif'; c.textAlign = 'center'; c.fillText('+', x, y + 4);
+};
+EXTRA_DRAW.beggar = (c, x, y, pk) => {
+  const b = Math.sin(G.tick * 0.05 + x) * 1;
+  ell(c, x, y + 8, 12, 4, 'rgba(0,0,0,.3)');
+  c.fillStyle = '#6b5a4a'; rrect(c, x - 10, y - 4 + b, 20, 12, 4); c.fill();
+  circ(c, x, y - 12 + b, 9, '#d9b08a'); ell(c, x, y - 6 + b, 6, 4, '#8a7a6a');
+  circ(c, x - 3, y - 13 + b, 1.4, '#1a1418'); circ(c, x + 3, y - 13 + b, 1.4, '#1a1418');
+  c.fillStyle = '#8a8f96'; c.fillRect(x + 7, y + 2, 7, 5);
+  if (pk.got) { c.fillStyle = '#e8b64a'; c.font = '700 10px sans-serif'; c.textAlign = 'center'; c.fillText(pk.got + '/' + (pk.need || 6), x, y - 26); }
+};
+
+/* ---------- the seven deadly sins as mini-bosses ---------- */
+const SINS = ['gola', 'accidia', 'superbia', 'avarizia', 'ira', 'invidia', 'lussuria'];
+Object.assign(EN, {
+  gola: {name: 'la Gola', hp: 70, r: 18, mini: true, col: '#6b8a3a'},
+  accidia: {name: 'l\'Accidia', hp: 60, r: 16, mini: true, col: '#7a5a9a'},
+  superbia: {name: 'la Superbia', hp: 60, r: 16, mini: true, col: '#d9b24a'},
+  avarizia: {name: 'l\'Avarizia', hp: 55, r: 16, mini: true, col: '#c9952a'},
+  ira: {name: 'l\'Ira', hp: 55, r: 16, mini: true, col: '#b3121b'},
+  invidia: {name: 'l\'Invidia', hp: 50, r: 16, mini: true, col: '#3a8a6a'},
+  invidiola: {name: 'un pezzo d\'Invidia', hp: 18, r: 10, mini: true, col: '#3a8a6a'},
+  lussuria: {name: 'la Lussuria', hp: 45, r: 15, mini: true, col: '#e05a9a'},
+});
+function sinAI(e, dx, dy, d, k) {
+  const p = G.p, follow = sp => { const [x, y] = flowDir(e); return [x, y, sp]; };
+  switch (e.type) {
+    case 'gola':
+      if (e.cd <= 0) { aimAt(e, 3, 0.2, 3, '#6b8a3a'); e.cd = 110; if (rnd() < 0.4 && G.enemies.filter(x => x.type === 'zanzara').length < 3) spawnEnemy('zanzara', e.x, e.y, 10); }
+      return follow(0.55);
+    case 'accidia':
+      if (e.cd <= 0) { aimAt(e, 2.1, 0.25, 5, '#7a5a9a'); e.cd = 140; }
+      return follow(0.35);
+    case 'superbia':
+      if (e.st === 'charge') { if (e.bonk) { e.bonk = false; e.st = 'idle'; e.cd = 60; ring(e, 10, 3, 0, '#d9b24a'); } return [e.dir[0], e.dir[1], 4.6]; }
+      if ((Math.abs(dx) < 18 || Math.abs(dy) < 18) && e.cd <= 0) { e.dir = Math.abs(dx) < 18 ? [0, Math.sign(dy)] : [Math.sign(dx), 0]; e.st = 'charge'; e.bonk = false; }
+      return follow(0.8);
+    case 'avarizia':
+      if (d < e.r + p.r && p.inv <= 0 && p.coins > 0) { p.coins = Math.max(0, p.coins - 3); G.banner = {title: 'Ti ha rubato le monete!', sub: '', t: 70, small: true}; }
+      if (e.cd <= 0) { aimAt(e, 3.4, 0, 1, '#e8b64a'); e.cd = 90; }
+      return follow(1.2);
+    case 'ira':
+      if (e.cd <= 0) { G.bombs.push({x: p.x + rr(-30, 30), y: p.y + rr(-30, 30), t: 70, troll: 'una bomba dell\'Ira'}); e.cd = 170; }
+      return follow(0.9);
+    case 'invidia':
+      if (e.cd <= 0) { ring(e, 6, 2.8, rnd(), '#3a8a6a'); e.cd = 130; }
+      if (e.t % 90 === 0) e.dir = pick(Object.values(DIRS));
+      return [e.dir[0], e.dir[1], 1];
+    case 'invidiola': return follow(1.6);
+    case 'lussuria':
+      if (e.st === 'lunge') { if (--e.st2 <= 0) { e.st = 'idle'; e.cd = 60; } return [0, 0, 0]; }
+      if (d < 110 && e.cd <= 0) { e.st = 'lunge'; e.st2 = 14; e.vx = dx / d * 5.5 * k; e.vy = dy / d * 5.5 * k; return [0, 0, 0]; }
+      return follow(2);
+  }
+  return [0, 0, 0];
+}
+function sinDeath(e) {
+  meta('mini');
+  if (e.type === 'invidia') for (const s of [-1, 1]) spawnEnemy('invidiola', e.x + s * 16, e.y, 6);
+  if (e.type === 'avarizia') spill(G.p, ri(4, 7), ['coin', 'coin', 'nickel'], e.x, e.y);
+  if (e.type !== 'invidiola' && rnd() < 0.5) dropPickup(pick(['heart', 'soul', 'card', 'trinket']), e.x, e.y); // dropPickup picks the card or trinket itself
+}
+function drawSin(c, e, flip) { // a grey body like Isaac's sins, each with its own sign
+  const col = EN[e.type].col, s = e.r / 16, b = Math.sin(e.t * 0.15) * 1.5;
+  c.scale(s, s);
+  ell(c, -6, 12 + b, 5, 5, shade(col, -0.4)); ell(c, 6, 12 - b, 5, 5, shade(col, -0.4));
+  ell(c, 0, 0, 16, 14, col); ell(c, -5, -5, 7, 4, shade(col, 0.25));
+  circ(c, -5, -3, 3, '#f4f4f4'); circ(c, 5, -3, 3, '#f4f4f4'); circ(c, -5 + flip, -2.5, 1.6, '#1a1418'); circ(c, 5 + flip, -2.5, 1.6, '#1a1418');
+  switch (e.type) {
+    case 'gola': c.fillStyle = '#2a0a0a'; c.beginPath(); c.ellipse(0, 6, 8, 5, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#f4f4f4'; for (let i = -2; i <= 2; i++) c.fillRect(i * 3 - 1, 2, 2, 3); break;
+    case 'accidia': c.fillStyle = col; c.fillRect(-9, -6, 18, 3); c.fillStyle = '#efe3cf'; c.font = '700 8px sans-serif'; c.textAlign = 'center'; c.fillText('z', 12, -14 - (e.t / 10) % 6); break;
+    case 'superbia': c.fillStyle = '#e8b64a'; c.beginPath(); c.moveTo(-8, -12); c.lineTo(-8, -20); c.lineTo(-4, -15); c.lineTo(0, -22); c.lineTo(4, -15); c.lineTo(8, -20); c.lineTo(8, -12); c.fill(); break;
+    case 'avarizia': c.fillStyle = '#8a6a3a'; c.beginPath(); c.ellipse(12 * flip, 6, 7, 8, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#e8b64a'; c.font = '700 8px sans-serif'; c.textAlign = 'center'; c.fillText('€', 12 * flip, 9); break;
+    case 'ira': c.strokeStyle = '#1a0606'; c.lineWidth = 2; c.beginPath(); c.moveTo(-9, -8); c.lineTo(-2, -5); c.moveTo(9, -8); c.lineTo(2, -5); c.stroke(); c.fillStyle = '#ffcf40'; c.fillRect(-1, -20, 2, 6); break;
+    case 'invidia': case 'invidiola': c.strokeStyle = '#1a3a2a'; c.lineWidth = 1.5; c.beginPath(); c.arc(0, 7, 4, Math.PI, 0); c.stroke(); break;
+    case 'lussuria': heartPath(c, 0, -18, 4); c.fillStyle = '#ff5a9a'; c.fill(); break;
+  }
+}
+
+/* ---------- special rooms ---------- */
+function startChallengeRoom(room) {
+  if (!room.challenge || room.challenge.state !== 'idle') return;
+  room.challenge.state = 'waves'; room.cleared = false;
+  Snd.door(false); Snd.boss();
+  G.banner = {title: 'Sfida!', sub: 'Tre ondate di nemici', t: 120};
+  spawnWave(room);
+}
+function spawnWave(room) {
+  const ch = room.challenge, floor = floorTheme(room.depth);
+  ch.wave++;
+  const n = 3 + ch.wave + (room.depth > 4 ? 1 : 0);
+  for (let i = 0; i < n; i++) spawnEnemy(ch.wave === 3 && i === 0 ? pick(SINS.filter(s => s !== 'invidiola')) : pick(floor.pools), tileX(ri(1, 11)), tileY(i % 2 ? 1 : 5), 50);
+}
+function challengeTick(room) { // called each frame while the waves run
+  const ch = room.challenge;
+  if (!ch || ch.state !== 'waves' || G.enemies.length) return;
+  if (ch.wave < 3) spawnWave(room);
+  else { ch.state = 'done'; meta('wave'); }
+}
+function sacrificeHit(room) {
+  room.sac = (room.sac || 0) + 1;
+  const n = room.sac, p = G.p, at = {x: CX, y: CY + 40};
+  if (rnd() < 0.5 || n >= 5) {
+    if (n <= 2) dropPickup('coin', at.x, at.y);
+    else if (n === 3) dropPickup('chest', at.x, at.y);
+    else if (n === 4) spill(p, 2, ['soul'], at.x, at.y);
+    else if (n === 5 && !room.sacItem) { room.sacItem = true; room.pickups.push({...pickItem('a', RND, G.run), x: CX, y: CY - 50, ped: true}); G.banner = {title: 'Il sacrificio è gradito', sub: '', t: 120}; }
+    else dropPickup('redchest', at.x, at.y);
+  }
+}
+
+/* ---------- challenges: fixed runs with their own rules ---------- */
+const CHALLENGES = [
+  {id: 'buio', name: 'Buio pesto', ch: 'vina', desc: 'Ogni piano è al buio e senza mappa.', setup: (run) => { run.curses = ['buio', 'perso']; }},
+  {id: 'cristallo', name: 'Cuore di cristallo', ch: 'capa', desc: 'Un solo cuore, ma il danno è doppio.', setup: (run, p) => { p.maxRed = 2; p.red = 2; p.soul = 0; p.mult = 2; p.flags.glass = true; }},
+  {id: 'bombe', name: 'Solo bombe', ch: 'piero', desc: 'Non puoi sparare: 99 bombe enormi.', setup: (run, p) => { p.flags.noshoot = true; p.flags.megabomb = true; p.bombs = 99; }},
+  {id: 'pacifista', name: 'Il pacifista', ch: 'davidone', desc: 'Non puoi sparare: combattono i tuoi amici.', setup: (run, p) => {
+    p.flags.noshoot = true; p.pets.push({kind: 'gatto', x: p.x, y: p.y, cd: 0}, {kind: 'angelo', x: p.x, y: p.y, cd: 0}); p.orbitals.push({kind: 'piccione', a: 0}, {kind: 'zanzara', a: 2}, {kind: 'zanzara', a: 4}); }},
+  {id: 'mitraglia', name: 'Mitraglia', ch: 'gumi', desc: 'Tre lacrime alla volta, velocissime, ma deboli.', setup: (run, p) => { p.flags.triple = true; p.delay = 5; p.mult = 0.45; }},
+  {id: 'corsa', name: 'Contro il tempo', ch: 'alex', desc: 'Batti Piero della Francesca entro 20 minuti.', setup: run => { run.limit = 60 * 60 * 20; }},
+];
+const CHAL = Object.fromEntries(CHALLENGES.map(c => [c.id, c]));
+
+/* ---------- daily run: same seed and character for everybody, today ---------- */
+function dailyKey(d = new Date()) { return '' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0'); }
+function dailySeed() { const k = dailyKey(); return ('D' + k.slice(2)).padEnd(8, 'X').slice(0, 8); }
+function dailyChar() { return CHARS[seedNum(dailySeed()) % CHARS.length]; }
+function dailyScore(run, won) { return (won ? 100 : run.depth * 10) * 10000 - Math.min(9999, Math.round(run.frames / 60)); }
+function submitDaily(won) {
+  const run = G.run; if (!run.daily || !PROF) return;
+  if (!PROF.daily) PROF.daily = {};
+  if (PROF.daily[run.daily]) return; // only the first try of the day counts
+  const rec = {name: PROF.display, c: run.ch.id, score: dailyScore(run, won), depth: run.depth, t: Math.round(run.frames / 6) / 10, won, d: Date.now()};
+  PROF.daily[run.daily] = rec.score;
+  const list = store('bs-daily-' + run.daily) || []; list.push(rec); list.sort((a, b) => b.score - a.score); store('bs-daily-' + run.daily, list.slice(0, 25));
+  meta('daily'); saveProfile();
+  if (Cloud.on() && !PROF.guest) fetch(Cloud.url('bs_daily_' + run.daily), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({fields: toFS(rec).mapValue.fields})}).catch(() => {});
+}
+
+/* ---------- endings: every character has its own ---------- */
+const ENDINGS = {
+  vina: 'Vina esce dalla cantina, si sistema i capelli e torna in Via XX Settembre come se niente fosse. Nero su nero, nessuno ha visto niente.',
+  raspo: 'Raspo ricarica l\'auto elettrica alla Diga e se ne va in silenzio. La batteria è al 100%, il morale pure.',
+  piero: 'Piero solleva la tela di Piero della Francesca come fosse un bilanciere. Due artisti, un solo vincitore.',
+  pinciu: 'Pinciu manda un vocale di dieci minuti al gruppo: «Ragazzi, non ci crederete…». Nessuno lo ascolta fino in fondo.',
+  alex: 'Alex torna al lavoro giusto in tempo per il turno serale. «Un caffè? Arriva subito.»',
+  gumi: 'Gumi soffia sulla canna della pistola, si sistema gli occhiali e conta i proiettili. Nemmeno uno sprecato.',
+  capa: 'Il Capa esce in pantaloncini rossi e brinda con un Campari. È piccolo, ma la piazza è tutta sua.',
+  davidone: 'Davidone si allaccia gli scarponi e parte per l\'Alpe della Luna. Dopo tutte quelle cantine, gli serve aria.',
+  nuppobot: 'Nuppobot salva la partita, scrive «MISSIONE COMPIUTA» sul display e si spegne per la notte. Bip.',
+  pake: 'Pake aggiunge alla collezione una carta nuova: Piero della Francesca, olografica. Edizione limitata.',
+  manfro: 'Manfro monta in moto e sparisce verso la E45 gridando «Banzai!». Il riso avanzato lo offre ai piccioni.',
+  faif: 'Faif stappa una birra, si liscia i baffi e alza il trofeo come una coppa. Il Borgo canta il suo nome.',
+};
+
+/* ---------- unlock tracking during a run ---------- */
+function trackRun(p) {
+  if (G.tick % 30) return;
+  if (p.red >= 14) meta('redfull');
+  if (p.soul >= 8) meta('soul4');
+  const run = G.run;
+  if (run.limit && run.frames > run.limit && !p.dead) { p.dead = true; run.killer = 'il tempo che è scaduto'; G.deathT = 60; }
+}
+function floorDone() { // called when you leave a floor through the trapdoor or win
+  const run = G.run;
+  run.redStreak = run.redLostFloor ? 0 : (run.redStreak || 0) + 1;
+  run.hitStreak = run.floorHit ? 0 : (run.hitStreak || 0) + 1;
+  if (run.redStreak >= 2) meta('cleanred2');
+  if (run.hitStreak >= 2) meta('nohit2');
+  run.redLostFloor = false;
+  const p = G.p;
+  if (p.trinket === 'pane') heal(p, 2);
+  if (p.trinket === 'conchiglia') { p.soul += 1; capHearts(p); }
+}
 /* ================= profile, unlocks, achievements, collection and the cloud ================= */
 // Filled in by build.sh for the GitHub copy; empty here, so the artifact keeps everything on the device
 const FIREBASE = {projectId: 'biturgiasotterranea', apiKey: 'AIzaSyD9KcmjPkkVnEBc2wnghVJAifY5GIEqOkU'};
 
 /* ---------- characters you start with, and how the others open up ---------- */
-const STARTERS = ['vina', 'piero', 'pinciu', 'capa', 'davidone'];
-const startersWon = P => STARTERS.filter(c => (P.stats.winsBy[c] || 0) > 0).length;
+// like Isaac: only one character at the start, the rest earned with Isaac's own kind of feats
+const STARTERS = ['vina'];
 const UNLOCKS = {
-  alex: {cond: 'Sconfiggi il boss del piano 2 con un personaggio iniziale.', test: P => STARTERS.some(c => (P.stats.floorsBy[c] || 0) >= 2)},
-  raspo: {cond: 'Sconfiggi il boss del piano 3 con un personaggio iniziale.', test: P => STARTERS.some(c => (P.stats.floorsBy[c] || 0) >= 3)},
-  gumi: {cond: 'Vinci una partita con un personaggio iniziale.', test: P => startersWon(P) >= 1},
-  pake: {cond: 'Vinci con 2 personaggi iniziali diversi.', test: P => startersWon(P) >= 2},
-  nuppobot: {cond: 'Vinci con 3 personaggi iniziali diversi.', test: P => startersWon(P) >= 3},
+  davidone: {cond: 'Abbi 7 cuori rossi pieni nello stesso momento.', test: P => P.stats.redfull >= 1},
+  pake: {cond: 'Tieni 55 monete in tasca.', test: P => P.stats.coinsMax >= 55},
+  piero: {cond: 'Sconfiggi Piero della Francesca.', test: P => P.stats.wins >= 1},
+  capa: {cond: 'Completa due piani di fila senza perdere cuori rossi.', test: P => P.stats.cleanred2 >= 1},
+  alex: {cond: 'Completa due piani di fila senza farti colpire.', test: P => P.stats.nohit2 >= 1},
+  gumi: {cond: 'Abbi 4 cuori anima nello stesso momento.', test: P => P.stats.soul4 >= 1},
+  raspo: {cond: 'Fai 3 patti col diavolo nella stessa partita.', test: P => P.stats.deals3 >= 1},
+  pinciu: {cond: 'Arriva alla Diga di Montedoglio (piano 7).', test: P => P.stats.bestDepth >= 7},
+  nuppobot: {cond: 'Sconfiggi Piero della Francesca 5 volte.', test: P => P.stats.wins >= 5},
+  manfro: {cond: 'Dona 50 monete ai mendicanti.', test: P => P.stats.donated >= 50},
+  faif: {cond: 'Vinci una partita in modalità difficile.', test: P => P.stats.hardWins >= 1},
 };
+const winners = P => CHARS.filter(c => (P.stats.winsBy[c.id] || 0) > 0).length;
 const isUnlocked = id => !UNLOCKS[id] || (PROF && PROF.unlocked.includes(id));
 
 /* ---------- what every item really does, for the collection page ---------- */
@@ -2851,7 +3281,7 @@ const ACT_INFO = {
   dado: 'Ogni oggetto sui piedistalli della stanza diventa un altro oggetto, preso dalla stessa riserva.', tamburello: 'Spari dieci lacrime tutte intorno a te.',
   bibbia: 'Voli fino all\'uscita dalla stanza.', salvadanaio: 'Escono da due a cinque monete.',
 };
-const COLLECTION = [...Object.keys(ACTIVES).map(id => ({key: 'a_' + id, id, act: true})), ...ITEMS.map(i => ({key: 'i_' + i.id, id: i.id, act: false}))];
+const COLLECTION = [...Object.keys(ACTIVES).map(id => ({key: 'a_' + id, id, act: true})), ...ITEMS.map(i => ({key: 'i_' + i.id, id: i.id, act: false})), ...TRINKETS.map(t => ({key: 'n_' + t.id, id: t.id, trk: true}))];
 
 /* ---------- achievements ---------- */
 const BOSS_NAMES = {balestriere: ['il Balestriere', 'Balestriere'], mattarellone: ['lo Zombie Mattarellone', 'Zombie Mattarellone'], capohippie: ['il Grande Capo Hippie', 'Grande Capo Hippie'],
@@ -2863,7 +3293,7 @@ const ACH = [
   ...Object.entries(BOSS_NAMES).map(([b, [n, short]]) => ({id: 'b_' + b, name: 'Addio, ' + short, desc: 'Sconfiggi ' + n + '.', icon: 'medal', test: P => (P.stats.bosses[b] || 0) >= 1})),
   {id: 'piano1', name: 'Primo scalino', desc: 'Scendi al secondo piano.', icon: 'keys', test: P => P.stats.bestDepth >= 2},
   {id: 'vittoria', name: 'Liberata!', desc: 'Vinci una partita.', icon: 'trophy', test: P => P.stats.wins >= 1},
-  {id: 'iniziali', name: 'Gli amici di sempre', desc: 'Vinci con tutti e cinque i personaggi iniziali.', icon: 'heart', test: P => startersWon(P) >= 5},
+  {id: 'iniziali', name: 'Gli amici di sempre', desc: 'Vinci con cinque personaggi diversi.', icon: 'heart', test: P => winners(P) >= 5},
   {id: 'tutti', name: 'La compagnia al completo', desc: 'Vinci con tutti e dieci i personaggi.', icon: 'saint', test: P => CHARS.every(c => (P.stats.winsBy[c.id] || 0) > 0)},
   {id: 'sblocca', name: 'Porte aperte', desc: 'Sblocca tutti i personaggi.', icon: 'keys', test: P => Object.keys(UNLOCKS).every(id => P.unlocked.includes(id))},
   {id: 'coll15', name: 'Collezionista', desc: 'Scopri 15 oggetti.', icon: 'cards', test: P => Object.keys(P.seen).length >= 15},
@@ -2873,7 +3303,7 @@ const ACH = [
   {id: 'shopping', name: 'Cliente affezionato', desc: 'Compra 10 cose nei negozi.', icon: 'can', test: P => P.stats.bought >= 10},
   {id: 'pillole', name: 'Farmacista', desc: 'Prova tutti gli effetti delle pillole.', icon: 'onion', test: P => P.pills.length >= PILLS.length},
   {id: 'intoccabile', name: 'Intoccabile', desc: 'Sconfiggi un boss senza farti colpire.', icon: 'mantle', test: P => P.stats.flawless >= 1},
-  {id: 'veloce', name: 'Di corsa', desc: 'Vinci in meno di 12 minuti.', icon: 'shoe', test: P => P.stats.bestTime > 0 && P.stats.bestTime < 720},
+  {id: 'veloce', name: 'Di corsa', desc: 'Vinci in meno di 20 minuti.', icon: 'shoe', test: P => P.stats.bestTime > 0 && P.stats.bestTime < 1200},
   {id: 'volo', name: 'Come un piccione', desc: 'Ottieni il volo.', icon: 'wings', test: P => P.stats.flew >= 1},
   {id: 'rocce', name: 'Cava di pietra', desc: 'Fai saltare 50 rocce con le bombe.', icon: 'bombsack', test: P => P.stats.rocks >= 50},
   {id: 'carico', name: 'Carico come un mulo', desc: 'Raccogli 8 oggetti in una sola partita.', icon: 'bread', test: P => P.stats.mostItems >= 8},
@@ -2882,6 +3312,15 @@ const ACH = [
   {id: 'angelo', name: 'Benedetto', desc: 'Prendi un oggetto nella stanza dell\'angelo.', icon: 'halo', test: P => P.stats.angels >= 1},
   {id: 'tarocchi', name: 'Cartomante', desc: 'Usa 10 carte o rune.', icon: 'cards', test: P => P.stats.cards >= 10},
   {id: 'campioni', name: 'Caccia ai campioni', desc: 'Sconfiggi 25 nemici campioni.', icon: 'medal', test: P => P.stats.champs >= 25},
+  {id: 'trasformato', name: 'Trasformista', desc: 'Ottieni una trasformazione.', icon: 'halo', test: P => P.stats.transforms >= 1},
+  {id: 'peccati', name: 'Confessione', desc: 'Sconfiggi 7 peccati capitali.', icon: 'cross', test: P => P.stats.minis >= 7},
+  {id: 'ondate', name: 'Sfida accettata', desc: 'Supera le ondate di una stanza della sfida.', icon: 'crossbow', test: P => P.stats.waves >= 1},
+  {id: 'mendicante', name: 'Buon cuore', desc: 'Dona 20 monete ai mendicanti.', icon: 'coinhole', test: P => P.stats.donated >= 20},
+  {id: 'giorno', name: 'Il giornaliero', desc: 'Completa una partita del giorno.', icon: 'clock', test: P => Object.keys(P.daily || {}).length >= 1},
+  {id: 'sfide3', name: 'Sfidante', desc: 'Completa 3 sfide.', icon: 'medal', test: P => (P.chal || []).length >= 3},
+  {id: 'sfidetutte', name: 'Nessuna paura', desc: 'Completa tutte le sfide.', icon: 'trophy', test: P => CHALLENGES.every(c => (P.chal || []).includes(c.id))},
+  {id: 'difficile', name: 'Senza sconti', desc: 'Vinci in modalità difficile.', icon: 'pentagram', test: P => P.stats.hardWins >= 1},
+  {id: 'finali', name: 'Tutti i finali', desc: 'Vedi il finale di ogni personaggio.', icon: 'scroll', test: P => CHARS.every(c => (P.endings || []).includes(c.id))},
   {id: 'maledetto', name: 'Più forte della sfortuna', desc: 'Sconfiggi il boss di un piano maledetto.', icon: 'candle', test: P => P.stats.cursed >= 1},
 ];
 
@@ -2889,7 +3328,7 @@ const ACH = [
 let PROF = null;
 function blankProfile(name, display) {
   return {name, display, stats: {runs: 0, wins: 0, deaths: 0, kills: 0, rocks: 0, bought: 0, secrets: 0, flawless: 0, flew: 0, coinsMax: 0, mostItems: 0,
-    deals: 0, angels: 0, cards: 0, champs: 0, cursed: 0, bestTime: 0, bestDepth: 0, floorsBy: {}, winsBy: {}, bosses: {}}, unlocked: [], ach: {}, seen: {}, pills: [], updated: 0};
+    deals: 0, angels: 0, cards: 0, champs: 0, cursed: 0, redfull: 0, soul4: 0, deals3: 0, cleanred2: 0, nohit2: 0, donated: 0, hardWins: 0, transforms: 0, minis: 0, waves: 0, bestTime: 0, bestDepth: 0, floorsBy: {}, winsBy: {}, bosses: {}}, unlocked: [], ach: {}, seen: {}, pills: [], chal: [], endings: [], daily: {}, updated: 0};
 }
 function mergeProfile(a, b) { // the union of two copies: nothing ever gets lost
   if (!b) return a;
@@ -2903,6 +3342,9 @@ function mergeProfile(a, b) { // the union of two copies: nothing ever gets lost
   }
   out.unlocked = [...new Set([...(a.unlocked || []), ...(b.unlocked || [])])];
   out.pills = [...new Set([...(a.pills || []), ...(b.pills || [])])];
+  out.chal = [...new Set([...(a.chal || []), ...(b.chal || [])])];
+  out.endings = [...new Set([...(a.endings || []), ...(b.endings || [])])];
+  out.daily = {...(b.daily || {}), ...(a.daily || {})};
   out.ach = {...(b.ach || {})}; for (const [k, v] of Object.entries(a.ach || {})) out.ach[k] = out.ach[k] ? Math.min(out.ach[k], v) : v;
   out.seen = {...(b.seen || {})}; for (const [k, v] of Object.entries(a.seen || {})) out.seen[k] = num(v, out.seen[k]);
   out.updated = num(a.updated, b.updated);
@@ -2942,21 +3384,29 @@ function meta(ev, data) {
     case 'coins': st.coinsMax = Math.max(st.coinsMax, data); break;
     case 'pill': if (!P.pills.includes(data)) P.pills.push(data); break;
     case 'win': {
-      st.wins++; st.winsBy[run.ch.id] = (st.winsBy[run.ch.id] || 0) + 1; st.floorsBy[run.ch.id] = Math.max(st.floorsBy[run.ch.id] || 0, FLOORS.length);
+      if (run.hard) st.hardWins++;
+      if (!P.endings.includes(run.ch.id)) P.endings.push(run.ch.id);
+      if (run.challenge && !P.chal.includes(run.challenge)) P.chal.push(run.challenge);
+      st.wins++; st.winsBy[run.ch.id] = (st.winsBy[run.ch.id] || 0) + 1; st.floorsBy[run.ch.id] = Math.max(st.floorsBy[run.ch.id] || 0, MAX_DEPTH);
       const t = run.frames / 60;
-      st.bestTime = st.bestTime ? Math.min(st.bestTime, t) : t; st.bestDepth = Math.max(st.bestDepth, FLOORS.length + 1);
+      st.bestTime = st.bestTime ? Math.min(st.bestTime, t) : t; st.bestDepth = Math.max(st.bestDepth, MAX_DEPTH + 1);
       localWins(); Cloud.postWin({name: P.display, c: run.ch.id, t: Math.round(t * 10) / 10, items: G.p.items.length, seed: run.seed, d: Date.now()});
       break;
     }
     case 'death': st.deaths++; break;
     case 'deal': st.deals++; break;
+    case 'redfull': case 'soul4': case 'deals3': case 'cleanred2': case 'nohit2': if (st[ev]) return; st[ev] = 1; break; // a feat counts once
+    case 'donate': st.donated++; break;
+    case 'transform': st.transforms++; break;
+    case 'mini': st.minis++; break;
+    case 'wave': st.waves++; break;
     case 'angel': st.angels++; break;
     case 'card': st.cards++; break;
     case 'champ': st.champs++; break;
     case 'cursed': st.cursed++; break;
   }
   if (ev !== 'kill' || st.kills % 25 === 0 || st.kills < 2) checkProgress();
-  if (['run', 'win', 'death', 'floor', 'boss', 'item', 'deal', 'angel'].includes(ev)) saveProfile();
+  if (['run', 'win', 'death', 'floor', 'boss', 'item', 'deal', 'angel', 'redfull', 'soul4', 'deals3', 'cleanred2', 'nohit2', 'transform', 'daily'].includes(ev)) saveProfile();
 }
 function markSeen(key) { if (!PROF) return; const first = !PROF.seen[key]; PROF.seen[key] = (PROF.seen[key] || 0) + 1; return first; }
 function localWins() { // this device's best runs, so the board has something even without Firebase
@@ -3023,6 +3473,7 @@ const Cloud = {
       if (!r.ok) throw new Error(r.status);
       const doc = await r.json();
       const remote = fromFS({mapValue: {fields: doc.fields}});
+      if (remote.stats) { for (const k of ['chal', 'endings', 'daily']) { remote[k] = remote.stats[k]; delete remote.stats[k]; } }
       const display = PROF.display, guest = PROF.guest;
       PROF = mergeProfile(PROF, remote); PROF.display = remote.display || display; PROF.guest = guest; // the name keeps the capitals it was created with
       checkProgress(true); saveProfile(false);
@@ -3034,7 +3485,8 @@ const Cloud = {
     if (!this.on() || !PROF || PROF.guest) return;
     clearTimeout(this.timer);
     this.timer = setTimeout(async () => {
-      const P = PROF, body = {name: P.name, display: P.display, stats: P.stats, unlocked: P.unlocked, ach: P.ach, seen: P.seen, pills: P.pills, score: profScore(P), updated: P.updated};
+      // challenges, endings and dailies ride inside stats, so the rules from v1.1 still accept the profile
+      const P = PROF, body = {name: P.name, display: P.display, stats: {...P.stats, chal: P.chal, endings: P.endings, daily: P.daily}, unlocked: P.unlocked, ach: P.ach, seen: P.seen, pills: P.pills, score: profScore(P), updated: P.updated};
       try {
         const r = await fetch(this.url('bs_users/' + P.name), {method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({fields: toFS(body).mapValue.fields})});
         this.setStatus(r.ok ? 'Progressi salvati online.' : 'Firebase ha rifiutato il salvataggio: controlla le regole.');
@@ -3072,7 +3524,7 @@ window.addEventListener('keydown', e => {
   const k = e.code;
   if (G.state === 'title') { if (!e.repeat && k === 'Enter' && document.activeElement === document.body) { e.preventDefault(); openSelect(); } return; }
   if (G.state === 'login') return;
-  if (['coll', 'achs', 'board'].includes(G.state)) { if (k === 'Escape') showTitle(); return; }
+  if (['coll', 'achs', 'board', 'chal'].includes(G.state)) { if (k === 'Escape') showTitle(); return; }
   if (G.state === 'select') {
     if (document.activeElement === $('seedIn') && k !== 'Enter' && k !== 'Escape') return;
     if (k === 'ArrowLeft' || k === 'KeyA') { turn(-1); e.preventDefault(); }
@@ -3081,7 +3533,7 @@ window.addEventListener('keydown', e => {
     if (k === 'Escape') showTitle();
     return;
   }
-  if (G.state === 'dead' || G.state === 'won') { if (!e.repeat && (k === 'Enter' || k === 'KeyR')) { e.preventDefault(); startRun(); } if (k === 'Escape') openSelect(); return; }
+  if (G.state === 'dead' || G.state === 'won') { if (!e.repeat && (k === 'Enter' || k === 'KeyR')) { e.preventDefault(); startRun(false, {...LAST}); } if (k === 'Escape') openSelect(); return; }
   if (G.state === 'pause') { if (!e.repeat && (k === 'Escape' || k === 'KeyP')) resume(); return; }
   if (G.state !== 'play') return;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(k)) e.preventDefault();
@@ -3149,7 +3601,7 @@ function pollPad() {
     if (b[2] && !was(2)) usePill();
     if (b[9] && !was(9)) pause();
   } else if (G.state === 'pause' && b[9] && !was(9)) resume();
-  else if ((G.state === 'title' || G.state === 'dead' || G.state === 'won') && b[0] && !was(0)) G.state === 'title' ? openSelect() : startRun();
+  else if ((G.state === 'title' || G.state === 'dead' || G.state === 'won') && b[0] && !was(0)) G.state === 'title' ? openSelect() : startRun(false, {...LAST});
   else if (G.state === 'select') { if (b[0] && !was(0)) startRun(); if (b[15] && !was(15)) turn(1); if (b[14] && !was(14)) turn(-1); }
   Pad.prev = b;
 }
@@ -3172,7 +3624,7 @@ function pause() {
   const rows = [['Velocità', speedOf(p).toFixed(2)], ['Lacrime al secondo', (60 / delayOf(p)).toFixed(2)], ['Danno', dmgOf(p).toFixed(2)], ['Gittata', (rangeOf(p) / 40).toFixed(1)], ['Velocità lacrime', ssOf(p).toFixed(2)], ['Fortuna', p.luck], ['Piano', G.run.depth + ' · ' + G.floor.name], ['Nemici uccisi', G.run.kills]];
   for (const [k, v] of rows) $('pStats').append(Object.assign(document.createElement('dt'), {textContent: k}), Object.assign(document.createElement('dd'), {textContent: v}));
   $('pItems').innerHTML = '';
-  const names = [ACTIVES[p.active.id].name + ' (attivo)', ...p.items.map(id => ITEM[id].name)];
+  const names = [ACTIVES[p.active.id].name + ' (attivo)', ...(p.trinket ? [TRINKET[p.trinket].name + ' (ninnolo)'] : []), ...p.trans.map(t => TRANSFORMS.find(x => x.id === t).name + ' (trasformazione)'), ...p.items.map(id => ITEM[id].name)];
   for (const n of names) $('pItems').append(Object.assign(document.createElement('li'), {textContent: n}));
   if (!p.items.length) $('pItems').append(Object.assign(document.createElement('li'), {className: 'none', textContent: 'Ancora niente: cerca la stanza del tesoro.'}));
   $('pSeed').textContent = 'Seme ' + G.run.seed.slice(0, 4) + ' ' + G.run.seed.slice(4);
@@ -3187,11 +3639,11 @@ $('pQuit').addEventListener('click', () => { $('pause').hidden = true; G.room = 
 $('pMusic').addEventListener('click', () => Music.toggle());
 
 /* ---------- screens ---------- */
-const SHEETS = ['title', 'login', 'select', 'coll', 'achs', 'board', 'pause', 'note'];
+const SHEETS = ['title', 'login', 'select', 'coll', 'achs', 'board', 'chal', 'pause', 'note'];
 function showSheet(id, state) {
   for (const s of SHEETS) $(s).hidden = s !== id;
   G.state = state || id; $('tbtns').hidden = true;
-  if (['title', 'login', 'select', 'coll', 'achs', 'board'].includes(id)) Music.play('menu');
+  if (['title', 'login', 'select', 'coll', 'achs', 'board', 'chal'].includes(id)) Music.play('menu');
   resize();
 }
 function showTitle() {
@@ -3317,7 +3769,8 @@ function heartEl(col) {
 }
 function drawCast() {
   const cv = $('tCast'), c = cv.getContext('2d'), d = 2;
-  cv.width = 720 * d; cv.height = 110 * d; c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, 720, 110);
+  const w = CHARS.length * 72;
+  cv.width = w * d; cv.height = 110 * d; c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, w, 110);
   CHARS.forEach((ch, i) => c.drawImage(charSprite(ch, !isUnlocked(ch.id)), 36 + i * 72 - 50, 62 - 64, 100, 100));
 }
 
@@ -3328,7 +3781,7 @@ function iconCanvas(drawFn, hidden, size = 112) {
   if (hidden) { c.globalCompositeOperation = 'source-in'; c.fillStyle = '#0d0907'; c.fillRect(0, 0, size, size); c.globalCompositeOperation = 'source-over'; c.fillStyle = '#6b5640'; c.font = `800 ${size * 0.42}px ${DISPLAY_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('?', size / 2, size / 2 + 2); }
   return cv;
 }
-const itemDef = x => x.act ? ACTIVES[x.id] : ITEM[x.id];
+const itemDef = x => x.act ? ACTIVES[x.id] : x.trk ? TRINKET[x.id] : ITEM[x.id];
 function openColl() { showSheet('coll'); refreshColl(); }
 function refreshColl() {
   const grid = $('collGrid'); grid.innerHTML = '';
@@ -3349,8 +3802,8 @@ function showItemInfo(x) {
   c.drawImage(iconCanvas((cc, s) => drawIcon(cc, def.icon, def.col, s / 2, s / 2, s * 0.8), !seen, 144), 0, 0);
   if (!seen) { $('collName').textContent = '???'; $('collSub').textContent = x.act ? 'Oggetto attivo' : ''; $('collText').textContent = 'Non l\'hai ancora trovato. Cercalo nelle stanze del tesoro, nei negozi, dai boss e nelle stanze segrete.'; return; }
   $('collName').textContent = def.name;
-  $('collSub').textContent = x.act ? `Oggetto attivo · si ricarica in ${def.charge} ${def.charge === 1 ? 'stanza' : 'stanze'}` : '"' + def.sub + '"';
-  $('collText').textContent = (x.act ? ACT_INFO[x.id] : INFO[x.id]) + ` Trovato ${PROF.seen[x.key]} ${PROF.seen[x.key] === 1 ? 'volta' : 'volte'}.`;
+  $('collSub').textContent = x.act ? `Oggetto attivo · si ricarica in ${def.charge} ${def.charge === 1 ? 'stanza' : 'stanze'}` : x.trk ? 'Ninnolo' : '"' + def.sub + '"';
+  $('collText').textContent = (x.act ? ACT_INFO[x.id] : x.trk ? def.info : INFO[x.id]) + ` Trovato ${PROF.seen[x.key]} ${PROF.seen[x.key] === 1 ? 'volta' : 'volte'}.`;
 }
 
 /* ---------- achievements ---------- */
@@ -3372,7 +3825,8 @@ function openAch() {
 const fmtTime = t => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
 let boardTab = 'times';
 function openBoard() { showSheet('board'); renderBoard(); }
-function setTab(t) { boardTab = t; $('tabTimes').setAttribute('aria-selected', t === 'times'); $('tabPlayers').setAttribute('aria-selected', t === 'players'); renderBoard(); }
+function setTab(t) { boardTab = t; for (const [id, k] of [['tabTimes', 'times'], ['tabPlayers', 'players'], ['tabDaily', 'daily']]) $(id).setAttribute('aria-selected', t === k); renderBoard(); }
+$('tabDaily').addEventListener('click', () => setTab('daily'));
 $('tabTimes').addEventListener('click', () => setTab('times'));
 $('tabPlayers').addEventListener('click', () => setTab('players'));
 function localPlayers() {
@@ -3391,6 +3845,14 @@ async function renderBoard() {
   note.textContent = online ? 'Carico la classifica…' : 'Classifica di questo dispositivo. Con Firebase configurato diventa condivisa tra tutti.';
   const chName = id => (CHARS.find(c => c.id === id) || {name: id}).name;
   try {
+    if (boardTab === 'daily') {
+      const key = dailyKey();
+      const list = online ? await Cloud.query('bs_daily_' + key, 'score', 'DESCENDING') : (store('bs-daily-' + key) || []);
+      fill(['#', 'Giocatore', 'Risultato', 'Tempo'], list.map((w, i) => ({me: PROF && w.name === PROF.display, cells: [i + 1, w.name, w.won ? 'Vittoria' : 'Piano ' + w.depth, fmtTime(w.t)]})));
+      note.textContent = 'Partita del giorno: ' + dailyChar().name + ', seme ' + dailySeed() + '. Conta solo il primo tentativo.';
+      if (!list.length) note.textContent += ' Ancora nessun risultato oggi.';
+      return;
+    }
     if (boardTab === 'times') {
       const list = online ? await Cloud.query('bs_wins', 't', 'ASCENDING') : (store('bs-wins') || []);
       fill(['#', 'Giocatore', 'Personaggio', 'Tempo', 'Oggetti'], list.map((w, i) => ({me: PROF && w.name === PROF.display, cells: [i + 1, w.name, chName(w.c), fmtTime(w.t), w.items]})));
@@ -3406,6 +3868,29 @@ async function renderBoard() {
   } catch (e) { note.textContent = 'Classifica online non raggiungibile in questo momento.'; }
 }
 
+function openChal() {
+  showSheet('chal');
+  const ul = $('chalList'); ul.innerHTML = '';
+  const done = PROF.chal || [];
+  for (const ch of CHALLENGES) {
+    const li = document.createElement('li'); if (done.includes(ch.id)) li.className = 'done';
+    const who = CHARS.find(c => c.id === ch.ch);
+    const cv = document.createElement('canvas'); cv.width = 96; cv.height = 96; cv.getContext('2d').drawImage(charSprite(who, false), 0, 0, 96, 96);
+    const b = Object.assign(document.createElement('button'), {type: 'button', textContent: 'Gioca'});
+    b.addEventListener('click', () => { SEL = CHARS.indexOf(who); startRun(false, {challenge: ch.id}); });
+    li.append(cv, Object.assign(document.createElement('b'), {textContent: ch.name}), b, Object.assign(document.createElement('span'), {textContent: who.name + ' · ' + ch.desc}));
+    ul.append(li);
+  }
+  $('chalCount').textContent = `${done.length} sfide completate su ${CHALLENGES.length}`;
+}
+function startDaily() {
+  const ch = dailyChar(); SEL = CHARS.indexOf(ch);
+  startRun(false, {daily: dailyKey(), seed: dailySeed()});
+  if (PROF.daily && PROF.daily[dailyKey()]) G.banner = {title: 'Partita del giorno', sub: 'Hai già giocato oggi: questo tentativo non conta', t: 200, big: true};
+  else G.banner = {title: 'Partita del giorno', sub: ch.name + ' · seme ' + dailySeed(), t: 200, big: true};
+}
+$('tChal').addEventListener('click', openChal);
+$('tDaily').addEventListener('click', startDaily);
 $('tStart').addEventListener('click', openSelect);
 $('tColl').addEventListener('click', openColl);
 $('tAch').addEventListener('click', openAch);
@@ -3414,14 +3899,18 @@ document.querySelectorAll('.sheet .back').forEach(b => b.addEventListener('click
 $('title').addEventListener('click', e => { if (e.target === $('title')) openSelect(); });
 $('selBack').addEventListener('click', showTitle);
 $('selGo').addEventListener('click', () => startRun());
-$('nAgain').addEventListener('click', () => startRun());
+let LAST = {};
+$('nAgain').addEventListener('click', () => startRun(false, {...LAST}));
 $('nMenu').addEventListener('click', openSelect);
 
-function startRun(sameSeedNo) {
-  if (!isUnlocked(CHARS[SEL].id)) { openSelect(); return; }
+function startRun(sameSeedNo, opts = {}) {
+  if (!isUnlocked(CHARS[SEL].id) && !opts.challenge && !opts.daily) { openSelect(); return; }
   Snd.init(); Music.start();
   const typed = $('seedIn').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  newRun(CHARS[SEL], typed.length >= 4 ? typed.padEnd(8, 'A').slice(0, 8) : null);
+  if (!opts.challenge && !opts.daily && opts.hard === undefined) opts.hard = $('hardIn').checked;
+  if (sameSeedNo === true && G.run) { opts = {challenge: G.run.challenge, daily: G.run.daily, hard: G.run.hard, seed: G.run.daily ? G.run.seed : undefined}; }
+  LAST = opts;
+  newRun(CHARS[SEL], opts.seed || (typed.length >= 4 && !opts.challenge ? typed.padEnd(8, 'A').slice(0, 8) : null), opts);
   for (const id of SHEETS) $(id).hidden = true;
   G.state = 'play';
   $('tbtns').hidden = !TOUCH;
@@ -3442,10 +3931,10 @@ function showNote(won) {
   const time = mins + ':' + String(secs).padStart(2, '0');
   if (won) {
     $('nTitle').textContent = 'Vittoria!';
-    $('nText').textContent = `${ch.name} ha ripulito tutte le cantine di Sansepolcro in ${time}, con ${run.kills} nemici sconfitti. Stasera offre lui.`;
+    $('nText').textContent = `${ENDINGS[ch.id]} (${time}, ${run.kills} nemici sconfitti${run.hard ? ', modalità difficile' : ''}${run.challenge ? ', sfida «' + CHAL[run.challenge].name + '» completata' : ''}.)`;
   } else {
     $('nTitle').textContent = 'Il testamento di ' + ch.name;
-    $('nText').textContent = `Ucciso da ${run.killer || 'qualcosa nel buio'} al piano ${run.depth}, ${FLOORS[run.depth - 1].name}. Lascio tutte le mie cose a ${pick(friends).name}.`;
+    $('nText').textContent = `Ucciso da ${run.killer || 'qualcosa nel buio'} al piano ${run.depth}, ${floorName(run.depth)}. Lascio tutte le mie cose a ${pick(friends).name}.`;
   }
   const names = p.items.map(id => ITEM[id].name);
   $('nItems').textContent = names.length ? 'Oggetti: ' + names.join(', ') + '.' : 'Non ha raccolto nessun oggetto.';
