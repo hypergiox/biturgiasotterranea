@@ -331,7 +331,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v1.4';
+const VERSION = 'v1.5';
 const $ = id => document.getElementById(id);
 const STEP = 1 / 60;
 const T = 40, COLS = 13, ROWS = 7;          // a room is 13x7 floor tiles inside a one-tile wall
@@ -522,7 +522,7 @@ const CHARS = [
   {id: 'alex', name: 'Alex', skin: '#e8bfa0', shirt: '#f4f4f4', pants: '#1b1b1f', hair: '#3a2a1e', style: 'fin', bowtie: true,
     red: 2, soul: 2, speed: 1.3, dmg: 3.2, delay: 15, range: 260, ss: 1.05, luck: 0, tear: 'piatto', active: 'turbo', flags: {pierce: true}},
   {id: 'gumi', name: 'Gumi', skin: '#f0c4a0', shirt: '#2c2c34', pants: '#3b4a6b', hair: '#4a2c1a', style: 'curly', glasses: true, piercing: true,
-    red: 3, soul: 0, speed: 1, dmg: 2.2, delay: 8, range: 340, ss: 1.6, luck: 0, tear: 'proiettile', active: 'raffica'},
+    red: 3, soul: 0, speed: 1, dmg: 2.2, delay: 9, range: 340, ss: 1.6, luck: 0, tear: 'proiettile', active: 'raffica'},
   {id: 'capa', name: 'Capa', skin: '#d9a07a', shirt: '#d9a07a', pants: '#d2202a', hair: '#2a1a10', style: 'short', beard: '#2a1a10', size: 0.82, shirtless: true,
     red: 2, soul: 0, speed: 1.15, dmg: 3.5, delay: 16, range: 260, ss: 1, luck: 2, tear: 'campari', active: 'campari'},
   {id: 'davidone', name: 'Davidone', skin: '#e3b08a', shirt: '#5b7a3a', pants: '#a89470', hair: '#3a2618', style: 'curly', size: 1.15,
@@ -530,9 +530,9 @@ const CHARS = [
   {id: 'nuppobot', name: 'Nuppobot', skin: '#b8c0c8', shirt: '#9aa3ad', pants: '#6d747d', hair: '#3a3f46', style: 'robot', robot: true,
     red: 0, soul: 6, speed: 1, dmg: 3.3, delay: 14, range: 290, ss: 1.3, luck: 0, tear: 'laser', active: 'postbruciatore', noRed: true},
   {id: 'pake', name: 'Pake', skin: '#e9bf9c', shirt: '#1f2a44', pants: '#1f2a44', hair: '#2a1d14', style: 'slick', beard: '#2a1d14', tie: true,
-    red: 3, soul: 0, speed: 1.05, dmg: 3, delay: 17, range: 300, ss: 1, luck: 1, tear: 'carta', active: 'busta', flags: {boomerang: true}},
+    red: 3, soul: 0, speed: 1.05, dmg: 3.3, delay: 17, range: 300, ss: 1, luck: 1, tear: 'carta', active: 'busta', flags: {boomerang: true}},
   {id: 'manfro', name: 'Manfro', skin: '#e8b48e', shirt: '#1a1a1e', pants: '#2e3140', hair: '#2a1a10', style: 'curly', muscle: true, hachimaki: true,
-    red: 3, soul: 0, speed: 1.1, dmg: 2.8, delay: 11, range: 250, ss: 1.2, luck: 0, tear: 'riso', active: 'moto'},
+    red: 3, soul: 0, speed: 1.1, dmg: 2.6, delay: 11, range: 250, ss: 1.2, luck: 0, tear: 'riso', active: 'moto'},
   {id: 'faif', name: 'Faif', skin: '#e3b48e', shirt: '#d2202a', shirt2: '#141417', pants: '#141417', hair: '#3a2a1e', style: 'short', mustache: true,
     red: 3, soul: 0, speed: 1.15, dmg: 3.4, delay: 16, range: 260, ss: 1, luck: 0, tear: 'birra', active: 'sprint'},
 ];
@@ -1111,10 +1111,10 @@ const EN = {
   raviolone: {name: 'un raviolone', hp: 17, r: 15},
   raviolino: {name: 'un raviolino', hp: 5, r: 9},
   balestriere: {name: 'il Balestriere', hp: 130, r: 24, boss: true},
-  mattarellone: {name: 'lo Zombie Mattarellone', hp: 175, r: 26, boss: true},
+  mattarellone: {name: 'lo Zombie Mattarellone', hp: 160, r: 26, boss: true},
   soldato: {name: 'un soldato della Resurrezione', hp: 16, r: 13},
   mostro: {name: 'il Mostro della Diga', hp: 235, r: 30, boss: true},
-  capohippie: {name: 'il Grande Capo Hippie', hp: 200, r: 26, boss: true, fly: true},
+  capohippie: {name: 'il Grande Capo Hippie', hp: 185, r: 26, boss: true, fly: true},
   piero: {name: 'Piero della Francesca', hp: 340, r: 26, boss: true},
 };
 function spawnEnemy(type, x, y, appear = 40) {
@@ -1231,7 +1231,7 @@ function updateEnemy(e) {
     if (wall && e.type === 'zanzara') { e.vx *= -0.6; e.vy *= -0.6; }
   }
   // touching the player hurts
-  if (e.z <= 4 && d < e.r + p.r - 2) hurtPlayer(hit2(), EN[e.type].name);
+  if (e.z <= 4 && d < e.r + p.r * 0.8 - 2) hurtPlayer(hit2(), EN[e.type].name);
 }
 
 function bossAI(e, dx, dy, d, k) {
@@ -1249,28 +1249,28 @@ function bossAI(e, dx, dy, d, k) {
       break;
     }
     case 'mattarellone': {
-      if (half && !e.called) { e.called = true; spawnEnemy('zombie', e.x - 40, e.y, 20); spawnEnemy('zombie', e.x + 40, e.y, 20); }
+      if (half && !e.called) { e.called = true; spawnEnemy('zombie', e.x - 40, e.y, 30); if (G.run.depth > 2) spawnEnemy('zombie', e.x + 40, e.y, 30); }
       if (e.st === 'charge') {
-        e.vx = e.dir[0] * 6 * k; e.vy = e.dir[1] * 6 * k;
-        if (e.bonk) { e.bonk = false; e.st = 'stun'; e.st2 = 45; ring(e, half ? 12 : 8, 3, 0, '#d9c8a8'); G.shake = 10; Snd.boom(); }
+        e.vx = e.dir[0] * 5.4 * k; e.vy = e.dir[1] * 5.4 * k;
+        if (e.bonk) { e.bonk = false; e.st = 'stun'; e.st2 = 45; ring(e, (half ? 10 : 6) + (G.run.depth > 2 ? 2 : 0), 2.8, 0, '#d9c8a8'); G.shake = 10; Snd.boom(); }
         break;
       }
       if (e.st === 'stun') { e.vx *= 0.8; e.vy *= 0.8; if (--e.st2 <= 0) e.st = 'idle'; break; }
       const [fx, fy] = flowDir(e);
       e.vx = lerp(e.vx, fx * 0.9 * k, 0.15); e.vy = lerp(e.vy, fy * 0.9 * k, 0.15);
-      if ((Math.abs(dx) < 26 || Math.abs(dy) < 26) && e.cd <= 0) { e.dir = Math.abs(dx) < 26 ? [0, Math.sign(dy)] : [Math.sign(dx), 0]; e.st = 'charge'; e.cd = 90; }
+      if ((Math.abs(dx) < 26 || Math.abs(dy) < 26) && d > 90 && e.cd <= 0) { e.dir = Math.abs(dx) < 26 ? [0, Math.sign(dy)] : [Math.sign(dx), 0]; e.st = 'charge'; e.cd = 100; } // only from a distance: there's time to step aside
       break;
     }
     case 'mostro': {
       if (e.st === 'air') {
         e.z = Math.min(400, e.z + 14);
-        e.x = lerp(e.x, p.x, 0.05); e.y = lerp(e.y, p.y, 0.05); e.vx = e.vy = 0;
+        if (e.st2 > 24) { e.x = lerp(e.x, p.x, 0.05); e.y = lerp(e.y, p.y, 0.05); } e.vx = e.vy = 0;
         if (--e.st2 <= 0) e.st = 'fall';
         break;
       }
       if (e.st === 'fall') {
         e.z -= 22;
-        if (e.z <= 0) { e.z = 0; e.st = 'idle'; e.cd = 60; ring(e, half ? 16 : 12, 3.2, 0, '#5fa8c9'); G.shake = 14; Snd.boom(); }
+        if (e.z <= 0) { e.z = 0; e.st = 'idle'; e.cd = 60; ring(e, half ? 13 : 10, 2.8, rnd(), '#5fa8c9'); G.shake = 14; Snd.boom(); }
         break;
       }
       if (e.st === 'hop') {
@@ -1281,8 +1281,8 @@ function bossAI(e, dx, dy, d, k) {
       if (e.cd <= 0) {
         e.phase++;
         if (e.phase % 4 === 0) { e.st = 'air'; e.st2 = 70; }
-        else if (e.phase % 4 === 2) { aimAt(e, 3.6, 0.13, half ? 9 : 7, '#5fa8c9'); e.cd = 50; }
-        else { e.st = 'hop'; e.st2 = 30; e.vx = dx / d * 2.4 * k; e.vy = dy / d * 2.4 * k; }
+        else if (e.phase % 4 === 2) { aimAt(e, 3.3, 0.15, half ? 7 : 5, '#5fa8c9'); e.cd = 60; }
+        else { e.st = 'hop'; e.st2 = 30; const hs = Math.min(2, d / 40); e.vx = dx / d * hs * k; e.vy = dy / d * hs * k; } // never hops right on top of you
       }
       break;
     }
@@ -1292,15 +1292,15 @@ function bossAI(e, dx, dy, d, k) {
       const tx = CX + Math.sin(e.phase) * 170, ty = CY + Math.sin(e.phase * 2) * 70;
       e.vx = lerp(e.vx, (tx - e.x) * 0.03, 0.1); e.vy = lerp(e.vy, (ty - e.y) * 0.03, 0.1);
       if (e.st === 'spiral') {
-        if (e.t % 6 === 0) { const a = e.t * 0.23; for (let i = 0; i < (half ? 3 : 2); i++) { const aa = a + i * Math.PI * 2 / (half ? 3 : 2); enemyTear(e.x, e.y, Math.cos(aa) * 2.6, Math.sin(aa) * 2.6, '#f08bb0'); } }
+        if (e.t % 8 === 0) { const a = e.t * 0.2; for (let i = 0; i < (half ? 3 : 2); i++) { const aa = a + i * Math.PI * 2 / (half ? 3 : 2); enemyTear(e.x, e.y, Math.cos(aa) * 2.6, Math.sin(aa) * 2.6, '#f08bb0'); } }
         if (--e.st2 <= 0) { e.st = 'idle'; e.cd = 60; }
         break;
       }
       if (e.cd <= 0) {
         const r = rnd();
-        if (r < 0.4) { e.st = 'spiral'; e.st2 = 120; }
-        else if (r < 0.65 && G.enemies.filter(x => x.type === 'zanzara').length < 5) { for (let i = 0; i < 3; i++) spawnEnemy('zanzara', e.x + rr(-30, 30), e.y + rr(-30, 30), 10); e.cd = 70; }
-        else { aimAt(e, 3.8, 0.16, half ? 7 : 5, '#25d366'); e.cd = 55; }
+        if (r < 0.4) { e.st = 'spiral'; e.st2 = 90; }
+        else if (r < 0.65 && G.enemies.filter(x => x.type === 'zanzara').length < 4) { for (let i = 0; i < (G.run.depth > 4 ? 2 : 1); i++) spawnEnemy('zanzara', e.x + rr(-30, 30), e.y + rr(-30, 30), 10); e.cd = 70; }
+        else { aimAt(e, 3.5, 0.18, half ? 5 : 4, '#25d366'); e.cd = 70; }
       }
       break;
     }
@@ -1709,7 +1709,7 @@ function updateTears() {
           if (!t.pierce && !t.boom) { t.life = 0; break; }
         }
       }
-    } else if (Math.hypot(p.x - t.x, p.y - t.y) < p.r + t.r - 2 && !p.dead) { hurtPlayer(hit2(), 'una lacrima nemica'); t.life = 0; }
+    } else if (Math.hypot(p.x - t.x, p.y - 4 - t.y) < p.r * 0.75 + t.r - 1 && !p.dead) { hurtPlayer(hit2(), 'una lacrima nemica'); t.life = 0; }
     if (t.life <= 0 && !t.caught) splashTear(t);
   }
   for (const t of G.tears) if (t.life <= 0 && t.explode && !t.done) { t.done = true; explode(t.x, t.y, 44, t.dmg + 5, false); }
@@ -2217,14 +2217,14 @@ function drawEnemy(c, e) {
   if (e.appear > 0 && e.appear % 10 === 0 && G.state === 'play' && !G.trans) G.fx.push({kind: 'smoke', x: e.x + rr(-8, 8), y: e.y + rr(-4, 8), vx: rr(-0.3, 0.3), vy: -0.3, life: 30, max: 30, size: e.r * 0.8});
   if (e.type === 'piero' && e.st === 'persp' && e.vp) { // telegraph: the lines of perspective
     c.save(); c.globalAlpha = 0.25 + (1 - e.st2 / 50) * 0.4; c.strokeStyle = '#e8b64a'; c.lineWidth = 1;
-    const n = e.hp < e.max / 2 ? 14 : 10;
+    const n = e.hp < e.max / 2 ? 12 : 8;
     for (let i = 0; i < n; i++) { c.beginPath(); c.moveTo(T + (i + 0.5) / n * (RW - 2 * T), i % 2 ? T + 6 : RH - T - 6); c.lineTo(e.vp.x, e.vp.y); c.stroke(); }
     circ(c, e.vp.x, e.vp.y, 4, '#e8b64a'); c.restore();
   }
   if (e.champ && e.appear <= 0) { c.save(); c.globalAlpha = 0.45 + Math.sin(G.tick * 0.15) * 0.15; c.strokeStyle = e.champ.col; c.lineWidth = 3; c.beginPath(); c.ellipse(e.x, e.y + e.r * 0.6, e.r * 1.1, e.r * 0.45, 0, 0, Math.PI * 2); c.stroke(); c.restore(); }
   c.save(); c.globalAlpha = Math.max(0.15, k);
   if (e.champ) { c.shadowColor = e.champ.col; c.shadowBlur = 10; }
-  if (e.z > 0) ell(c, e.x, e.y + e.r * 0.6, e.r * (1 - e.z / 600), e.r * 0.35, 'rgba(0,0,0,.4)');
+  if (e.z > 0) { ell(c, e.x, e.y + e.r * 0.6, e.r * (1 - e.z / 600), e.r * 0.35, 'rgba(0,0,0,.4)'); if (e.type === 'mostro' && (e.st === 'fall' || e.st2 <= 24) && G.tick % 8 < 4) { c.save(); c.strokeStyle = '#ff3b1a'; c.lineWidth = 2; c.beginPath(); c.ellipse(e.x, e.y + e.r * 0.6, e.r, e.r * 0.4, 0, 0, Math.PI * 2); c.stroke(); c.restore(); } }
   c.translate(e.x, e.y - e.z);
   const flip = G.p.x < e.x ? -1 : 1;
   if (e.z <= 0 && !e.fly) ell(c, 0, e.r * 0.75, e.r * 0.9, e.r * 0.3, 'rgba(0,0,0,.33)');
@@ -2674,7 +2674,7 @@ const curse = id => !!(G.floor && G.floor.curse === id || G.run && G.run.curses 
 
 /* ---------- room rewards ---------- */
 function rollReward(p) {
-  const table = [['coin', 26], ['nickel', 5], [p.ch.noRed ? 'soul' : 'heart', G.run.hard ? 6 : 13], ['bomb', 11], ['key', 13], ['pill', 6], ['card', 6], ['soul', 4],
+  const table = [['coin', 26], ['nickel', 5], [p.ch.noRed ? 'soul' : 'heart', G.run.hard ? 6 : 13], ['bomb', 13], ['key', 18], ['pill', 6], ['card', 6], ['soul', 4],
     ['black', 2], ['gold', p.ch.noRed ? 0 : 2], ['eternal', 1], ['battery', 3], ['chest', 4], ['goldchest', 2], ['redchest', 1], ['sack', 3], ['trinket', 3]];
   let x = rnd() * table.reduce((s, [, w]) => s + w, 0);
   for (const [k, w] of table) { if ((x -= w) < 0) return k; }
@@ -2880,19 +2880,19 @@ function pieroAI(e, dx, dy, d, k, half) {
   e.vx = lerp(e.vx, (dx / d * want + Math.sin(e.t * 0.02) * 0.4) * 0.95 * k, 0.08);
   e.vy = lerp(e.vy, dy / d * want * 0.95 * k, 0.08);
   if (half && !e.p2) { // second form: Piero paints his own halo
-    e.p2 = true; G.flash = 1; G.shake = 14; ring(e, 24, 3.2, 0, '#f0d27a'); Snd.boss();
+    e.p2 = true; G.flash = 1; G.shake = 14; ring(e, 16, 2.8, 0, '#f0d27a'); Snd.boss();
     G.banner = {title: 'Il capolavoro', sub: 'Piero si dipinge l\'aureola', t: 140, big: true};
   }
   if (e.p2) k *= 1.25;
   if (e.st === 'persp') { // lines of perspective converge on the spot where you stood
     if (--e.st2 <= 0) {
-      const n = half ? 14 : 10;
+      const n = half ? 12 : 8;
       for (let i = 0; i < n; i++) {
         const sx = T + (i + 0.5) / n * (RW - 2 * T), sy = i % 2 ? T + 6 : RH - T - 6;
         const a = Math.atan2(e.vp.y - sy, e.vp.x - sx);
-        enemyTear(sx, sy, Math.cos(a) * 3.3, Math.sin(a) * 3.3, PALETTE[i % PALETTE.length]);
+        enemyTear(sx, sy, Math.cos(a) * 2.9, Math.sin(a) * 2.9, PALETTE[i % PALETTE.length]);
       }
-      e.st = 'idle'; e.cd = 70; Snd.tone(220, 0.4, 'triangle', 0.1, 440);
+      e.st = 'idle'; e.cd = 85; Snd.tone(220, 0.4, 'triangle', 0.1, 440);
     }
     return;
   }
@@ -2901,16 +2901,17 @@ function pieroAI(e, dx, dy, d, k, half) {
   const ph = e.phase % 4;
   if (ph === 1) { // a sweep of the brush, one colour per drop
     const a0 = Math.atan2(dy, dx);
-    for (let i = 0; i < 7; i++) { const a = a0 + (i - 3) * 0.16; enemyTear(e.x, e.y - 10, Math.cos(a) * 3.6, Math.sin(a) * 3.6, PALETTE[i % PALETTE.length]); }
-    e.cd = half ? 45 : 60;
+    const nf = half ? 7 : 5;
+    for (let i = 0; i < nf; i++) { const a = a0 + (i - (nf - 1) / 2) * 0.17; enemyTear(e.x, e.y - 10, Math.cos(a) * 3.4, Math.sin(a) * 3.4, PALETTE[i % PALETTE.length]); }
+    e.cd = half ? 55 : 70;
   } else if (ph === 2) { e.st = 'persp'; e.st2 = 50; e.vp = {x: p.x, y: p.y}; }
   else if (ph === 3) {
     if (half && G.enemies.filter(x => x.type === 'soldato').length < 3) { // the sleeping soldiers of the Resurrection wake up
       spawnEnemy('soldato', e.x - 50, e.y + 20, 25); spawnEnemy('soldato', e.x + 50, e.y + 20, 25);
       G.banner = {title: 'La Resurrezione', sub: 'I soldati si svegliano', t: 90, small: true};
-    } else ring(e, 12, 2.8, rnd(), '#e8b64a');
-    e.cd = 70;
-  } else { if (half) ring(e, 16, 3, e.t * 0.05, '#f0d27a'); else aimAt(e, 4, 0.12, 3, '#2b5aa8'); e.cd = 50; }
+    } else ring(e, 10, 2.6, rnd(), '#e8b64a');
+    e.cd = 80;
+  } else { if (half) ring(e, 13, 2.8, e.t * 0.05, '#f0d27a'); else aimAt(e, 3.8, 0.14, 3, '#2b5aa8'); e.cd = 65; }
 }
 
 /* ---------- drawing the new things ---------- */
@@ -3223,6 +3224,18 @@ function floorDone() { // called when you leave a floor through the trapdoor or 
 /* ================= profile, unlocks, achievements, collection and the cloud ================= */
 // Filled in by build.sh for the GitHub copy; empty here, so the artifact keeps everything on the device
 const FIREBASE = {projectId: 'biturgiasotterranea', apiKey: 'AIzaSyD9KcmjPkkVnEBc2wnghVJAifY5GIEqOkU'};
+// Raising SAVE_EPOCH wipes every old save: on the device at start-up, online as soon as each profile syncs.
+// Runs and wins recorded before EPOCH_START no longer show on the boards.
+const SAVE_EPOCH = 2, EPOCH_START = Date.UTC(2026, 9, 29, 12, 0);
+function wipeOldSaves() {
+  if (store('bs-epoch') === SAVE_EPOCH) return;
+  try {
+    const drop = [];
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^bs-(prof-|wins|daily-|rec)/.test(k)) drop.push(k); }
+    drop.forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+  store('bs-epoch', SAVE_EPOCH);
+}
 
 /* ---------- characters you start with, and how the others open up ---------- */
 // like Isaac: only one character at the start, the rest earned with Isaac's own kind of feats
@@ -3328,7 +3341,7 @@ const ACH = [
 let PROF = null;
 function blankProfile(name, display) {
   return {name, display, stats: {runs: 0, wins: 0, deaths: 0, kills: 0, rocks: 0, bought: 0, secrets: 0, flawless: 0, flew: 0, coinsMax: 0, mostItems: 0,
-    deals: 0, angels: 0, cards: 0, champs: 0, cursed: 0, redfull: 0, soul4: 0, deals3: 0, cleanred2: 0, nohit2: 0, donated: 0, hardWins: 0, transforms: 0, minis: 0, waves: 0, bestTime: 0, bestDepth: 0, floorsBy: {}, winsBy: {}, bosses: {}}, unlocked: [], ach: {}, seen: {}, pills: [], chal: [], endings: [], daily: {}, updated: 0};
+    epoch: SAVE_EPOCH, deals: 0, angels: 0, cards: 0, champs: 0, cursed: 0, redfull: 0, soul4: 0, deals3: 0, cleanred2: 0, nohit2: 0, donated: 0, hardWins: 0, transforms: 0, minis: 0, waves: 0, bestTime: 0, bestDepth: 0, floorsBy: {}, winsBy: {}, bosses: {}}, unlocked: [], ach: {}, seen: {}, pills: [], chal: [], endings: [], daily: {}, updated: 0};
 }
 function mergeProfile(a, b) { // the union of two copies: nothing ever gets lost
   if (!b) return a;
@@ -3473,6 +3486,7 @@ const Cloud = {
       if (!r.ok) throw new Error(r.status);
       const doc = await r.json();
       const remote = fromFS({mapValue: {fields: doc.fields}});
+      if (!remote.stats || remote.stats.epoch !== SAVE_EPOCH) { this.setStatus('Profilo azzerato: si riparte da capo.'); this.push(0); onProfileChanged(); return; } // an old save: ignore it and overwrite it
       if (remote.stats) { for (const k of ['chal', 'endings', 'daily']) { remote[k] = remote.stats[k]; delete remote.stats[k]; } }
       const display = PROF.display, guest = PROF.guest;
       PROF = mergeProfile(PROF, remote); PROF.display = remote.display || display; PROF.guest = guest; // the name keeps the capitals it was created with
@@ -3847,19 +3861,19 @@ async function renderBoard() {
   try {
     if (boardTab === 'daily') {
       const key = dailyKey();
-      const list = online ? await Cloud.query('bs_daily_' + key, 'score', 'DESCENDING') : (store('bs-daily-' + key) || []);
+      const list = (online ? await Cloud.query('bs_daily_' + key, 'score', 'DESCENDING') : (store('bs-daily-' + key) || [])).filter(w => w.d >= EPOCH_START);
       fill(['#', 'Giocatore', 'Risultato', 'Tempo'], list.map((w, i) => ({me: PROF && w.name === PROF.display, cells: [i + 1, w.name, w.won ? 'Vittoria' : 'Piano ' + w.depth, fmtTime(w.t)]})));
       note.textContent = 'Partita del giorno: ' + dailyChar().name + ', seme ' + dailySeed() + '. Conta solo il primo tentativo.';
       if (!list.length) note.textContent += ' Ancora nessun risultato oggi.';
       return;
     }
     if (boardTab === 'times') {
-      const list = online ? await Cloud.query('bs_wins', 't', 'ASCENDING') : (store('bs-wins') || []);
+      const list = (online ? await Cloud.query('bs_wins', 't', 'ASCENDING') : (store('bs-wins') || [])).filter(w => w.d >= EPOCH_START);
       fill(['#', 'Giocatore', 'Personaggio', 'Tempo', 'Oggetti'], list.map((w, i) => ({me: PROF && w.name === PROF.display, cells: [i + 1, w.name, chName(w.c), fmtTime(w.t), w.items]})));
       if (!list.length) note.textContent = 'Nessuna vittoria ancora: la prima è tua.';
     } else {
       let list = online ? await Cloud.query('bs_users', 'score', 'DESCENDING') : localPlayers().map(p => ({...p, score: profScore(p)})).sort((a, b) => b.score - a.score);
-      list = list.filter(p => p.name !== 'ospite');
+      list = list.filter(p => p.name !== 'ospite' && p.stats && p.stats.epoch === SAVE_EPOCH);
       fill(['Giocatore', 'Traguardi', 'Personaggi', 'Vittorie', 'Oggetti', 'Uccisioni'], list.map(p => ({me: PROF && p.name === PROF.name,
         cells: [p.display || p.name, Object.keys(p.ach || {}).length + '/' + ACH.length, 5 + (p.unlocked || []).length + '/10', (p.stats || {}).wins || 0, Object.keys(p.seen || {}).length + '/' + COLLECTION.length, (p.stats || {}).kills || 0]})));
       if (!list.length) note.textContent = 'Ancora nessun giocatore con un nome.';
@@ -3964,6 +3978,7 @@ $('ver').textContent = VERSION;
 if (matchMedia('(pointer: coarse)').matches) setTouch();
 syncMusic();
 resize();
+wipeOldSaves();
 const savedUser = store('bs-user');
 if (savedUser) login(savedUser); else if (store('bs-prof-ospite')) login('', true);
 showTitle();
