@@ -170,6 +170,8 @@ html.touch .tonly{display:inline}
 #flList li .cat{font-weight:700;color:#8e1b1b;text-transform:uppercase;letter-spacing:.1em;font-size:12px}
 #flList li p{margin:0;font-size:16px;line-height:1.35;white-space:pre-wrap;word-break:break-word}
 #flList li details{font-size:13px;color:#5a4330}
+#flList li .del{align-self:flex-end;background:none;border:1px solid #b3121b;color:#8e1b1b;border-radius:3px;padding:3px 10px;font-size:14px}
+#flKey{text-transform:none!important;width:9em!important}
 #flList li pre{white-space:pre-wrap;word-break:break-word;font-size:11.5px;margin:4px 0 0}
 
 /* ---------- pause ---------- */
@@ -347,6 +349,7 @@ html.portrait-play #rotate{display:flex}
   <div class="panel">
     <h2 class="hd">Feedback ricevuti</h2>
     <p class="count" id="flCount"></p>
+    <label class="seed" for="flKey">Parola chiave per eliminare <input id="flKey" maxlength="32" autocomplete="off" spellcheck="false" placeholder="solo per te"></label>
     <div class="tabs" role="tablist" id="flTabs"></div>
     <ul id="flList"></ul>
     <div class="row"><button type="button" class="ghost" id="flBack">Indietro</button></div>
@@ -387,7 +390,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v1.6';
+const VERSION = 'v1.6.1';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -1867,11 +1870,12 @@ function outlined(c, x, y, R, fn, glow) {
   if (size > 1600 || size < 4) { fn(c); return; }
   for (const cv of [OL.a, OL.b]) if (cv.width < size) cv.width = cv.height = size;
   const a = OL.a.getContext('2d'), b = OL.b.getContext('2d');
-  a.setTransform(1, 0, 0, 1, 0, 0); a.clearRect(0, 0, size, size);
-  a.setTransform(sc, 0, 0, sc, size / 2 - x * sc, size / 2 - y * sc); fn(a);
-  b.setTransform(1, 0, 0, 1, 0, 0); b.globalCompositeOperation = 'copy'; b.drawImage(OL.a, 0, 0, size, size, 0, 0, size, size);
+  const pad = Math.min(OL.a.width, size + 4); // clear a little past the edge: smoothing must not pick up older drawings
+  a.setTransform(1, 0, 0, 1, 0, 0); a.globalAlpha = 1; a.globalCompositeOperation = 'source-over'; a.clearRect(0, 0, pad, pad);
+  a.save(); a.setTransform(sc, 0, 0, sc, size / 2 - x * sc, size / 2 - y * sc); fn(a); a.restore(); // the sprite's own alpha or colours never leak into the next one
+  b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over'; b.clearRect(0, 0, pad, pad); b.drawImage(OL.a, 0, 0, size, size, 0, 0, size, size);
   b.globalCompositeOperation = 'source-in'; b.fillStyle = '#0b0706'; b.fillRect(0, 0, size, size); b.globalCompositeOperation = 'source-over';
-  const dx = m.a * x + m.c * y + m.e - size / 2, dy = m.b * x + m.d * y + m.f - size / 2, w = Math.max(1.5, sc * 1.6), d = w * 0.72;
+  const dx = Math.round(m.a * x + m.c * y + m.e - size / 2), dy = Math.round(m.b * x + m.d * y + m.f - size / 2), w = Math.max(1.5, sc * 1.6), d = w * 0.72;
   c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
   if (glow) { c.shadowColor = glow; c.shadowBlur = 12 * sc; }
   for (const [ox, oy] of [[w, 0], [-w, 0], [0, w], [0, -w], [d, d], [-d, d], [d, -d], [-d, -d]]) c.drawImage(OL.b, 0, 0, size, size, dx + ox, dy + oy, size, size);
@@ -4385,7 +4389,7 @@ const Cloud = {
     const r = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE.projectId}/databases/(default)/documents:runQuery?key=${FIREBASE.apiKey}`, {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({structuredQuery: {from: [{collectionId: coll}], orderBy: [{field: {fieldPath: field}, direction: dir}], limit}})});
     if (!r.ok) throw new Error(r.status);
-    return (await r.json()).filter(x => x.document).map(x => fromFS({mapValue: {fields: x.document.fields}}));
+    return (await r.json()).filter(x => x.document).map(x => ({...fromFS({mapValue: {fields: x.document.fields}}), _id: x.document.name.split('/').pop()}));
   },
 };
 /* ================= input, menus and the loop ================= */
@@ -4982,10 +4986,37 @@ function renderFeedList() {
     meta.append(Object.assign(document.createElement('span'), {className: 'cat', textContent: FEED_CATS[f.cat] || f.cat}), ' · ' + f.name + ' · ' + new Date(f.d).toLocaleString('it-IT') + ' · ' + f.v);
     const det = document.createElement('details');
     det.append(Object.assign(document.createElement('summary'), {textContent: 'Informazioni automatiche'}), Object.assign(document.createElement('pre'), {textContent: f.info}));
-    li.append(meta, Object.assign(document.createElement('p'), {textContent: f.text}), det);
+    const del = Object.assign(document.createElement('button'), {type: 'button', className: 'del', textContent: 'Elimina'});
+    del.addEventListener('click', () => deleteFeed(f, del));
+    li.append(meta, Object.assign(document.createElement('p'), {textContent: f.text}), det, del);
     ul.append(li);
   }
 }
+/* ---------- deleting one: the key lives only in the Firebase rules, never in the page ---------- */
+// first a marker named <feedback id>_<key> is written (the rules accept it only with the right key),
+// then the feedback itself can be deleted, because the rules find that marker
+async function deleteFeed(f, btn) {
+  const key = $('flKey').value.trim();
+  if (!confirm('Eliminare questo feedback di ' + f.name + '? Non si può annullare.')) return;
+  if (!Cloud.on() || !f._id) { // the artifact copy: only this device's messages
+    store('bs-fb-mine', (store('bs-fb-mine') || []).filter(x => !(x.d === f.d && x.text === f.text)));
+    FEED.list = FEED.list.filter(x => x !== f); renderFeedList(); return;
+  }
+  if (!key) { $('flCount').textContent = 'Scrivi prima la parola chiave per eliminare.'; $('flKey').focus(); return; }
+  store('bs-fb-key', key);
+  btn.disabled = true; btn.textContent = 'Elimino…';
+  try {
+    const mark = await fetch(Cloud.url('bs_feedback_del') + '&documentId=' + encodeURIComponent(f._id + '_' + key), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({fields: {}})});
+    if (!mark.ok && mark.status !== 409) throw new Error(mark.status === 403 ? 'chiave' : mark.status);
+    const r = await fetch(Cloud.url('bs_feedback/' + f._id), {method: 'DELETE'});
+    if (!r.ok) throw new Error(r.status);
+    FEED.list = FEED.list.filter(x => x !== f); renderFeedList();
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Elimina';
+    $('flCount').textContent = err.message === 'chiave' ? 'Parola chiave sbagliata, oppure manca la regola per eliminare in Firebase.' : 'Non sono riuscito a eliminarlo: riprova.';
+  }
+}
+$('flKey').value = store('bs-fb-key') || '';
 $('feedRead').addEventListener('click', openFeedList);
 $('flBack').addEventListener('click', () => { if (FEED.inPause) { $('feedlist').hidden = true; openFeed(); } else openFeed(); });
 flushFeedQueue();
