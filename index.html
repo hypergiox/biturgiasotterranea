@@ -63,7 +63,7 @@ html.touch .tonly{display:inline}
 #select h2,.sheet h2.hd{font-family:var(--display);font-weight:800;font-size:clamp(28px,6vh,40px);margin:0;color:var(--gold);line-height:1}
 .selmain{display:flex;flex-direction:column;align-items:center;gap:6px;width:min(760px,100%)}
 .carwrap{position:relative;width:100%}
-#carousel{display:block;width:100%;height:clamp(170px,38vh,330px);touch-action:pan-y;cursor:grab}
+#carousel{display:block;width:100%;height:clamp(160px,33vh,330px);touch-action:pan-y;cursor:grab}
 .arrow{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(42,31,26,.8);border:2px solid var(--line);font-size:22px;display:grid;place-items:center;padding:0}
 .arrow.l{left:0}.arrow.r{right:0}
 .sheetcard{background:#e9dcc0;color:#2a1d14;border-radius:3px;box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 0 30px rgba(120,80,30,.22);padding:12px 18px;
@@ -245,14 +245,16 @@ html.portrait-play #rotate{display:flex}
 :root{--pixel:"Pixelify Sans","Barlow Condensed",monospace;--px-edge:#0e0907}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 canvas.pw{display:block;image-rendering:pixelated;margin:0 auto;max-width:100%;object-fit:contain}
-.sheet.wall{background-size:cover,cover;background-position:center;image-rendering:pixelated}
+.sheet.wall,#select.wall.hardmode{background-image:radial-gradient(ellipse at 50% 38%,rgba(19,13,11,.35) 0%,rgba(19,13,11,.86) 75%),var(--wall);background-size:cover,cover;background-position:center;background-repeat:no-repeat;image-rendering:pixelated}
+#select.wall.hardmode{background-image:radial-gradient(ellipse at 50% 38%,rgba(120,14,10,.5) 0%,rgba(26,4,3,.9) 75%),var(--wall)} /* hard: the same wall, lit red */
+#select.hardmode #selGo{background:#8a0a0a;box-shadow:4px 0 0 #2a0202,-4px 0 0 #2a0202,0 4px 0 #2a0202,0 -4px 0 #2a0202,inset 0 4px 0 #d0302a,inset 0 -6px 0 #4a0404,0 0 18px rgba(255,40,30,.45)}
 .title{text-shadow:none}
 .big{border-radius:0;padding:9px 24px;margin:4px;line-height:0;
   box-shadow:4px 0 0 var(--px-edge),-4px 0 0 var(--px-edge),0 4px 0 var(--px-edge),0 -4px 0 var(--px-edge),inset 0 4px 0 #e0484e,inset 0 -6px 0 #6a0a10,inset 4px 0 0 #c82a30,inset -4px 0 0 #8a1016}
 .big:hover{background:#c41a22}
 .big:active{transform:translateY(2px);box-shadow:4px 0 0 var(--px-edge),-4px 0 0 var(--px-edge),0 4px 0 var(--px-edge),0 -4px 0 var(--px-edge),inset 0 6px 0 #6a0a10}
 .big:disabled{box-shadow:4px 0 0 var(--px-edge),-4px 0 0 var(--px-edge),0 4px 0 var(--px-edge),0 -4px 0 var(--px-edge),inset 0 -4px 0 #2e2420;filter:grayscale(1) brightness(.7)}
-.ghost,.menu .ghost,#tCont,.arrow,#audioBtns button,.modeBtn{font-family:var(--pixel);font-weight:600;border:0!important;border-radius:0!important;margin:3px;background:#2a1f1a;
+.ghost,.menu .ghost,#tCont,.arrow,#audioBtns button,.modeBtn{font-family:var(--pixel);font-weight:500;letter-spacing:.1em;border:0!important;border-radius:0!important;margin:3px;background:#2a1f1a;
   box-shadow:3px 0 0 var(--px-edge),-3px 0 0 var(--px-edge),0 3px 0 var(--px-edge),0 -3px 0 var(--px-edge),inset 0 3px 0 #4e3c30,inset 0 -3px 0 #160f0c}
 .ghost:hover,.menu .ghost:hover,#tCont:hover,.arrow:hover,#audioBtns button:hover{background:#3e2c22}
 .ghost:active,.arrow:active{box-shadow:3px 0 0 var(--px-edge),-3px 0 0 var(--px-edge),0 3px 0 var(--px-edge),0 -3px 0 var(--px-edge),inset 0 3px 0 #160f0c}
@@ -262,9 +264,12 @@ canvas.pw{display:block;image-rendering:pixelated;margin:0 auto;max-width:100%;o
 .modeBtn b{line-height:0}.modeBtn b canvas.pw{margin:0}
 .modeBtn span{font-family:var(--pixel);font-weight:500}
 .seed input,#userIn{border:0;border-radius:0;font-family:var(--pixel);box-shadow:3px 0 0 var(--px-edge),-3px 0 0 var(--px-edge),0 3px 0 var(--px-edge),0 -3px 0 var(--px-edge),inset 0 3px 0 #0a0605}
-.title small,.ver,.who,.link{font-family:var(--pixel)}
+.title small,.ver,.who,.link{font-family:var(--pixel);letter-spacing:.08em}
 #selName{line-height:0}#selName canvas.pw{margin:0}
 #select h2,.sheet h2.hd,.sheet h2{line-height:0}
+.menufx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated;z-index:0}
+#title>*:not(.menufx){position:relative;z-index:1}
+#title>.ver{position:fixed}
 @media (max-width:600px){#select h2{margin-top:34px}}
 </style>
 
@@ -458,7 +463,7 @@ canvas.pw{display:block;image-rendering:pixelated;margin:0 auto;max-width:100%;o
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v2.4';
+const VERSION = 'v2.5';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -890,7 +895,7 @@ function genFloor(depth, rng, run) {
     const treasure = rest[0], shop = rest[1];
     // spare dead ends become the rarer rooms
     const extra = rest.slice(2), special = new Map();
-    for (const [type, ok] of [['sfida', depth > 1 && rng.f() < 0.4], ['sacrificio', rng.f() < 0.3], ['sala', (run.coinsNow || 0) >= 5 && rng.f() < 0.55], ['maledetta', rng.f() < 0.3]])
+    for (const [type, ok] of [['sfida', depth > 1 && rng.f() < 0.4], ['sacrificio', rng.f() < 0.3], ['sala', (run.coinsNow || 0) >= 5 && rng.f() < 0.55], ['maledetta', rng.f() < 0.3], ...Object.entries(ROOM_ODDS).map(([t, f]) => [t, rng.f() < (f(depth) || 0)])])
       if (ok && extra.length) special.set(extra.shift(), type);
     // the secret room hides next to as many rooms as possible, never beside the boss
     let secret = null, best = 1;
@@ -1080,7 +1085,8 @@ function fillRoom(room, rng, run) {
     else room.pickups.push({kind: 'heart', x: CX - 30, y: CY}, {kind: 'heart', x: CX, y: CY}, {kind: 'soul', x: CX + 30, y: CY});
   } else if (room.type === 'start' && depth === 1) {
     room.hint = true;
-  }
+  } else if (ROOM_FILL[room.type]) ROOM_FILL[room.type](room, rng, run); // the rooms of the big block (26-blocco.js)
+  roomExtras(room, rng);
 }
 /* ================= game state ================= */
 const G = {state: 'title', tick: 0, run: null, floor: null, room: null, p: null, tears: [], enemies: [], bombs: [], fx: [], rings: [], beams: [],
@@ -1188,6 +1194,7 @@ function enterRoom(room, fromDir, slide = true) {
   Music.play(room.type === 'boss' && !room.cleared ? 'boss' : floorMusic(room.depth));
   G.flowT = -99;
   perkHook(G.p, 'enter', room); // after the enemies are in: some things act on them
+  if (NEW_ROOMS[room.type]) { meta('room', room.type); if (!room.named) { room.named = true; G.banner = {title: NEW_ROOMS[room.type], sub: '', t: 90, small: true}; } }
   queueSave();
 }
 function teleportRandom() {
@@ -1552,7 +1559,7 @@ function killEnemy(e) {
   const B = BEAST[e.type];
   if (B && B.death) B.death(e);
   const last = e.boss && !G.enemies.some(o => o.boss && o.hp > 0); // a boss that splits is beaten only when every piece is
-  meta(last ? 'boss' : 'kill', last ? (G.room.boss || e.type) : e.type); if (last) meta('kill');
+  meta(last ? 'boss' : 'kill', last ? (G.room.boss || e.type) : e.type); if (last) meta('kill', e.type);
   gibs(e);
   Snd.kill();
   burst(e.x, e.y, '#9b111e', e.boss ? 40 : 14, e.boss ? 5 : 3);
@@ -2350,15 +2357,27 @@ function drawChar(c, ch, x, y, o = {}) { // the pixel sprite; y is the middle of
   if (isPix(c)) { blit(c, sp, x, feet, 0.5, 31 / 34, s); return; } // snapped to whole pixels in the room
   c.save(); c.imageSmoothingEnabled = false; c.drawImage(sp, x - 13 * u, feet - 31 * u, 26 * u, 34 * u); c.restore();
 }
+function shopkeeperSpr(f) { // the shopkeeper behind his counter: a flat cap, a big moustache, a striped shirt and his apron, arms folded
+  return spr('shopkeeper' + f, () => { const [cv, x] = mkc(34, 38), SK = ['#e0b090', '#b88866', '#f0c8a8'];
+    PE(x, 17, 27, 12, 9, '#3a5a9a', '#2a4478'); for (let k = 7; k < 29; k += 3) PR(x, k, 19, 1, 14, '#e8ecf4');        // the striped shirt
+    PE(x, 17, 29, 8, 7, '#efe3cf', '#c8bca8', '#ffffff'); PR(x, 12, 20, 1, 6, '#c8bca8'); PR(x, 21, 20, 1, 6, '#c8bca8');    // the apron and its straps
+    PR(x, 8, 25 - (f === 2 ? 1 : 0), 18, 4, '#3a5a9a'); PR(x, 8, 25 - (f === 2 ? 1 : 0), 18, 1, '#5a7ab8'); PE(x, 9, 27, 2.5, 2, SK[0]); PE(x, 25, 27, 2.5, 2, SK[0]); // folded arms
+    PE(x, 17, 13 - (f === 2 ? 1 : 0), 9, 8.5, SK[0], SK[1], SK[2]);                                                 // the head
+    const hy = f === 2 ? -1 : 0;
+    PE(x, 17, 6 + hy, 9.5, 4, '#5a4a3a', '#42362a', '#6e5c4a'); PR(x, 9, 8 + hy, 18, 2, '#42362a'); PR(x, 21, 9 + hy, 7, 1, '#2e261e'); // the flat cap
+    if (f === 1) { PR(x, 12, 13 + hy, 3, 1, '#1a1418'); PR(x, 19, 13 + hy, 3, 1, '#1a1418'); }                    // a blink
+    else { PR(x, 12, 12 + hy, 2, 2, '#1a1418'); PR(x, 20, 12 + hy, 2, 2, '#1a1418'); PR(x, 12, 12 + hy, 1, 1, '#ffffff'); PR(x, 20, 12 + hy, 1, 1, '#ffffff'); }
+    PR(x, 11, 10 + hy, 4, 1, '#3a2a1a'); PR(x, 19, 10 + hy, 4, 1, '#3a2a1a');                                       // bushy brows
+    PR(x, 10, 15 + hy, 2, 1, '#e08a7a'); PR(x, 22, 15 + hy, 2, 1, '#e08a7a'); PR(x, 16, 14 + hy, 2, 2, SK[1]);        // rosy cheeks, the nose
+    PR(x, 11, 16 + hy, 12, 2, '#4a3020'); PR(x, 9, 17 + hy, 3, 2, '#4a3020'); PR(x, 22, 17 + hy, 3, 2, '#4a3020'); PR(x, 12, 16 + hy, 4, 1, '#6a4a30'); // the moustache
+    PR(x, 0, 29, 34, 9, '#7a4a24'); PR(x, 0, 29, 34, 2, '#a8703c'); PR(x, 0, 29, 34, 1, '#c8905a');                  // the counter
+    for (const k of [8, 17, 26]) PR(x, k, 31, 1, 7, '#5a3418'); PR(x, 0, 37, 34, 1, '#4a2a12');
+    PE(x, 28, 27, 3, 2.2, '#e8b64a', '#a8781a', '#fff0a0'); PR(x, 28, 24, 1, 2, '#a8781a');                        // the bell on the counter
+    PR(x, 4, 28, 4, 1, '#e8b64a'); PR(x, 5, 27, 3, 1, '#c9952a');                                                     // a few coins
+    return pixOutline(cv); }); }
 function drawShopkeeper(c, x, y) {
-  c.save(); c.translate(x, y);
-  ell(c, 0, 14, 14, 4, 'rgba(0,0,0,.35)');
-  c.fillStyle = '#efe3cf'; rrect(c, -11, -2, 22, 14, 5); c.fill();
-  c.fillStyle = '#8a5a2b'; c.fillRect(-11, 4, 22, 3);
-  circ(c, 0, -10, 11, '#e0b090'); ell(c, 0, -19, 11, 5, '#efe3cf');
-  circ(c, -4, -11, 1.8, '#1a1418'); circ(c, 4, -11, 1.8, '#1a1418');
-  ell(c, 0, -5, 5, 2, '#5a3a22');
-  c.restore();
+  const t = G.tick % 200, f = t < 6 ? 1 : (G.tick >> 5) % 2 ? 2 : 0; // breathing, and a blink now and then
+  pixShadow(c, x, y + 14, 16); blit(c, shopkeeperSpr(f), x, y + 18, 0.5, 1);
 }
 
 /* ---------- enemies ---------- */
@@ -2620,6 +2639,7 @@ function render() {
   for (const l of LABELS) { c.font = `${l.weight} ${Math.round(l.size * S)}px ${l.font}`; c.fillStyle = 'rgba(0,0,0,.65)'; c.fillText(l.text, OX + l.x * S + 1.5, OY + l.y * S + 1.5); c.fillStyle = l.col; c.fillText(l.text, OX + l.x * S, OY + l.y * S); }
   c.textAlign = 'left';
   // flashes on the whole screen
+  if (G.slow > 0) { c.fillStyle = `rgba(80,150,255,${0.13 * Math.min(1, G.slow / 30)})`; c.fillRect(0, 0, W, H); } // time slowed down: the whole screen goes blue, fading out at the end
   if (G.hurtFlash > 0) { c.fillStyle = 'rgba(160,0,0,' + G.hurtFlash * 0.35 + ')'; c.fillRect(0, 0, W, H); G.hurtFlash = Math.max(0, G.hurtFlash - 0.06); }
   if (G.flash > 0) { c.fillStyle = 'rgba(255,245,225,' + G.flash * 0.5 + ')'; c.fillRect(0, 0, W, H); G.flash = Math.max(0, G.flash - 0.05); }
   drawHUD(c);
@@ -2668,7 +2688,6 @@ function drawLive(c) {
   if (p.fx.fire > 0) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.25 + Math.sin(G.tick * 0.5) * 0.1; circ(c, p.x, p.y, 56, '#ff7a1a'); c.restore(); }
   drawLighting(c, p);
   // tints
-  if (G.slow > 0) { c.fillStyle = 'rgba(80,150,255,.12)'; c.fillRect(0, 0, RW, RH); }
   if (p.fx.campari > 0) { const g = c.createRadialGradient(CX, CY, 120, CX, CY, 360); g.addColorStop(0, 'rgba(210,32,42,0)'); g.addColorStop(1, 'rgba(210,32,42,.35)'); c.fillStyle = g; c.fillRect(0, 0, RW, RH); }
 }
 function drawLighting(c, p) {
@@ -2838,7 +2857,7 @@ function drawMinimap(c, u) {
     const x = x0 + (r.gx - minx) * cw, y = y0 + (r.gy - miny) * chh;
     c.fillStyle = r === G.room ? '#efe3cf' : r.visited ? '#7d6e62' : '#3a2b23';
     c.fillRect(x + 1, y + 1, cw - 2, chh - 2);
-    const ic = {treasure: '#e8b64a', shop: '#9aa3ad', boss: '#d2202a', secret: '#b07ad6', supersegreta: '#d68af0', devil: '#5e0a0f', angel: '#fff6d0', sfida: '#c9cdd2', sacrificio: '#9b111e', sala: '#25d366', maledetta: '#3a0a0a'}[r.type];
+    const ic = {treasure: '#e8b64a', shop: '#9aa3ad', boss: '#d2202a', secret: '#b07ad6', supersegreta: '#d68af0', devil: '#5e0a0f', angel: '#fff6d0', sfida: '#c9cdd2', sacrificio: '#9b111e', sala: '#25d366', maledetta: '#3a0a0a', biblioteca: '#8a5a2b', caveau: '#c9952a', dadi: '#f4f4f4', camera: '#e86a8a', mercato: '#1a1a20', errore: '#5ad0ff'}[r.type];
     if (ic) circ(c, x + cw / 2, y + chh / 2, 2.6 * u, ic);
   }
   return y0 + (Math.max(...G.floor.rooms.map(r => r.gy)) - miny + 1) * chh + 3 * u;
@@ -7151,6 +7170,242 @@ function pixelate(fn, B = 5, H = 300) {
     a[o] = c[0]; a[o + 1] = c[1]; a[o + 2] = c[2]; a[o + 3] = c[3]; }
   x.putImageData(img, 0, 0); return cv;
 }
+
+// ---------- the big block: sixty more little enemies and fifteen bosses, all in the same lumpy line with a face ----------
+// crit() is the common body: feet or wings, a shape with its own inside, the staring face and the mouth that opens to shoot
+function crit(c, p, o) {
+  const {st, bob} = wp(p), atk = p.mode === 'atk' || p.mode === 'spin', cx = 150 + (o.dx || 0), cy = (o.cy || 170) + (o.still ? 0 : bob);
+  if (o.feet) feet(c, cx, 262, st, o.feet, o.fsp || 40);
+  if (o.wings) for (const s of [-1, 1]) shape(c, lumpy(cx + s * (o.wx || 92), cy - 40 - (p.i % 2) * 16, o.ww || 52, 24, {seed: 9, wob: 0.08}), o.wings);
+  if (o.under) o.under(c, cx, cy, p, atk);
+  shape(c, o.body ? o.body(cx, cy, p, atk) : lumpy(cx, cy, o.rx || 90, o.ry || 80, {seed: o.seed || 3, wob: o.wob ?? 0.06, n: 18}), o.col, {inner: o.inner && (c2 => o.inner(c2, cx, cy, p, atk))});
+  if (o.over) o.over(c, cx, cy, p, atk);
+  if (o.face !== false) {
+    const fx = cx + (o.fx || 0), ey = cy + (o.ey ?? -20), my = cy + (o.my ?? 16), mw = o.mw || 32, mh = o.mh || 20;
+    mini(c, fx, ey, {r: o.er || 18, sp: o.esp || 34, angry: o.angry ?? 1, iris: o.iris, closed: o.closed});
+    if (o.mouth !== false) bigMouth(c, fx, my, atk ? mw * 1.25 : mw, atk ? mh * 1.7 : mh, {top: o.teeth ?? 4, bottom: o.teeth2 ?? 3, seed: o.seed || 3, tongue: !atk && o.tongue});
+  }
+  if (o.top) o.top(c, cx, cy, p, atk);
+}
+const legsN = (c, cx, cy, n, len, col, ph) => { for (let k = 0; k < n; k++) { const s = k % 2 ? 1 : -1, row = Math.floor(k / 2), y = cy - 20 + row * 26, sw = Math.sin(ph + k) * 10; tube(c, [[cx + s * 50, y], [cx + s * (50 + len * 0.6), y - 18 + sw], [cx + s * (50 + len), y + 26 + sw]], 6, 4, col); } };
+const drop = (c, x, y, r, col) => shape(c, [[x, y - r * 1.6], [x + r, y], [x + r * 0.6, y + r * 0.8], [x - r * 0.6, y + r * 0.8], [x - r, y]], col);
+const flame = (c, x, y, s, i) => { shape(c, [[x, y - 50 * s - (i % 2) * 8], [x + 22 * s, y - 10 * s], [x + 14 * s, y + 8 * s], [x - 14 * s, y + 8 * s], [x - 22 * s, y - 10 * s]], '#ffa020'); shape(c, [[x, y - 30 * s - (i % 2) * 5], [x + 10 * s, y - 4 * s], [x - 10 * s, y - 4 * s]], '#fff0a0', {line: 2}); };
+const stripes = (c2, x0, y0, x1, y1, n, col, w = 8) => { c2.fillStyle = col; for (let k = 0; k < n; k++) c2.fillRect(x0 + (x1 - x0) * (k + 0.5) / n - w / 2, y0, w, y1 - y0); };
+const dots = (c2, cx, cy, rx, ry, n, col, r = 7, seed = 1) => { c2.fillStyle = col; for (let k = 0; k < n; k++) { const a = k * 2.399 + seed, d = Math.sqrt((k + 0.5) / n); c2.beginPath(); c2.arc(cx + Math.cos(a) * rx * d, cy + Math.sin(a) * ry * d, r, 0, 7); c2.fill(); } };
+
+/* the Cantine */
+BOSS2.blatta = (c, p) => crit(c, p, {col: '#5a3a1e', cy: 190, rx: 96, ry: 56, seed: 11, er: 14, esp: 28, ey: -10, my: 18, mw: 22, mh: 12,
+  under: (c, cx, cy, p) => legsN(c, cx, cy + 10, 6, 60, '#3a2210', p.i * 1.6), top: (c, cx, cy, p) => { for (const s of [-1, 1]) tube(c, [[cx + s * 20, cy - 50], [cx + s * 50, cy - 110], [cx + s * 90, cy - 120 + (p.i % 2) * 10]], 3, 2, '#3a2210'); },
+  inner: (c2, cx, cy) => { c2.fillStyle = '#7a5230'; c2.fillRect(cx - 4, cy - 56, 8, 112); }});
+BOSS2.muffa = (c, p) => crit(c, p, {col: '#7a9a5a', still: true, cy: 180, rx: 100, ry: 76, seed: 13, wob: 0.14, closed: p.mode !== 'atk', angry: -0.3,
+  inner: (c2, cx, cy) => dots(c2, cx, cy, 80, 60, 12, '#5a7a3a', 9, 2), top: (c, cx, cy, p) => { for (let k = 0; k < 3; k++) circle(c, cx - 60 + k * 60, cy - 90 - ((p.i + k) % 2) * 10, 8, '#c8e0a0', 2.5); }});
+BOSS2.fiasco = (c, p) => crit(c, p, {col: '#3a6a2a', cy: 160, ey: -6, my: 26, mw: 26, mh: 14, er: 15, esp: 28,
+  body: (cx, cy) => [[cx - 16, 20], [cx + 16, 20], [cx + 18, 80], [cx + 84, cy], [cx + 80, 240], [cx - 80, 240], [cx - 84, cy], [cx - 18, 80]],
+  inner: (c2, cx, cy) => { c2.fillStyle = '#d8b060'; c2.fillRect(cx - 100, 190, 200, 60); c2.strokeStyle = '#a07830'; c2.lineWidth = 5; for (let k = -90; k < 100; k += 18) { c2.beginPath(); c2.moveTo(cx + k, 190); c2.lineTo(cx + k + 14, 250); c2.stroke(); } c2.fillStyle = '#8a1a1a'; c2.fillRect(cx - 16, 14, 32, 20); }});
+BOSS2.salame = (c, p) => crit(c, p, {col: '#a83a3a', cy: 190, rx: 120, ry: 54, seed: 15, ey: -14, my: 14, mw: 24, mh: 12,
+  inner: (c2, cx, cy) => dots(c2, cx, cy, 100, 40, 16, '#f0d8c8', 6, 3), under: (c, cx, cy) => { tube(c, [[cx + 116, cy - 6], [cx + 140, cy - 30]], 4, 3, '#d8c8a0'); }, top: (c, cx, cy) => { for (const k of [-60, 0, 60]) tube(c, [[cx + k, cy - 52], [cx + k, cy + 52]], 3, 3, '#f4ecd8'); }});
+BOSS2.ragnone = (c, p) => crit(c, p, {col: '#2a2228', cy: 170, rx: 70, ry: 62, seed: 17, iris: '#ff2020', er: 14, esp: 26, ey: -14, my: 14, mw: 22, mh: 16,
+  under: (c, cx, cy, p) => legsN(c, cx, cy, 8, 80, '#1a1418', p.i * 1.3 + (p.mode === 'charge' ? 2 : 0)), inner: (c2, cx, cy) => { c2.fillStyle = '#c81a1a'; c2.beginPath(); c2.arc(cx, cy + 40, 12, 0, 7); c2.fill(); }});
+BOSS2.pecorino = (c, p) => crit(c, p, {col: '#e8d090', cy: 170, ey: -10, my: 26, body: (cx, cy) => lumpy(cx, cy, 104, 84, {seed: 19, wob: 0.02, n: 24}),
+  inner: (c2, cx, cy) => { c2.strokeStyle = '#a8784a'; c2.lineWidth = 14; c2.beginPath(); c2.ellipse(cx, cy, 98, 78, 0, 0, 7); c2.stroke(); c2.fillStyle = '#d8b870'; for (const [x, y] of [[-50, -30], [40, 40], [60, -40], [-30, 50]]) { c2.beginPath(); c2.arc(cx + x, cy + y, 7, 0, 7); c2.fill(); } }});
+BOSS2.candela = (c, p) => crit(c, p, {col: '#f4ecd0', still: true, cy: 190, ey: -16, my: 22, er: 15, esp: 28, mw: 24, mh: 14,
+  body: (cx, cy) => [[cx - 50, 80], [cx - 20, 72], [cx + 10, 84], [cx + 50, 76], [cx + 56, 262], [cx - 56, 262]], under: (c, cx, cy, p) => flame(c, cx, 70, 1.1, p.i),
+  over: (c, cx) => { drop(c, cx - 40, 110, 10, '#fffaf0'); drop(c, cx + 44, 130, 9, '#fffaf0'); }});
+/* the Fortezza */
+BOSS2.balestra = (c, p) => crit(c, p, {col: '#7a5a3a', still: true, cy: 170, ey: 4, my: 40, mw: 20, mh: 10, er: 14, esp: 26,
+  under: (c, cx, cy) => { tube(c, [[cx - 40, 262], [cx, cy + 40], [cx + 40, 262]], 8, 8, '#5a3a20'); tube(c, [[cx - 130, cy - 30], [cx, cy - 70], [cx + 130, cy - 30]], 10, 6, '#6a4a2a'); tube(c, [[cx - 128, cy - 28], [cx, cy - 10 + (p.mode === 'atk' ? -30 : 0)], [cx + 128, cy - 28]], 2, 2, '#e8e0d0'); },
+  body: (cx, cy) => rectPts(cx - 26, cy - 80, cx + 26, cy + 70, 6), top: (c, cx, cy, p) => { if (p.mode !== 'atk') shape(c, [[cx, cy - 120], [cx + 10, cy - 96], [cx - 10, cy - 96]], '#c8ccd2'); }});
+BOSS2.armatura = (c, p) => crit(c, p, {col: '#9aa0a8', cy: 150, feet: '#6a7078', ey: -24, my: 4, mouth: false, iris: '#ff6a2a', er: 12, esp: 30,
+  body: (cx, cy) => [[cx - 60, cy - 90], [cx, cy - 116], [cx + 60, cy - 90], [cx + 80, cy + 20], [cx + 60, cy + 100], [cx - 60, cy + 100], [cx - 80, cy + 20]],
+  inner: (c2, cx, cy) => { c2.fillStyle = '#1a1418'; c2.fillRect(cx - 50, cy - 40, 100, 34); c2.fillStyle = '#c8ccd2'; c2.fillRect(cx - 6, cy - 116, 12, 70); c2.fillStyle = '#7a8088'; c2.fillRect(cx - 70, cy + 30, 140, 10); },
+  top: (c, cx, cy, p) => shape(c, [[cx - 6, cy - 116], [cx + 20, cy - 160 - (p.i % 2) * 6], [cx + 30, cy - 120]], '#d02a2a')});
+BOSS2.stendardo = (c, p) => crit(c, p, {col: '#d02a2a', cy: 150, ey: -16, my: 18, mw: 26, mh: 14,
+  body: (cx, cy, p) => { const w = (p.i % 2) * 12; return [[cx - 80, 40], [cx + 80, 40], [cx + 84, 200 + w], [cx + 40, 240 - w], [cx, 210 + w], [cx - 40, 240 - w], [cx - 84, 200 + w]]; },
+  inner: (c2, cx) => { c2.fillStyle = '#f5c400'; c2.fillRect(cx - 80, 40, 160, 20); c2.fillRect(cx - 8, 60, 16, 160); }, under: (c, cx) => tube(c, [[cx - 110, 36], [cx + 110, 36]], 7, 7, '#6a4a2a')});
+BOSS2.catapulta = (c, p) => crit(c, p, {col: '#8a5a2a', still: true, cy: 200, ey: -16, my: 14, mw: 26, mh: 12, er: 14, esp: 30,
+  under: (c, cx, cy, p) => { const a = p.mode === 'atk' ? -0.2 : 0.9; tube(c, [[cx, cy - 20], [cx + Math.cos(-Math.PI / 2 - a) * 130, cy - 20 + Math.sin(-Math.PI / 2 - a) * 130]], 8, 6, '#6a4220'); circle(c, cx + Math.cos(-Math.PI / 2 - a) * 140, cy - 20 + Math.sin(-Math.PI / 2 - a) * 140, 22, '#8a8a86'); },
+  body: (cx, cy) => rectPts(cx - 100, cy - 50, cx + 100, cy + 40, 6), inner: (c2, cx, cy) => { c2.strokeStyle = '#5a3a1a'; c2.lineWidth = 6; c2.beginPath(); c2.moveTo(cx - 100, cy - 50); c2.lineTo(cx + 100, cy + 40); c2.moveTo(cx + 100, cy - 50); c2.lineTo(cx - 100, cy + 40); c2.stroke(); },
+  over: (c, cx, cy) => { for (const s of [-1, 1]) { circle(c, cx + s * 80, cy + 50, 24, '#5a3a1a'); circle(c, cx + s * 80, cy + 50, 8, '#3a2210'); } }});
+BOSS2.doccione = (c, p) => crit(c, p, {col: '#6a6a72', cy: 160, wings: '#4a4a52', ey: -20, my: 18, teeth: 6, iris: '#f5c400',
+  top: (c, cx, cy) => { for (const s of [-1, 1]) shape(c, [[cx + s * 40, cy - 60], [cx + s * 70, cy - 120], [cx + s * 70, cy - 50]], '#5a5a62'); }, inner: (c2, cx, cy) => dots(c2, cx, cy, 70, 60, 10, '#5a5a62', 6, 4)});
+BOSS2.cannoncino = (c, p) => crit(c, p, {col: '#3a3a40', still: true, cy: 180, ey: -12, my: 20, mw: 22, mh: 12, iris: '#ff8a2a',
+  under: (c, cx, cy) => { for (const [dx, dy] of [[1, 0], [-1, 0], [0, -1]]) tube(c, [[cx, cy], [cx + dx * 120, cy + dy * 110]], 22, 20, '#2a2a30'); },
+  over: (c, cx, cy, p) => { if (p.mode === 'atk') for (const [dx, dy] of [[1, 0], [-1, 0], [0, -1]]) circle(c, cx + dx * 132, cy + dy * 122, 16, '#ffd040'); }});
+/* the Fabbrica Buitoni */
+BOSS2.mattarello = (c, p) => crit(c, p, {col: '#d8a868', cy: 190, ey: -12, my: 16, mw: 24, mh: 12, body: (cx, cy) => rectPts(cx - 96, cy - 46, cx + 96, cy + 46, 6),
+  under: (c, cx, cy) => { for (const s of [-1, 1]) tube(c, [[cx + s * 90, cy], [cx + s * 140, cy]], 16, 16, '#b8884a'); },
+  inner: (c2, cx, cy, p) => { c2.strokeStyle = '#b8884a'; c2.lineWidth = 4; for (let k = 0; k < 6; k++) { const x = cx - 90 + ((k * 34 + p.i * 12) % 180); c2.beginPath(); c2.moveTo(x, cy - 46); c2.lineTo(x, cy + 46); c2.stroke(); } }});
+BOSS2.pentola = (c, p) => crit(c, p, {col: '#8a8e96', still: true, cy: 196, ey: -4, my: 34, mw: 28, mh: 14,
+  body: (cx, cy) => [[cx - 100, cy - 60], [cx + 100, cy - 60], [cx + 92, cy + 66], [cx - 92, cy + 66]], under: (c, cx, cy) => { for (const s of [-1, 1]) tube(c, [[cx + s * 100, cy - 40], [cx + s * 130, cy - 40]], 9, 9, '#5a5e66'); },
+  top: (c, cx, cy, p) => { const up = p.mode === 'atk' ? 30 : (p.i % 2) * 8; shape(c, lumpy(cx, cy - 72 - up, 106, 18, {seed: 2, wob: 0.02}), '#7a7e86'); circle(c, cx, cy - 96 - up, 12, '#2a2a30'); for (let k = 0; k < 3; k++) circle(c, cx - 70 + k * 70, cy - 110 - up - ((p.i + k) % 2) * 14, 9, '#e8eef4', 2.5); }});
+BOSS2.uovo = (c, p) => crit(c, p, {col: '#f4ecd8', cy: 172, body: (cx, cy) => lumpy(cx, cy, 76, 96, {seed: 21, wob: 0.01, n: 24}), ey: -6, my: 30, mw: 22, mh: 14, er: 16, esp: 30,
+  inner: (c2, cx, cy) => { c2.fillStyle = '#e0d4b8'; c2.beginPath(); c2.ellipse(cx + 30, cy + 30, 34, 50, 0, 0, 7); c2.fill(); c2.strokeStyle = '#8a7a60'; c2.lineWidth = 4; c2.beginPath(); c2.moveTo(cx - 50, cy - 40); c2.lineTo(cx - 30, cy - 56); c2.lineTo(cx - 10, cy - 40); c2.lineTo(cx + 10, cy - 60); c2.stroke(); }});
+BOSS2.pulcino = (c, p) => crit(c, p, {col: '#f5d020', cy: 180, feet: '#e8901a', fsp: 26, rx: 76, ry: 70, seed: 23, angry: -0.5, mouth: false, ey: -14, er: 16, esp: 30,
+  top: (c, cx, cy) => { shape(c, [[cx - 20, cy + 6], [cx + 20, cy + 6], [cx, cy + 30]], '#e8901a'); shape(c, lumpy(cx, cy - 74, 14, 18, {seed: 5}), '#f5d020'); }});
+BOSS2.farina = (c, p) => crit(c, p, {col: '#efe6d0', cy: 180, ey: -6, my: 30, mw: 26, mh: 14, body: (cx, cy) => [[cx - 70, 50], [cx - 30, 70], [cx + 30, 62], [cx + 70, 50], [cx + 96, 250], [cx - 96, 250]],
+  inner: (c2, cx) => { c2.fillStyle = '#2a5ab0'; c2.fillRect(cx - 60, 170, 120, 40); c2.fillStyle = '#efe6d0'; c2.font = '700 30px serif'; c2.textAlign = 'center'; c2.fillText('00', cx, 200); }, top: (c, cx, cy, p) => { for (let k = 0; k < 4; k++) circle(c, cx - 60 + k * 40, 40 - ((p.i + k) % 2) * 12, 6, '#ffffff', 2); }});
+BOSS2.forchetta = (c, p) => crit(c, p, {col: '#c8ccd2', cy: 200, ey: -10, my: 18, mw: 20, mh: 10, er: 14, esp: 26, body: (cx, cy) => rectPts(cx - 34, cy - 50, cx + 34, cy + 62, 6),
+  under: (c, cx, cy) => { for (const k of [-27, -9, 9, 27]) tube(c, [[cx + k, cy - 40], [cx + k, cy - 150]], 7, 5, '#c8ccd2'); tube(c, [[cx, cy + 50], [cx, 270]], 12, 12, '#a8adb4'); }});
+/* the Diga */
+BOSS2.luccio = (c, p) => crit(c, p, {col: '#6a8a5a', cy: 180, fx: 50, ey: -20, my: 10, mw: 34, mh: 14, teeth: 9, teeth2: 7, body: (cx, cy) => lumpy(cx, cy, 130, 46, {seed: 25, wob: 0.03, n: 20}),
+  under: (c, cx, cy, p) => shape(c, [[cx - 120, cy], [cx - 170, cy - 40 + (p.i % 2) * 14], [cx - 160, cy + 40 - (p.i % 2) * 14]], '#5a7a4a'), inner: (c2, cx, cy) => { c2.fillStyle = '#c8d8a8'; c2.fillRect(cx - 120, cy + 10, 240, 30); dots(c2, cx - 30, cy - 10, 70, 20, 10, '#4a6a3a', 6, 5); }});
+BOSS2.granchio = (c, p) => crit(c, p, {col: '#c8502a', cy: 190, rx: 92, ry: 56, seed: 27, ey: -40, er: 13, esp: 30, my: 10, mw: 24, mh: 12,
+  under: (c, cx, cy, p) => { legsN(c, cx, cy + 16, 6, 50, '#a83a1a', p.i * 1.5); for (const s of [-1, 1]) { tube(c, [[cx + s * 70, cy - 20], [cx + s * 110, cy - 70]], 10, 8, '#c8502a'); shape(c, [[cx + s * 100, cy - 70], [cx + s * 150, cy - 110], [cx + s * 120, cy - 70 + (p.mode === 'atk' ? -10 : 10)], [cx + s * 150, cy - 50]], '#d8602a'); } },
+  top: (c, cx, cy) => { for (const s of [-1, 1]) tube(c, [[cx + s * 17, cy - 40], [cx + s * 17, cy - 60]], 4, 4, '#a83a1a'); }});
+BOSS2.cormorano = (c, p) => crit(c, p, {col: '#2a2a30', cy: 170, wings: '#1a1a20', wx: 100, ww: 64, rx: 62, ry: 58, seed: 29, mouth: false, ey: -16, er: 14, esp: 26, iris: '#5ab0e0',
+  top: (c, cx, cy) => shape(c, [[cx - 12, cy + 4], [cx + 12, cy + 4], [cx + 6, cy + 50], [cx, cy + 60]], '#e8b64a')});
+BOSS2.alga = (c, p) => crit(c, p, {col: '#3a7a3a', still: true, cy: 190, ey: -6, my: 24, mw: 24, mh: 14, closed: p.mode !== 'atk',
+  body: (cx, cy, p) => { const s = (p.i % 2) * 16; return [[cx - 50, 262], [cx - 70 + s, 180], [cx - 40, 110], [cx - 70 - s, 40], [cx, 70], [cx + 60 + s, 30], [cx + 50, 120], [cx + 80 - s, 190], [cx + 50, 262]]; },
+  inner: (c2, cx) => { c2.strokeStyle = '#2a5a2a'; c2.lineWidth = 6; c2.beginPath(); c2.moveTo(cx, 260); c2.quadraticCurveTo(cx - 30, 160, cx, 70); c2.stroke(); }});
+BOSS2.ranatoro = (c, p) => crit(c, p, {col: '#5a7a2a', cy: 190, rx: 110, ry: 66, seed: 31, ey: -60, er: 22, esp: 60, iris: '#f5c400', my: 6, mw: 70, mh: 14, teeth: 0, teeth2: 0,
+  under: (c, cx, cy, p) => { for (const s of [-1, 1]) tube(c, [[cx + s * 80, cy + 30], [cx + s * 130, cy + 40 - (p.mode === 'atk' ? 20 : 0)], [cx + s * 110, 262]], 16, 10, '#4a6a22'); }, inner: (c2, cx, cy) => { c2.fillStyle = '#c8d070'; c2.beginPath(); c2.ellipse(cx, cy + 34, 70, 30, 0, 0, 7); c2.fill(); }});
+BOSS2.trota = (c, p) => crit(c, p, {col: '#a8b8c8', cy: 180, fx: 40, ey: -14, my: 12, mw: 22, mh: 12, body: (cx, cy) => lumpy(cx, cy, 110, 52, {seed: 33, wob: 0.03}),
+  under: (c, cx, cy, p) => shape(c, [[cx - 100, cy], [cx - 150, cy - 40 + (p.i % 2) * 12], [cx - 140, cy + 40]], '#8a9aaa'), inner: (c2, cx, cy) => { c2.fillStyle = '#e88a9a'; c2.fillRect(cx - 100, cy - 4, 200, 12); dots(c2, cx, cy - 20, 90, 20, 14, '#5a6a7a', 4, 2); }});
+/* Da Faruk */
+BOSS2.patatina = (c, p) => crit(c, p, {col: '#f5d060', cy: 160, body: (cx, cy) => rectPts(cx - 34, 30, cx + 34, 262, 6), ey: -20, my: 20, mw: 20, mh: 12, er: 14, esp: 26,
+  inner: (c2, cx) => { c2.fillStyle = '#e8b040'; c2.fillRect(cx + 16, 30, 18, 232); c2.fillStyle = '#ffffff'; for (const y of [60, 120, 200]) c2.fillRect(cx - 20, y, 6, 6); }});
+BOSS2.pita = (c, p) => crit(c, p, {col: '#e8c890', cy: 170, body: (cx, cy) => lumpy(cx, cy, 120, 70, {seed: 35, wob: 0.03, n: 22}), ey: -14, my: 16,
+  inner: (c2, cx, cy, p) => dots(c2, cx, cy, 100, 56, 14, '#c89a5a', 7, p.i)});
+BOSS2.spiedino = (c, p) => crit(c, p, {col: '#a8582a', cy: 180, ey: -10, my: 16, mw: 22, mh: 12, er: 15, esp: 28, body: (cx, cy) => lumpy(cx, cy, 60, 70, {seed: 37}),
+  under: (c, cx, cy) => { tube(c, [[cx - 140, cy], [cx + 150, cy]], 4, 3, '#d8c8a0'); for (const s of [-1, 1]) { shape(c, lumpy(cx + s * 90, cy, 30, 40, {seed: 3 + s}), s > 0 ? '#d8402a' : '#5a8a2a'); } }});
+BOSS2.cetriolo = (c, p) => crit(c, p, {col: '#6a9a3a', cy: 170, body: (cx, cy) => lumpy(cx, cy, 64, 100, {seed: 39, wob: 0.05}), ey: -20, my: 20, mw: 22, mh: 14, er: 16, esp: 28,
+  inner: (c2, cx, cy) => dots(c2, cx, cy, 50, 90, 14, '#4a7a2a', 5, 7)});
+BOSS2.maionese = (c, p) => crit(c, p, {col: '#f8f0c8', still: true, cy: 180, ey: -10, my: 24, mw: 24, mh: 14,
+  body: (cx, cy, p, atk) => [[cx - 70, 70], [cx + 70, 70], [cx + 64 * (atk ? 0.9 : 1), 250], [cx - 64 * (atk ? 0.9 : 1), 250]],
+  under: (c, cx) => { shape(c, rectPts(cx - 24, 30, cx + 24, 74, 3), '#d02a2a'); }, inner: (c2, cx) => { c2.fillStyle = '#2a5ab0'; c2.fillRect(cx - 70, 200, 140, 26); }});
+/* the Triangolo */
+BOSS2.oliva = (c, p) => crit(c, p, {col: '#5a6a2a', cy: 170, rx: 80, ry: 92, seed: 41, wob: 0.01, ey: 0, my: 34, mw: 22, mh: 12, er: 16, esp: 30,
+  top: (c, cx, cy) => shape(c, lumpy(cx, cy - 74, 26, 20, {seed: 7}), '#d02a2a')});
+BOSS2.stuzzicadenti = (c, p) => crit(c, p, {col: '#d8b878', cy: 200, ey: -16, my: 12, mw: 18, mh: 10, er: 13, esp: 24, body: (cx, cy) => lumpy(cx, cy, 44, 54, {seed: 43}),
+  under: (c, cx, cy) => { tube(c, [[cx, 10], [cx, 270]], 7, 3, '#d8b878'); shape(c, lumpy(cx, 40, 20, 16, {seed: 9}), '#e04a6a'); }});
+BOSS2.shaker = (c, p) => crit(c, p, {col: '#c8ccd2', still: true, cy: 190, ey: -4, my: 30, mw: 22, mh: 12,
+  body: (cx, cy) => [[cx - 50, 40], [cx + 50, 40], [cx + 70, 110], [cx + 60, 262], [cx - 60, 262], [cx - 70, 110]], inner: (c2, cx) => { c2.fillStyle = '#a8adb4'; c2.fillRect(cx - 70, 104, 140, 10); c2.fillStyle = '#ffffff'; c2.fillRect(cx - 44, 130, 8, 100); },
+  top: (c, cx, cy, p) => { if (p.mode === 'atk') for (let k = 0; k < 4; k++) circle(c, cx - 60 + k * 40, 26 - (k % 2) * 10, 6, '#f5d060', 2); }});
+BOSS2.freccetta = (c, p) => crit(c, p, {col: '#d02a2a', cy: 160, body: (cx, cy) => [[cx + 130, cy], [cx + 40, cy - 30], [cx - 60, cy - 26], [cx - 60, cy + 26], [cx + 40, cy + 30]], fx: 0, ey: -6, my: 12, mw: 18, mh: 8, er: 12, esp: 24,
+  under: (c, cx, cy, p) => { for (const s of [-1, 1]) shape(c, [[cx - 50, cy], [cx - 130, cy + s * (60 + (p.i % 2) * 8)], [cx - 110, cy]], '#f4f4f4'); }});
+BOSS2.jukebox = (c, p) => crit(c, p, {col: '#c83a8a', still: true, cy: 180, ey: -30, my: 6, mw: 28, mh: 14,
+  body: (cx, cy) => [[cx - 90, 262], [cx - 90, 100], [cx - 60, 50], [cx, 34], [cx + 60, 50], [cx + 90, 100], [cx + 90, 262]],
+  inner: (c2, cx, cy, p) => { c2.fillStyle = '#f5c400'; c2.fillRect(cx - 70, 200, 140, 40); for (let k = 0; k < 6; k++) { c2.fillStyle = (k + p.i) % 2 ? '#5ad0ff' : '#ff5ad0'; c2.fillRect(cx - 66 + k * 22, 206, 16, 28); } },
+  top: (c, cx, cy, p) => { for (let k = 0; k < 2; k++) shape(c, [[cx - 120 + k * 230, 80 - (p.i % 2) * 10], [cx - 110 + k * 230, 50], [cx - 100 + k * 230, 80]], '#f4f4f4'); }});
+/* the Magazzino del Maestro */
+BOSS2.trottola = (c, p) => crit(c, p, {col: '#d02a2a', cy: 150, ey: -16, my: 12, mw: 24, mh: 12, body: (cx, cy) => [[cx, 270], [cx + 100, cy], [cx + 70, cy - 60], [cx - 70, cy - 60], [cx - 100, cy]],
+  inner: (c2, cx, cy, p) => { stripes(c2, cx - 100, cy - 60, cx + 100, 270, 5, '#f5c400', 14); }, top: (c, cx, cy) => tube(c, [[cx, cy - 60], [cx, cy - 100]], 9, 7, '#5a3a20')});
+BOSS2.robottino = (c, p) => crit(c, p, {col: '#9aa0a8', cy: 170, feet: '#5a5e66', body: (cx, cy) => rectPts(cx - 80, cy - 80, cx + 80, cy + 70, 6), ey: -26, my: 20, mw: 26, mh: 10, teeth: 0, teeth2: 0, iris: '#ff2a2a',
+  under: (c, cx, cy, p) => { tube(c, [[cx + 80, cy], [cx + 120, cy]], 6, 6, '#c9952a'); shape(c, lumpy(cx + 130, cy - 20 + (p.i % 2) * 40, 12, 30, {seed: 1}), '#c9952a'); tube(c, [[cx, cy - 80], [cx, cy - 120]], 3, 3, '#5a5e66'); circle(c, cx, cy - 126, 10, p.i % 2 ? '#ff4a4a' : '#ffd040'); },
+  inner: (c2, cx, cy) => { c2.fillStyle = '#7a8088'; for (const y of [cy + 34, cy + 50]) c2.fillRect(cx - 60, y, 120, 6); }});
+BOSS2.dado = (c, p) => crit(c, p, {col: '#f4f4f4', cy: 170, body: (cx, cy) => rectPts(cx - 90, cy - 90, cx + 90, cy + 90, 6), ey: -40, er: 16, esp: 70, iris: '#1a1418', my: 34, mw: 28, mh: 12,
+  inner: (c2, cx, cy) => { c2.fillStyle = '#1a1418'; for (const [x, y] of [[0, 0], [-60, 60], [60, 60]]) { c2.beginPath(); c2.arc(cx + x, cy + y - 6, 10, 0, 7); c2.fill(); } }});
+BOSS2.mattoncino = (c, p) => crit(c, p, {col: '#d03030', cy: 190, body: (cx, cy) => rectPts(cx - 110, cy - 50, cx + 110, cy + 56, 6), ey: -12, my: 20,
+  under: (c, cx, cy) => { for (const k of [-70, 0, 70]) shape(c, rectPts(cx + k - 26, cy - 76, cx + k + 26, cy - 46, 3), '#e04040'); }});
+BOSS2.palloncino = (c, p) => crit(c, p, {col: '#f070a0', cy: 130, rx: 90, ry: 104, seed: 45, wob: 0.01, ey: -10, my: 26,
+  under: (c, cx, cy, p) => { tube(c, [[cx, cy + 100], [cx + 20 + (p.i % 2) * 10, cy + 140], [cx - 10, 270]], 2, 2, '#f4f4f4'); shape(c, [[cx - 10, cy + 100], [cx + 10, cy + 100], [cx, cy + 116]], '#d0508a'); },
+  inner: (c2, cx, cy) => { c2.fillStyle = '#ffb8d8'; c2.beginPath(); c2.ellipse(cx - 40, cy - 50, 16, 26, -0.4, 0, 7); c2.fill(); }});
+/* the Piscine Pincardini */
+BOSS2.medusa = (c, p) => crit(c, p, {col: '#c8a0e0', cy: 120, body: (cx, cy) => [[cx - 100, cy + 30], [cx - 90, cy - 40], [cx - 40, cy - 80], [cx + 40, cy - 80], [cx + 90, cy - 40], [cx + 100, cy + 30]], ey: -20, my: 6, mw: 24, mh: 10,
+  under: (c, cx, cy, p) => { for (let k = 0; k < 5; k++) { const x = cx - 80 + k * 40, w = Math.sin(p.i + k) * 16; tube(c, [[x, cy + 26], [x + w, cy + 90], [x - w, cy + 150]], 6, 3, '#b090d0'); } }});
+BOSS2.pinna = (c, p) => crit(c, p, {col: '#6a7a8a', cy: 200, ey: -30, my: -6, mw: 20, mh: 10, er: 12, esp: 26, body: (cx, cy) => [[cx - 90, cy + 40], [cx - 30, cy - 120], [cx + 20, cy - 110], [cx + 90, cy + 40]],
+  under: (c, cx, cy, p) => { shape(c, lumpy(cx, cy + 46, 150, 20, {seed: 5 + p.i, wob: 0.1}), '#5ab0e0'); }});
+BOSS2.materassino = (c, p) => crit(c, p, {col: '#2a8ad8', cy: 190, body: (cx, cy) => rectPts(cx - 120, cy - 54, cx + 120, cy + 54, 6), ey: -14, my: 18,
+  inner: (c2, cx, cy) => { stripes(c2, cx - 120, cy - 54, cx + 120, cy + 54, 6, '#5ab0f0', 10); c2.fillStyle = '#1a6ab8'; c2.fillRect(cx + 70, cy - 54, 50, 108); }});
+BOSS2.cloro = (c, p) => crit(c, p, {col: '#e8f4f8', still: true, cy: 190, rx: 96, ry: 60, seed: 47, wob: 0.01, ey: -10, my: 20, angry: -0.2,
+  inner: (c2, cx, cy) => { c2.fillStyle = '#a8e0c8'; c2.fillRect(cx - 80, cy - 4, 160, 10); }, top: (c, cx, cy, p) => { for (let k = 0; k < 3; k++) circle(c, cx - 60 + k * 60, cy - 80 - ((p.i + k) % 2) * 14, 8, '#c8f0e0', 2.5); }});
+BOSS2.pallanuoto = (c, p) => crit(c, p, {col: '#f5d020', cy: 170, rx: 90, ry: 88, seed: 49, wob: 0.01, ey: -14, my: 22,
+  inner: (c2, cx, cy, p) => { c2.strokeStyle = '#2a5ab0'; c2.lineWidth = 10; c2.beginPath(); c2.moveTo(cx - 90, cy + (p.i % 2) * 10); c2.quadraticCurveTo(cx, cy - 50, cx + 90, cy); c2.moveTo(cx - 30, cy - 88); c2.quadraticCurveTo(cx + 40, cy, cx - 10, cy + 88); c2.stroke(); }});
+/* Vanity SNC */
+BOSS2.specchio = (c, p) => crit(c, p, {col: '#b8d8e8', still: true, cy: 140, rx: 80, ry: 92, seed: 51, wob: 0.01, ey: -10, my: 24,
+  under: (c, cx, cy) => { shape(c, lumpy(cx, cy, 96, 108, {seed: 51, wob: 0.01}), '#e8b64a'); tube(c, [[cx, cy + 100], [cx, 270]], 16, 12, '#e8b64a'); }, inner: (c2, cx, cy) => { c2.fillStyle = '#ffffff'; c2.fillRect(cx - 50, cy - 70, 12, 50); c2.fillRect(cx - 34, cy - 70, 6, 30); }});
+BOSS2.rossetto = (c, p) => crit(c, p, {col: '#d0102a', cy: 140, body: (cx, cy) => [[cx - 40, cy + 20], [cx - 40, cy - 70], [cx + 40, cy - 110], [cx + 40, cy + 20]], ey: -40, my: -6, mw: 18, mh: 8, er: 12, esp: 24,
+  under: (c, cx, cy) => shape(c, rectPts(cx - 56, cy + 20, cx + 56, 262, 6), '#e8b64a')});
+BOSS2.pettine = (c, p) => crit(c, p, {col: '#a8683a', cy: 120, body: (cx, cy) => rectPts(cx - 120, cy - 36, cx + 120, cy + 30, 6), ey: -10, my: 10, mw: 22, mh: 10, er: 13, esp: 30,
+  under: (c, cx, cy) => { for (let k = -110; k <= 110; k += 22) tube(c, [[cx + k, cy + 20], [cx + k, cy + 140]], 5, 4, '#8a4a2a'); }, inner: (c2, cx, cy) => dots(c2, cx, cy, 110, 26, 10, '#6a3a1a', 7, 2)});
+BOSS2.profumo = (c, p) => crit(c, p, {col: '#f0a8c8', cy: 190, body: (cx, cy) => lumpy(cx, cy, 86, 74, {seed: 53, wob: 0.01}), ey: -10, my: 22,
+  under: (c, cx, cy, p) => { shape(c, rectPts(cx - 20, cy - 110, cx + 20, cy - 70, 3), '#e8b64a'); tube(c, [[cx + 20, cy - 96], [cx + 90, cy - 120]], 4, 3, '#3a2a2a'); circle(c, cx + 104, cy - 124, p.mode === 'atk' ? 16 : 22, '#d0508a'); },
+  inner: (c2, cx, cy) => { c2.fillStyle = '#ffd8e8'; c2.beginPath(); c2.ellipse(cx - 40, cy - 30, 14, 22, -0.4, 0, 7); c2.fill(); }});
+BOSS2.forbici = (c, p) => crit(c, p, {col: '#c8ccd2', cy: 200, rx: 40, ry: 40, seed: 55, ey: -6, my: 16, mw: 16, mh: 8, er: 11, esp: 22,
+  under: (c, cx, cy, p) => { const o = p.mode === 'charge' ? 30 : (p.i % 2) * 14; for (const s of [-1, 1]) { tube(c, [[cx, cy], [cx + s * (20 + o), cy - 150]], 12, 4, '#c8ccd2'); circle(c, cx + s * 40, cy + 60, 26, '#d02a2a'); circle(c, cx + s * 40, cy + 60, 12, '#5c3e32'); } }});
+/* il Campaccio */
+BOSS2.ratto = (c, p) => crit(c, p, {col: '#5a4a42', cy: 190, feet: '#3a2e2a', fsp: 50, body: (cx, cy) => lumpy(cx - 10, cy, 100, 56, {seed: 57}), fx: 50, ey: -24, my: 6, mw: 20, mh: 10, iris: '#ff3a3a', er: 13, esp: 26,
+  under: (c, cx, cy, p) => tube(c, [[cx - 100, cy], [cx - 150, cy - 30 + (p.i % 2) * 20], [cx - 180, cy - 10]], 5, 2, '#c8a0a0'), top: (c, cx, cy) => { for (const s of [-1, 1]) circle(c, cx + 50 + s * 34, cy - 56, 18, '#7a6a62'); }});
+BOSS2.bidone = (c, p) => crit(c, p, {col: '#4a5a4a', cy: 196, body: (cx, cy) => [[cx - 84, cy - 70], [cx + 84, cy - 70], [cx + 74, cy + 66], [cx - 74, cy + 66]], ey: -10, my: 26,
+  inner: (c2, cx, cy) => stripes(c2, cx - 84, cy - 70, cx + 84, cy + 66, 4, '#3a4a3a', 8), top: (c, cx, cy, p) => { const up = p.mode === 'atk' ? 34 : 0; shape(c, lumpy(cx + 10, cy - 80 - up, 96, 16, {seed: 2, wob: 0.02}), '#5a6a5a'); circle(c, cx - 50, cy - 110 - up, 7, '#a8b070', 2); }});
+BOSS2.copertone = (c, p) => crit(c, p, {col: '#2a2a30', cy: 170, rx: 100, ry: 100, seed: 59, wob: 0.01, ey: -14, my: 22, mw: 22, mh: 10, er: 14, esp: 30,
+  inner: (c2, cx, cy, p) => { c2.fillStyle = '#8a8f96'; c2.beginPath(); c2.arc(cx, cy, 58, 0, 7); c2.fill(); c2.fillStyle = '#2a2a30'; for (let k = 0; k < 12; k++) { const a = k / 12 * 6.28 + p.i * 0.3; c2.fillRect(cx + Math.cos(a) * 88 - 6, cy + Math.sin(a) * 88 - 6, 12, 12); } }});
+BOSS2.piccionezoppo = (c, p) => crit(c, p, {col: '#8d96a3', cy: 170, wings: '#6a7280', rx: 70, ry: 60, seed: 61, mouth: false, ey: -16, er: 14, esp: 26, angry: -0.4,
+  top: (c, cx, cy) => { shape(c, [[cx - 10, cy + 6], [cx + 10, cy + 6], [cx, cy + 26]], '#e8a040'); tube(c, [[cx + 40, cy + 50], [cx + 40, 262]], 4, 4, '#d06060'); shape(c, rectPts(cx - 52, cy + 46, cx - 28, cy + 90, 2), '#f4f4f4'); }});
+BOSS2.busta = (c, p) => crit(c, p, {col: '#e8e8e8', cy: 160, body: (cx, cy, p) => { const w = (p.i % 2) * 14; return [[cx - 70, 40 + w], [cx - 40, 80], [cx + 40, 80], [cx + 70, 40 - w], [cx + 90, 240], [cx - 90, 240]]; }, ey: 10, my: 50, angry: -0.3,
+  inner: (c2, cx) => { c2.fillStyle = '#d02a2a'; c2.font = '700 26px sans-serif'; c2.textAlign = 'center'; c2.fillText('PEK', cx, 220); }});
+/* the Fondo del Pek */
+BOSS2.ghiacciolo = (c, p) => crit(c, p, {col: '#e04a6a', cy: 140, body: (cx, cy) => rectPts(cx - 56, 30, cx + 56, 210, 8), ey: 0, my: 30, mw: 22, mh: 12,
+  under: (c, cx) => tube(c, [[cx, 200], [cx, 270]], 12, 12, '#d8b878'), over: (c, cx) => { drop(c, cx + 40, 220, 9, '#e04a6a'); }, inner: (c2, cx) => { c2.fillStyle = '#ff8aa0'; c2.fillRect(cx - 40, 40, 14, 150); }});
+BOSS2.biscotto = (c, p) => crit(c, p, {col: '#c8904a', cy: 170, rx: 100, ry: 96, seed: 63, wob: 0.03, ey: -14, my: 24, inner: (c2, cx, cy) => dots(c2, cx, cy, 86, 80, 10, '#4a2a14', 9, 3)});
+BOSS2.cucchiaino = (c, p) => crit(c, p, {col: '#c8ccd2', cy: 120, rx: 70, ry: 86, seed: 65, wob: 0.01, ey: -10, my: 24, mw: 22, mh: 12,
+  under: (c, cx, cy) => tube(c, [[cx, cy + 80], [cx, 270]], 12, 16, '#a8adb4'), inner: (c2, cx, cy) => { c2.fillStyle = '#ffffff'; c2.fillRect(cx - 40, cy - 50, 8, 40); }});
+BOSS2.sciroppo = (c, p) => crit(c, p, {col: '#a01a2a', still: true, cy: 190, body: (cx, cy) => [[cx - 20, 30], [cx + 20, 30], [cx + 20, 80], [cx + 76, 120], [cx + 76, 262], [cx - 76, 262], [cx - 76, 120], [cx - 20, 80]], ey: 6, my: 40, mw: 24, mh: 12,
+  inner: (c2, cx) => { c2.fillStyle = '#f4ead0'; c2.fillRect(cx - 76, 150, 152, 50); c2.fillStyle = '#a01a2a'; c2.beginPath(); c2.arc(cx, 175, 14, 0, 7); c2.fill(); }});
+BOSS2.coppetta = (c, p) => crit(c, p, {col: '#a8c86a', cy: 130, rx: 90, ry: 70, seed: 67, wob: 0.08, ey: -10, my: 18,
+  under: (c, cx, cy) => shape(c, [[cx - 100, cy + 40], [cx + 100, cy + 40], [cx + 70, 262], [cx - 70, 262]], '#f4ead0', {inner: c2 => stripes(c2, cx - 100, cy + 40, cx + 100, 262, 4, '#e86a8a', 12)}),
+  top: (c, cx, cy) => { shape(c, rectPts(cx + 30, cy - 120, cx + 50, cy - 50, 3), '#c8904a'); }});
+
+/* the fifteen new bosses */
+BOSS2.reblatte = (c, p) => crit(c, p, {col: '#4a2a14', cy: 180, rx: 120, ry: 74, seed: 71, er: 22, esp: 44, ey: -10, my: 26, mw: 44, mh: 22, teeth: 6,
+  under: (c, cx, cy, p) => legsN(c, cx, cy + 10, 6, 80, '#2a1608', p.i * 1.6 + (p.mode === 'charge' ? 2 : 0)),
+  top: (c, cx, cy, p) => { for (const s of [-1, 1]) tube(c, [[cx + s * 30, cy - 70], [cx + s * 70, cy - 130], [cx + s * 120, cy - 140 + (p.i % 2) * 12]], 4, 2, '#2a1608'); shape(c, [[cx - 50, cy - 74], [cx - 34, cy - 120], [cx - 14, cy - 90], [cx, cy - 130], [cx + 14, cy - 90], [cx + 34, cy - 120], [cx + 50, cy - 74]], '#e8b64a'); },
+  inner: (c2, cx, cy) => { c2.fillStyle = '#6a4224'; c2.fillRect(cx - 5, cy - 74, 10, 148); }});
+BOSS2.muffamadre = (c, p) => crit(c, p, {col: '#6a8a4a', cy: 176, rx: 126, ry: 96, seed: 73, wob: 0.16, er: 22, esp: 46, ey: -20, my: 24, mw: 40, mh: 20, angry: 0.4,
+  inner: (c2, cx, cy) => dots(c2, cx, cy, 110, 80, 18, '#4a6a2a', 12, 5), top: (c, cx, cy, p) => { for (let k = 0; k < 5; k++) circle(c, cx - 100 + k * 50, cy - 100 - ((p.i + k) % 2) * 14, 10, '#c8e0a0', 3); }});
+BOSS2.cantiniere = (c, p) => crit(c, p, {col: '#7a3a3a', cy: 170, feet: '#2a1a14', fsp: 46, rx: 100, ry: 100, seed: 75, ey: -30, my: 10, mw: 36, mh: 18, iris: '#5a0a0a',
+  under: (c, cx, cy, p) => { const up = p.mode === 'atk' ? -50 : 0; tube(c, [[cx + 80, cy], [cx + 130, cy + 30 + up]], 14, 12, '#7a3a3a'); shape(c, [[cx + 120, cy - 30 + up], [cx + 150, cy - 30 + up], [cx + 152, cy + 30 + up], [cx + 118, cy + 30 + up]], '#3a6a2a'); },
+  inner: (c2, cx, cy) => { c2.fillStyle = '#5a2a1a'; c2.fillRect(cx - 100, cy + 30, 200, 70); c2.fillStyle = '#d8b060'; c2.fillRect(cx - 100, cy + 30, 200, 6); },
+  top: (c, cx, cy) => { shape(c, lumpy(cx, cy - 90, 70, 22, {seed: 3}), '#2a1a14'); shape(c, lumpy(cx, cy - 6, 50, 14, {seed: 4}), '#d8d0c0'); }});
+BOSS2.castellano = (c, p) => crit(c, p, {col: '#8a9098', cy: 160, feet: '#5a6068', fsp: 50, ey: -30, my: 6, mouth: false, iris: '#ff6a2a', er: 16, esp: 40,
+  body: (cx, cy) => [[cx - 90, cy - 100], [cx, cy - 130], [cx + 90, cy - 100], [cx + 110, cy + 30], [cx + 80, cy + 100], [cx - 80, cy + 100], [cx - 110, cy + 30]],
+  inner: (c2, cx, cy) => { c2.fillStyle = '#1a1418'; c2.fillRect(cx - 70, cy - 46, 140, 36); c2.fillStyle = '#b3121b'; c2.fillRect(cx - 80, cy + 20, 160, 70); c2.fillStyle = '#f5c400'; c2.fillRect(cx - 8, cy + 20, 16, 70); c2.fillRect(cx - 40, cy + 46, 80, 14); },
+  under: (c, cx, cy, p) => { const a = p.mode === 'atk' ? -0.6 : p.mode === 'charge' ? 0 : 0.4; tube(c, [[cx + 100, cy + 20], [cx + 100 + Math.cos(a) * 130, cy + 20 - Math.sin(a) * 130]], 6, 6, '#6a4a2a'); shape(c, [[cx + 100 + Math.cos(a) * 130, cy + 20 - Math.sin(a) * 130 - 20], [cx + 100 + Math.cos(a) * 170, cy + 20 - Math.sin(a) * 170], [cx + 100 + Math.cos(a) * 130, cy + 20 - Math.sin(a) * 130 + 20]], '#c8ccd2'); },
+  top: (c, cx, cy, p) => shape(c, [[cx - 10, cy - 130], [cx + 30, cy - 190 - (p.i % 2) * 8], [cx + 40, cy - 130]], '#b3121b')});
+BOSS2.dama = (c, p) => crit(c, p, {col: '#d8e0f0', cy: 150, ey: -40, my: -6, mw: 24, mh: 16, angry: -0.6, iris: '#3a4a8a',
+  body: (cx, cy, p) => { const w = (p.i % 2) * 14; return [[cx - 50, cy - 110], [cx + 50, cy - 110], [cx + 70, cy - 20], [cx + 120, 250 + w], [cx + 60, 230 - w], [cx, 260 + w], [cx - 60, 230 - w], [cx - 120, 250 + w], [cx - 70, cy - 20]]; },
+  inner: (c2, cx, cy) => { c2.fillStyle = '#b8c0e0'; c2.fillRect(cx - 70, cy + 10, 140, 10); }, top: (c, cx, cy) => { shape(c, [[cx - 40, cy - 110], [cx, cy - 200], [cx + 40, cy - 110]], '#7a5ab0'); tube(c, [[cx, cy - 196], [cx + 50, cy - 160]], 3, 1, '#e8e0f8'); }});
+BOSS2.pentolona = (c, p) => crit(c, p, {col: '#7a7e86', cy: 196, ey: -10, my: 30, mw: 48, mh: 22, teeth: 6, still: true,
+  body: (cx, cy) => [[cx - 130, cy - 70], [cx + 130, cy - 70], [cx + 120, cy + 66], [cx - 120, cy + 66]], under: (c, cx, cy) => { for (const s of [-1, 1]) tube(c, [[cx + s * 130, cy - 40], [cx + s * 170, cy - 40]], 12, 12, '#4a4e56'); },
+  top: (c, cx, cy, p) => { const up = p.mode === 'atk' ? 40 : p.mode === 'jump' ? 20 : (p.i % 2) * 8; shape(c, lumpy(cx, cy - 84 - up, 140, 22, {seed: 2, wob: 0.02}), '#6a6e76'); circle(c, cx, cy - 112 - up, 16, '#2a2a30'); for (let k = 0; k < 4; k++) circle(c, cx - 90 + k * 60, cy - 130 - up - ((p.i + k) % 2) * 16, 12, '#e8eef4', 3); }});
+BOSS2.sfoglina = (c, p) => crit(c, p, {col: '#f0c8a8', cy: 120, feet: '#3a2a20', fsp: 40, rx: 84, ry: 80, seed: 77, ey: -10, my: 26, mw: 32, mh: 14, angry: 0.5,
+  under: (c, cx, cy, p) => { shape(c, [[cx - 90, cy + 60], [cx + 90, cy + 60], [cx + 110, 250], [cx - 110, 250]], '#f4f4f4'); const a = p.mode === 'spin' ? p.i * 1.5 : 0; tube(c, [[cx - 150 * Math.cos(a), cy + 110 - 150 * Math.sin(a)], [cx + 150 * Math.cos(a), cy + 110 + 150 * Math.sin(a)]], 14, 14, '#d8a868'); },
+  top: (c, cx, cy) => { shape(c, lumpy(cx, cy - 76, 90, 34, {seed: 9}), '#f4f4f4'); shape(c, lumpy(cx - 30, cy - 50, 50, 20, {seed: 8}), '#8a8a90'); }});
+BOSS2.luccione = (c, p) => crit(c, p, {col: '#5a7a4a', cy: 180, fx: 70, ey: -30, my: 6, mw: 50, mh: 20, teeth: 12, teeth2: 10, er: 20, esp: 40, body: (cx, cy) => lumpy(cx, cy, 140, 66, {seed: 79, wob: 0.03, n: 22}),
+  under: (c, cx, cy, p) => { shape(c, [[cx - 130, cy], [cx - 190, cy - 60 + (p.i % 2) * 20], [cx - 180, cy + 60 - (p.i % 2) * 20]], '#4a6a3a'); shape(c, [[cx - 20, cy - 60], [cx + 10, cy - 110], [cx + 40, cy - 60]], '#4a6a3a'); },
+  inner: (c2, cx, cy) => { c2.fillStyle = '#c8d8a8'; c2.fillRect(cx - 130, cy + 16, 260, 40); dots(c2, cx - 40, cy - 16, 90, 30, 14, '#3a5a2a', 8, 5); }});
+BOSS2.reginanutrie = (c, p) => crit(c, p, {col: '#7a5a3a', cy: 180, feet: '#4a3420', fsp: 54, rx: 120, ry: 84, seed: 81, ey: -40, my: 0, mw: 30, mh: 16, teeth: 2, teeth2: 0,
+  over: (c, cx, cy) => { shape(c, rectPts(cx - 16, cy + 4, cx + 16, cy + 30, 2), '#f08a1a'); }, under: (c, cx, cy, p) => tube(c, [[cx - 110, cy + 20], [cx - 170, cy + 40 + (p.i % 2) * 10], [cx - 200, cy + 10]], 12, 4, '#5a4a3a'),
+  top: (c, cx, cy) => { shape(c, [[cx - 54, cy - 70], [cx - 40, cy - 120], [cx - 16, cy - 90], [cx, cy - 130], [cx + 16, cy - 90], [cx + 40, cy - 120], [cx + 54, cy - 70]], '#e8b64a'); for (const s of [-1, 1]) circle(c, cx + s * 70, cy - 66, 16, '#8a6a4a'); }});
+BOSS2.megapanino = (c, p) => crit(c, p, {col: '#d8a058', cy: 176, ey: -50, my: 30, mw: 60, mh: 16, teeth: 0, teeth2: 0, body: (cx, cy) => lumpy(cx, cy - 40, 130, 60, {seed: 83, wob: 0.02}),
+  under: (c, cx, cy, p) => { const up = p.mode === 'atk' || p.mode === 'jump' ? 20 : 0; shape(c, lumpy(cx, cy + 70, 130, 30, {seed: 84}), '#d8a058'); shape(c, lumpy(cx, cy + 30 + up / 2, 140, 18, {seed: 85, wob: 0.1}), '#5a8a2a'); shape(c, lumpy(cx, cy + 46, 136, 14, {seed: 86}), '#d02a2a'); shape(c, lumpy(cx, cy + 10, 130, 16, {seed: 87}), '#7a3a1a'); },
+  inner: (c2, cx, cy) => dots(c2, cx, cy - 60, 100, 30, 16, '#f4ead0', 5, 1)});
+BOSS2.friggitrice = (c, p) => crit(c, p, {col: '#a8adb4', still: true, cy: 180, ey: -16, my: 30, mw: 48, mh: 18,
+  body: (cx, cy) => rectPts(cx - 130, cy - 80, cx + 130, cy + 82, 8), inner: (c2, cx, cy) => { c2.fillStyle = '#e8a83a'; c2.fillRect(cx - 120, cy - 80, 240, 26); c2.fillStyle = '#4a4e56'; c2.fillRect(cx + 70, cy + 40, 40, 30); },
+  top: (c, cx, cy, p) => { for (let k = 0; k < 6; k++) circle(c, cx - 110 + k * 44, cy - 90 - ((p.i + k) % 3) * 10, 8, '#f8d070', 2.5); tube(c, [[cx + 60, cy - 80], [cx + 90, cy - 150], [cx + 160, cy - 150]], 6, 6, '#3a3a40'); }});
+BOSS2.buttafuori = (c, p) => crit(c, p, {col: '#1a1a20', cy: 160, feet: '#0a0a0c', fsp: 56, rx: 130, ry: 100, seed: 89, ey: -40, my: 0, mw: 28, mh: 10, teeth: 0, teeth2: 0,
+  inner: (c2, cx, cy) => { c2.fillStyle = '#d8a888'; c2.beginPath(); c2.ellipse(cx, cy - 40, 70, 56, 0, 0, 7); c2.fill(); c2.fillStyle = '#f4f4f4'; c2.beginPath(); c2.moveTo(cx - 30, cy + 20); c2.lineTo(cx + 30, cy + 20); c2.lineTo(cx, cy + 90); c2.fill(); },
+  over: (c, cx, cy) => { shape(c, rectPts(cx - 60, cy - 54, cx + 60, cy - 32, 3), '#0a0a0c'); }, under: (c, cx, cy, p) => { for (const s of [-1, 1]) tube(c, [[cx + s * 120, cy], [cx + s * 150, cy + (p.mode === 'charge' ? -60 : 50)]], 26, 22, '#1a1a20'); }});
+BOSS2.jukeboss = (c, p) => crit(c, p, {col: '#a82a7a', still: true, cy: 180, ey: -50, my: -10, mw: 40, mh: 18,
+  body: (cx, cy) => [[cx - 130, 262], [cx - 130, 90], [cx - 90, 30], [cx, 10], [cx + 90, 30], [cx + 130, 90], [cx + 130, 262]],
+  inner: (c2, cx, cy, p) => { c2.fillStyle = '#f5c400'; c2.fillRect(cx - 100, 180, 200, 60); for (let k = 0; k < 8; k++) { c2.fillStyle = (k + p.i) % 2 ? '#5ad0ff' : '#ff5ad0'; c2.fillRect(cx - 96 + k * 24, 188, 18, 44); } },
+  top: (c, cx, cy, p) => { for (let k = 0; k < 3; k++) shape(c, [[cx - 170 + k * 170, 70 - ((p.i + k) % 2) * 14], [cx - 158 + k * 170, 30], [cx - 146 + k * 170, 70]], '#f4f4f4'); }});
+BOSS2.trottolona = (c, p) => crit(c, p, {col: '#2a5ab0', cy: 140, ey: -20, my: 14, mw: 36, mh: 16, body: (cx, cy) => [[cx, 272], [cx + 130, cy], [cx + 90, cy - 70], [cx - 90, cy - 70], [cx - 130, cy]],
+  inner: (c2, cx, cy, p) => stripes(c2, cx - 130 + (p.i % 2) * 14, cy - 70, cx + 130, 272, 6, '#f5c400', 16), top: (c, cx, cy) => tube(c, [[cx, cy - 70], [cx, cy - 120]], 12, 9, '#5a3a20')});
+BOSS2.squalo = (c, p) => crit(c, p, {col: '#6a7a8a', cy: 170, fx: 60, ey: -30, my: 10, mw: 56, mh: 24, teeth: 14, teeth2: 12, er: 18, esp: 40, iris: '#0a0a0c', body: (cx, cy) => lumpy(cx, cy, 140, 70, {seed: 91, wob: 0.02}),
+  under: (c, cx, cy, p) => { shape(c, [[cx - 130, cy], [cx - 190, cy - 70 + (p.i % 2) * 20], [cx - 170, cy], [cx - 190, cy + 60]], '#5a6a7a'); shape(c, [[cx - 30, cy - 60], [cx + 10, cy - 140], [cx + 40, cy - 60]], '#5a6a7a'); },
+  inner: (c2, cx, cy) => { c2.fillStyle = '#e8eef4'; c2.fillRect(cx - 130, cy + 20, 260, 50); }});
+Object.assign(BOSS_MODES, Object.fromEntries([
+  ...'blatta fiasco salame pecorino armatura stendardo doccione mattarello uovo pulcino farina luccio granchio cormorano ranatoro trota patatina pita spiedino cetriolo oliva trottola robottino dado mattoncino palloncino medusa materassino pallanuoto rossetto pettine profumo ratto bidone copertone piccionezoppo busta ghiacciolo biscotto cucchiaino coppetta'.split(' ').map(k => [k, {walk: 4, atk: 2}]),
+  ...'muffa candela balestra catapulta cannoncino pentola maionese shaker jukebox cloro specchio sciroppo'.split(' ').map(k => [k, {walk: 2, atk: 2}]),
+  ...'ragnone forchetta freccetta stuzzicadenti pinna forbici'.split(' ').map(k => [k, {walk: 4, atk: 2, charge: 2}]),
+  ['alga', {walk: 2, atk: 2}],
+  ...'reblatte castellano luccione buttafuori squalo'.split(' ').map(k => [k, {walk: 4, atk: 2, charge: 2}]),
+  ...'muffamadre cantiniere dama reginanutrie jukeboss'.split(' ').map(k => [k, {walk: 4, atk: 2}]),
+  ...'pentolona megapanino'.split(' ').map(k => [k, {walk: 2, atk: 2, jump: 2}]),
+  ...'sfoglina friggitrice trottolona'.split(' ').map(k => [k, {walk: 4, atk: 2, spin: 2}])]));
+for (const k of 'blatta muffa fiasco salame ragnone pecorino candela balestra armatura stendardo catapulta doccione cannoncino mattarello pentola uovo pulcino farina forchetta luccio granchio cormorano alga ranatoro trota patatina pita spiedino cetriolo maionese oliva stuzzicadenti shaker freccetta jukebox trottola robottino dado mattoncino palloncino medusa pinna materassino cloro pallanuoto specchio rossetto pettine profumo forbici ratto bidone copertone piccionezoppo busta ghiacciolo biscotto cucchiaino sciroppo coppetta'.split(' ')) BOSS_B[k] = 10; // the little ones: 30 pixels tall
+
 const MIRROR = {balestriere: true, guardiano: true}; // drawn aiming left: turned so they face right like the others
 const ST = {charge: 'charge', stun: 'stun', spiral: 'spiral', spin: 'spin', tp: 'tp', hop: 'hop', air: 'air', fall: 'fall', aim: 'aim', thrust: 'thrust', rev: 'rev', jump: 'jump', lunge: 'charge', crouch: 'charge', slide: 'charge', pop: 'atk', beam: 'atk', stomp: 'walk', track: 'walk', stream: 'atk', gone: 'atk', back: 'atk', persp: 'atk', puke: 'atk'};
 const art = t => t === 'raviolomedio' ? 'raviolissimo' : t;
@@ -8135,6 +8390,340 @@ EXTRA_DRAW.slot = (c, x, y, pk) => { const sp = pk.spin > 0; if (sp) pk.spin--; 
 EXTRA_DRAW.blood = (c, x, y, pk) => { pixShadow(c, pk.x, pk.y + 8, 14); blit(c, bloodSpr((G.tick >> 4) % 3), pk.x + 1, pk.y + 10, 0.5, 1); };
 EXTRA_DRAW.luce = (c, x, y, pk) => { c.save(); c.globalAlpha = 0.85 + Math.sin(G.tick * 0.05) * 0.1; blit(c, luceSpr((G.tick >> 3) % 8), pk.x, pk.y + 12, 0.5, 1); c.restore(); };
 EXTRA_DRAW.spora = (c, x, y) => blit(c, sporaSpr((G.tick >> 4) % 2), x, y + 6, 0.5, 1);
+/* ================= the big block: sixty enemies, fifteen bosses, six rooms, six beggars and machines, sixty trinkets, fifteen challenges ================= */
+// drawn in 19-bossart.js; here are their brains, where they live and what the new things do
+
+/* ---------- sixty more enemies, five or six for each place ---------- */
+function lunge(e, dx, dy, d, k, reach, speed, sp) { // creeps up, then darts at you in a straight line
+  if (e.st === 'charge') { if (--e.st2 <= 0 || e.bonk) { e.bonk = false; e.st = 'idle'; e.cd = 70; } return [0, 0, 0]; }
+  if (d < reach && e.cd <= 0 && lineClear(e, G.p)) { e.st = 'charge'; e.st2 = 18; e.vx = dx / d * speed * k; e.vy = dy / d * speed * k; return [0, 0, 0]; }
+  return chase(e, sp);
+}
+function skitter(e, dx, dy, sp) { // dashes in short bursts, never quite straight at you
+  if (e.cd <= 0) { const a = Math.atan2(dy, dx) + rr(-0.9, 0.9); e.dir = [Math.cos(a), Math.sin(a)]; e.st2 = ri(14, 24); e.cd = ri(26, 44); }
+  if (e.st2 > 0) { e.st2--; return [e.dir[0], e.dir[1], sp]; } return [0, 0, 0];
+}
+const shooter = (e, every, speed, spread, n, col) => { if (e.cd <= 0 && lineClear(e, G.p)) { aimAt(e, speed, spread, n, col); e.cd = every; } };
+const pulse = (e, every, n, speed, col) => { if (e.cd <= 0) { ring(e, n, speed, rnd(), col); e.cd = every; } };
+const lobber = (e, every, col, n = 6) => { if (e.cd <= 0) { lob(e, G.p.x, G.p.y, 46, 54, null, t => ringAt(t.x, t.y, n, 2.2, col)); e.cd = every; } };
+const NEW_EN = [
+  // the Cantine
+  ['blatta', 'una blatta', 6, 8, '#5a3a1e', {}, (e, dx, dy) => skitter(e, dx, dy, 3.2)],
+  ['muffa', 'una muffa', 16, 12, '#7a9a5a', {still: true}, e => { pulse(e, 150, 6, 1.6, '#9ac070'); return [0, 0, 0]; }],
+  ['fiasco', 'un fiasco di vino', 12, 11, '#3a6a2a', {}, e => { shooter(e, 120, 3.2, 0, 1, '#8a1a2a'); return hopper(e, 60, 1.8, () => {}); }],
+  ['salame', 'un salame', 14, 11, '#a83a3a', {}, (e, dx, dy) => axisRun(e, dx, dy, 2.6)],
+  ['ragnone', 'un ragnone', 14, 12, '#2a2228', {}, (e, dx, dy, d, k) => pounce(e, dx, dy, d, k, 0.8, 5.6)],
+  ['pecorino', 'una forma di pecorino', 18, 13, '#e8d090', {free: true}, (e, dx, dy, d, k) => bounce(e, k, 1.6)],
+  ['candela', 'una candela', 10, 10, '#f4ecd0', {still: true}, e => { shooter(e, 100, 3, 0, 1, '#ffa040'); return [0, 0, 0]; }],
+  // the Fortezza
+  ['balestra', 'una balestra', 14, 12, '#7a5a3a', {still: true}, e => { shooter(e, 110, 5.6, 0, 1, '#c8ccd2'); return [0, 0, 0]; }],
+  ['armatura', 'un\'armatura vuota', 30, 13, '#9aa0a8', {}, (e, dx, dy, d) => { if (d < 90) pulse(e, 90, 4, 2.4, '#c8ccd2'); return chase(e, 0.5); }],
+  ['stendardo', 'uno stendardo', 10, 11, '#d02a2a', {fly: true}, (e, dx, dy) => { shooter(e, 130, 3, 0.2, 2, '#f5c400'); const a = Math.atan2(dy, dx) + Math.sin(e.t * 0.05); return [Math.cos(a), Math.sin(a), 0.8]; }],
+  ['catapulta', 'una catapulta', 16, 13, '#8a5a2a', {still: true}, e => { lobber(e, 150, '#8a8a86'); return [0, 0, 0]; }],
+  ['doccione', 'un doccione', 14, 12, '#6a6a72', {fly: true}, (e, dx, dy, d) => { shooter(e, 110, 3.2, 0.25, 3, '#8a8a86'); return keepAway(e, dx, dy, d, 120, 220, 0.9); }],
+  ['cannoncino', 'un cannoncino', 16, 12, '#3a3a40', {still: true}, e => { if (e.cd <= 0) { for (const [x, y] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) enemyTear(e.x, e.y, x * 3.6, y * 3.6, '#3a3a40'); e.cd = 120; toot(200); } return [0, 0, 0]; }],
+  // the Fabbrica Buitoni
+  ['mattarello', 'un mattarello', 12, 11, '#d8a868', {}, (e, dx, dy) => axisRun(e, dx, dy, 3)],
+  ['pentola', 'una pentola che bolle', 18, 13, '#8a8e96', {still: true}, e => { pulse(e, 120, 8, 2, '#e8eef4'); return [0, 0, 0]; }],
+  ['uovo', 'un uovo', 8, 10, '#f4ecd8', {}, e => hopper(e, 54, 1.8, () => {}), e => { for (const s of [-1, 1]) spawnEnemy('pulcino', e.x + s * 12, e.y, 10); }],
+  ['pulcino', 'un pulcino', 4, 7, '#f5d020', {free: true}, (e, dx, dy, d, k) => bounce(e, k, 2.8)],
+  ['farina', 'un sacco di farina', 20, 13, '#efe6d0', {}, e => chase(e, 0.5), e => ringAt(e.x, e.y, 8, 2, '#ffffff')],
+  ['forchetta', 'una forchetta', 10, 10, '#c8ccd2', {}, (e, dx, dy, d, k) => lunge(e, dx, dy, d, k, 140, 5.2, 0.6)],
+  // the Diga
+  ['luccio', 'un luccio', 14, 12, '#6a8a5a', {}, (e, dx, dy) => { if (e.st === 'charge') { if (e.bonk) { e.bonk = false; e.st = 'idle'; e.cd = 60; } return [e.dir[0], e.dir[1], 4.4]; }
+    if ((Math.abs(dx) < 18 || Math.abs(dy) < 18) && e.cd <= 0 && lineClear(e, G.p)) { e.dir = Math.abs(dx) < 18 ? [0, Math.sign(dy)] : [Math.sign(dx), 0]; e.st = 'charge'; } return chase(e, 0.7); }],
+  ['granchio', 'un granchio', 14, 12, '#c8502a', {}, (e, dx, dy) => { if (Math.abs(dx) < 20 && e.cd <= 0) { aimAt(e, 3.4, 0.15, 2, '#c8502a'); e.cd = 90; } return [Math.sign(dx), 0, 1.4]; }],
+  ['cormorano', 'un cormorano', 10, 11, '#2a2a30', {fly: true, free: true}, (e, dx, dy, d, k) => bounce(e, k, 2.2)],
+  ['alga', 'un\'alga', 16, 12, '#3a7a3a', {still: true}, (e, dx, dy, d) => { if (d < 70) { G.p.fx.lento = 60; pulse(e, 80, 5, 2, '#5aa05a'); } return [0, 0, 0]; }],
+  ['ranatoro', 'una rana toro', 16, 13, '#5a7a2a', {}, e => hopper(e, 80, 2.6, () => { ringAt(e.x, e.y, 6, 2.2, '#8aa04a'); e.cd = 20; })],
+  ['trota', 'una trota', 10, 10, '#a8b8c8', {free: true}, (e, dx, dy, d, k) => bounce(e, k, 2.2)],
+  // Da Faruk
+  ['patatina', 'una patatina fritta', 6, 8, '#f5d060', {free: true}, (e, dx, dy, d, k) => bounce(e, k, 2.6)],
+  ['pita', 'una piadina volante', 10, 12, '#e8c890', {fly: true, free: true}, (e, dx, dy, d, k) => { pulse(e, 160, 4, 2.2, '#e8c890'); return bounce(e, k, 2); }],
+  ['spiedino', 'uno spiedino', 12, 11, '#a8582a', {}, (e, dx, dy) => { if (e.bonk && e.cd <= 0) { ring(e, 4, 2.4, 0.78, '#a8582a'); e.cd = 40; } return axisRun(e, dx, dy, 3.4); }],
+  ['cetriolo', 'un cetriolino', 10, 10, '#6a9a3a', {}, e => { shooter(e, 110, 3, 0, 1, '#8ac04a'); return hopper(e, 50, 1.8, () => {}); }],
+  ['maionese', 'un tubetto di maionese', 14, 11, '#f8f0c8', {still: true}, e => { shooter(e, 100, 3.2, 0.2, 3, '#f8f0c8'); return [0, 0, 0]; }],
+  // the Triangolo
+  ['oliva', 'un\'oliva', 6, 8, '#5a6a2a', {free: true}, (e, dx, dy, d, k) => bounce(e, k, 2.4)],
+  ['stuzzicadenti', 'uno stuzzicadenti', 6, 8, '#d8b878', {}, (e, dx, dy, d, k) => lunge(e, dx, dy, d, k, 160, 6, 0.7)],
+  ['shaker', 'uno shaker', 14, 11, '#c8ccd2', {still: true}, e => { e.ang = (e.ang || 0) + 0.12; if (e.t % 10 === 0) enemyTear(e.x, e.y, Math.cos(e.ang) * 2.4, Math.sin(e.ang) * 2.4, '#f5d060'); return [0, 0, 0]; }],
+  ['freccetta', 'una freccetta', 8, 9, '#d02a2a', {fly: true}, (e, dx, dy, d, k) => lunge(e, dx, dy, d, k, 260, 6.4, 0.4)],
+  ['jukebox', 'un jukebox', 24, 13, '#c83a8a', {still: true}, e => { if (e.cd <= 0) { gapRing(e, 12, 2.2, (e.t / 60 | 0) % 2 ? '#5ad0ff' : '#ff5ad0', 3); e.cd = 100; toot(440 + (e.t % 5) * 110, 0.2); } return [0, 0, 0]; }],
+  // the Magazzino del Maestro
+  ['trottola', 'una trottola', 12, 11, '#d02a2a', {free: true}, (e, dx, dy, d, k) => { pulse(e, 140, 6, 2.2, '#f5c400'); return bounce(e, k, 2.6); }],
+  ['robottino', 'un robottino a molla', 14, 11, '#9aa0a8', {}, e => { shooter(e, 100, 3.4, 0.1, 2, '#ff4a4a'); return chase(e, 0.7); }],
+  ['dado', 'un dado', 12, 11, '#f4f4f4', {}, e => hopper(e, 64, 2.2, () => { ringAt(e.x, e.y, ri(1, 6), 2.4, '#1a1418'); e.cd = 20; })],
+  ['mattoncino', 'un mattoncino', 16, 11, '#d03030', {}, (e, dx, dy) => axisRun(e, dx, dy, 2.4)],
+  ['palloncino', 'un palloncino', 6, 11, '#f070a0', {fly: true}, e => chase(e, 0.6), e => { ringAt(e.x, e.y, 8, 2.4, '#f070a0'); Snd.noise(0.15, 0.1, 3000); }],
+  // the Piscine Pincardini
+  ['medusa', 'una medusa', 10, 11, '#c8a0e0', {fly: true}, e => { pulse(e, 160, 4, 1.8, '#c8a0e0'); return chase(e, 0.5); }],
+  ['pinna', 'una pinna di squalo', 16, 12, '#6a7a8a', {}, (e, dx, dy, d, k) => pounce(e, dx, dy, d, k, 1, 6)],
+  ['materassino', 'un materassino', 20, 13, '#2a8ad8', {free: true}, (e, dx, dy, d, k) => bounce(e, k, 1.4)],
+  ['cloro', 'una pastiglia di cloro', 10, 10, '#e8f4f8', {still: true}, e => { pulse(e, 120, 6, 1.6, '#a8e0c8'); return [0, 0, 0]; }],
+  ['pallanuoto', 'un pallone da pallanuoto', 10, 11, '#f5d020', {free: true}, (e, dx, dy, d, k) => bounce(e, k, 2.4)],
+  // Vanity SNC
+  ['specchio', 'uno specchio', 18, 12, '#b8d8e8', {still: true}, e => { shooter(e, 110, 3.4, 0.25, 3, '#e8f4ff'); return [0, 0, 0]; }],
+  ['rossetto', 'un rossetto', 8, 9, '#d0102a', {}, (e, dx, dy, d, k) => lunge(e, dx, dy, d, k, 150, 5.6, 0.7)],
+  ['pettine', 'un pettine', 10, 10, '#a8683a', {}, (e, dx, dy) => axisRun(e, dx, dy, 3)],
+  ['profumo', 'un profumo', 12, 11, '#f0a8c8', {}, (e, dx, dy, d) => { pulse(e, 130, 6, 2, '#f0a8c8'); return keepAway(e, dx, dy, d, 120, 220, 0.8); }],
+  ['forbici', 'un paio di forbici', 12, 11, '#c8ccd2', {}, (e, dx, dy, d, k) => pounce(e, dx, dy, d, k, 0.9, 5.6)],
+  // il Campaccio
+  ['ratto', 'un ratto di fogna', 10, 10, '#5a4a42', {}, e => chase(e, 1.5)],
+  ['bidone', 'un bidone', 22, 13, '#4a5a4a', {}, e => { lobber(e, 150, '#8a9a5a'); return chase(e, 0.4); }],
+  ['copertone', 'un copertone', 14, 12, '#1e1e22', {}, (e, dx, dy) => axisRun(e, dx, dy, 3.2)],
+  ['piccionezoppo', 'un piccione zoppo', 8, 9, '#8d96a3', {fly: true, free: true}, (e, dx, dy, d, k) => { shooter(e, 140, 3, 0, 1, '#c8ccd2'); return bounce(e, k, 1.8); }],
+  ['busta', 'una busta di plastica', 6, 11, '#e8e8e8', {fly: true}, (e, dx, dy) => { const a = Math.atan2(dy, dx) + Math.sin(e.t * 0.03) * 1.6; return [Math.cos(a), Math.sin(a), 0.5]; }],
+  // the Fondo del Pek
+  ['ghiacciolo', 'un ghiacciolo', 10, 10, '#e04a6a', {}, (e, dx, dy, d, k) => lunge(e, dx, dy, d, k, 150, 5.4, 0.7)],
+  ['biscotto', 'un biscotto', 10, 10, '#c8904a', {free: true}, (e, dx, dy, d, k) => bounce(e, k, 2.2)],
+  ['cucchiaino', 'un cucchiaino', 8, 9, '#c8ccd2', {}, (e, dx, dy) => axisRun(e, dx, dy, 3)],
+  ['sciroppo', 'una bottiglia di sciroppo', 14, 11, '#a01a2a', {still: true}, e => { shooter(e, 110, 3, 0.2, 3, '#a01a2a'); return [0, 0, 0]; }],
+  ['coppetta', 'una coppetta al pistacchio', 14, 12, '#a8c86a', {}, e => hopper(e, 66, 2, () => { ringAt(e.x, e.y, 6, 2.2, '#a8c86a'); e.cd = 20; })],
+];
+for (const [type, name, hp, r, col, flags, ai, death] of NEW_EN) beast(type, {name, hp, r, col, ...flags}, ai, () => {}, death);
+const NEW_POOLS = [[FLOORS[0], 'blatta muffa fiasco salame ragnone pecorino candela'], [FLOORS[1], 'balestra armatura stendardo catapulta doccione cannoncino'], [FLOORS[2], 'mattarello pentola uovo farina forchetta'],
+  [FLOORS[3], 'luccio granchio cormorano alga ranatoro trota'], [FLOORS[0].alt, 'patatina pita spiedino cetriolo maionese blatta'], [FLOORS[1].alt, 'oliva stuzzicadenti shaker freccetta jukebox'],
+  [FLOORS[2].alt, 'trottola robottino dado mattoncino palloncino'], [FLOORS[3].alt, 'medusa pinna materassino cloro pallanuoto'], [FINALS.vanity, 'specchio rossetto pettine profumo forbici'],
+  [FINALS.campaccio, 'ratto bidone copertone piccionezoppo busta'], [PEK, 'ghiacciolo biscotto cucchiaino sciroppo coppetta']];
+for (const [f, list] of NEW_POOLS) f.pools.push(...list.split(' ').filter(t => !f.pools.includes(t)));
+
+/* ---------- fifteen bosses, built from a kit of moves ---------- */
+// moves: aim, ring, burst, charge, dash, jump, spin, tp, lob, summon:<enemy>; walks: chase, keep, bounce, still
+function kitBoss(type, name, hp, r, col, moves, o = {}) {
+  beast(type, {name, short: name.replace(/^(il |la |lo |l')/, '').replace(/^./, x => x.toUpperCase()), hp, r, boss: true, col}, (e, dx, dy, d, k, half) => {
+    const tc = o.tc || col;
+    if (e.bn > 0 && e.t % 8 === 0) { aimAt(e, 4.6, 0.04, 1, tc); e.bn--; }
+    if (e.st === 'charge') { e.vx = e.dir[0] * (o.cs || 5.4) * k; e.vy = e.dir[1] * (o.cs || 5.4) * k; if (o.trail && e.t % 6 === 0) enemyTear(e.x, e.y, -e.dir[1] * 1.4, e.dir[0] * 1.4, tc);
+      if (e.bonk || --e.st2 <= 0) { const wall = e.bonk; e.bonk = false; e.st = 'idle'; e.cd = 40; if (wall) { ring(e, half ? 10 : 7, 2.5, rnd(), tc); G.shake = 8; Snd.boom(); } } return; }
+    if (e.st === 'jump') { e.st2--; e.z = Math.sin((1 - e.st2 / 50) * Math.PI) * 100; e.vx = e.jv[0] * k; e.vy = e.jv[1] * k;
+      if (e.st2 <= 0) { e.z = 0; e.st = 'idle'; e.vx = e.vy = 0; e.cd = 50; ring(e, half ? 14 : 10, 2.6, rnd(), tc); G.shake = 14; Snd.boom(); } return; }
+    if (e.st === 'spin') { e.vx *= 0.85; e.vy *= 0.85; e.ang = (e.ang || 0) + 0.21; if (e.st2 % (half ? 4 : 6) === 0) for (const off of [0, Math.PI]) enemyTear(e.x, e.y, Math.cos(e.ang + off) * 2.6, Math.sin(e.ang + off) * 2.6, tc); if (--e.st2 <= 0) { e.st = 'idle'; e.cd = 50; } return; }
+    if (e.st === 'tp') { e.vx = e.vy = 0; if (--e.st2 === 12) { e.x = rr(T * 3, RW - T * 3); e.y = rr(T * 3, RH - T * 3); burst(e.x, e.y, tc, 14, 3); } if (e.st2 <= 0) { e.st = 'idle'; e.cd = 30; ring(e, half ? 10 : 8, 2.4, rnd(), tc); } return; }
+    const walk = o.walk || 'chase', sp = (o.sp || 0.8) * k;
+    if (walk === 'chase') { const [fx, fy] = flowDir(e); e.vx = lerp(e.vx, fx * sp, 0.1); e.vy = lerp(e.vy, fy * sp, 0.1); }
+    else if (walk === 'keep') { const w = d > 220 ? 1 : d < 150 ? -1 : 0; e.vx = lerp(e.vx, dx / d * w * sp, 0.1); e.vy = lerp(e.vy, dy / d * w * sp, 0.1); }
+    else if (walk === 'bounce') { if (!e.bx) { e.bx = pick([-1, 1]); e.by = pick([-1, 1]); } if (e.x < T + e.r + 2) e.bx = 1; if (e.x > RW - T - e.r - 2) e.bx = -1; if (e.y < T + e.r + 2) e.by = 1; if (e.y > RH - T - e.r - 2) e.by = -1; e.vx = e.bx * sp * 2; e.vy = e.by * sp * 2; }
+    else { e.vx *= 0.8; e.vy *= 0.8; }
+    if (e.cd > 0) return; e.phase = (e.phase || 0) + 1;
+    const [m, arg] = moves[e.phase % moves.length].split(':');
+    if (m === 'aim') { aimAt(e, 3.6, 0.2, half ? 5 : 3, tc); e.cd = 60; }
+    else if (m === 'ring') { ring(e, half ? 14 : 10, 2.4, rnd(), tc); e.cd = 70; }
+    else if (m === 'burst') { e.bn = half ? 6 : 4; e.cd = 70; }
+    else if (m === 'charge' || m === 'dash') { e.st = 'charge'; e.st2 = 60; e.dir = m === 'dash' ? [dx / d, dy / d] : axisTo(dx, dy); Snd.tone(140, 0.4, 'sawtooth', 0.08, 260); }
+    else if (m === 'jump') { e.st = 'jump'; e.st2 = 50; e.jv = [dx / 50, dy / 50]; Snd.tone(300, 0.4, 'sine', 0.08, 900); }
+    else if (m === 'spin') { e.st = 'spin'; e.st2 = 60; }
+    else if (m === 'tp') { e.st = 'tp'; e.st2 = 24; Snd.tone(900, 0.3, 'sine', 0.06, 300); }
+    else if (m === 'lob') { for (let n = half ? 2 : 1; n > 0; n--) lob(e, G.p.x + (n > 1 ? rr(-70, 70) : 0), G.p.y + (n > 1 ? rr(-60, 60) : 0), 46, 60, null, t => ringAt(t.x, t.y, 6, 2.2, tc)); e.cd = 70; }
+    else if (m === 'summon') { if (count(arg) < (half ? 3 : 2)) spawnEnemy(arg, e.x + rr(-40, 40), e.y + 30, 20); e.cd = 50; }
+  }, () => {});
+}
+kitBoss('reblatte', 'il Re delle Blatte', 200, 26, '#4a2a14', ['dash', 'summon:blatta', 'aim', 'ring'], {cs: 5.8});
+kitBoss('muffamadre', 'la Muffa Madre', 230, 28, '#6a8a4a', ['ring', 'summon:muffa', 'spin', 'aim'], {walk: 'still', tc: '#9ac070'});
+kitBoss('cantiniere', 'il Cantiniere', 210, 26, '#7a3a3a', ['lob', 'aim', 'charge', 'burst'], {tc: '#8a1a2a'});
+kitBoss('castellano', 'il Castellano', 240, 26, '#8a9098', ['charge', 'aim', 'ring', 'summon:armatura'], {sp: 0.6, cs: 5});
+kitBoss('dama', 'la Dama della Torre', 200, 24, '#d8e0f0', ['tp', 'spin', 'aim', 'tp', 'ring'], {walk: 'keep', tc: '#a8b8f0'});
+kitBoss('pentolona', 'la Pentolona', 240, 28, '#7a7e86', ['jump', 'ring', 'summon:uovo', 'jump', 'lob'], {walk: 'still', tc: '#e8eef4'});
+kitBoss('sfoglina', 'la Sfoglina', 220, 26, '#f0c8a8', ['spin', 'dash', 'aim', 'burst'], {tc: '#e8c060'});
+kitBoss('luccione', 'il Luccio Gigante', 230, 28, '#5a7a4a', ['charge', 'jump', 'ring', 'charge', 'aim'], {cs: 6, trail: true, tc: '#5ab0e0'});
+kitBoss('reginanutrie', 'la Regina delle Nutrie', 220, 27, '#7a5a3a', ['summon:nutria', 'jump', 'aim', 'ring'], {tc: '#8a6a4a'});
+kitBoss('megapanino', 'il Mega Panino', 240, 28, '#d8a058', ['jump', 'lob', 'ring', 'jump', 'summon:patatina'], {tc: '#d02a2a'});
+kitBoss('friggitrice', 'la Friggitrice', 230, 28, '#a8adb4', ['spin', 'lob', 'ring', 'burst'], {walk: 'still', tc: '#f8d070'});
+kitBoss('buttafuori', 'il Buttafuori', 260, 27, '#1a1a20', ['charge', 'aim', 'charge', 'ring'], {sp: 0.7, cs: 6});
+kitBoss('jukeboss', 'il Juke-box Indemoniato', 230, 28, '#a82a7a', ['spin', 'ring', 'burst', 'summon:freccetta'], {walk: 'still', tc: '#ff5ad0'});
+kitBoss('trottolona', 'la Trottola Gigante', 220, 26, '#2a5ab0', ['spin', 'ring', 'spin', 'aim'], {walk: 'bounce', sp: 1.1, tc: '#f5c400'});
+kitBoss('squalo', 'lo Squalo del Pincardini', 250, 28, '#6a7a8a', ['charge', 'jump', 'aim', 'charge', 'ring'], {cs: 6.2, trail: true, tc: '#5ab0e0'});
+const NEW_BOSSES = [[FLOORS[0], 'reblatte muffamadre cantiniere'], [FLOORS[1], 'castellano dama'], [FLOORS[2], 'pentolona sfoglina'], [FLOORS[3], 'luccione reginanutrie'],
+  [FLOORS[0].alt, 'megapanino friggitrice'], [FLOORS[1].alt, 'buttafuori jukeboss'], [FLOORS[2].alt, 'trottolona'], [FLOORS[3].alt, 'squalo']];
+for (const [f, list] of NEW_BOSSES) for (const b of list.split(' ')) { f.bosses.push(b); if (f.bosses2) f.bosses2.push(b); }
+
+/* ---------- six new rooms ---------- */
+// they take the spare dead ends, like the arcade and the challenge room
+const NEW_ROOMS = {biblioteca: 'Biblioteca', caveau: 'Caveau', dadi: 'Stanza dei dadi', camera: 'Camera da letto', mercato: 'Mercato nero', errore: 'Stanza dell\'errore'};
+const ROOM_FILL = {
+  biblioteca: (room, rng, run) => { // a book on a lectern and a few cards left between the pages
+    const acts = Object.keys(ACTIVES).filter(a => a !== run.ch.active && !run.taken.has(a)); const a = acts.length ? rng.pick(acts) : null;
+    if (a) { run.taken.add(a); room.pickups.push({kind: 'active', id: a, x: CX, y: CY, ped: true}); }
+    for (let i = 0; i < 2; i++) room.pickups.push({kind: 'card', id: rng.pick(CARDS).id, x: CX + (i ? 60 : -60), y: CY + 50});
+  },
+  caveau: (room, rng) => { for (let i = 0; i < rng.i(3, 5); i++) room.pickups.push({kind: rng.f() < 0.3 ? 'goldchest' : 'chest', x: tileX(3 + i * 2), y: tileY(3)}); room.pickups.push({kind: 'key', x: CX, y: tileY(5)}); },
+  dadi: room => { room.pickups.push({kind: 'dadone', x: CX, y: CY, static: true}); },
+  camera: (room, rng) => { room.pickups.push({kind: 'letto', x: CX, y: tileY(2), static: true}); room.pickups.push({kind: rng.pick(['soul', 'pill', 'card']), x: CX + 80, y: tileY(4), id: rng.pick(CARDS).id}); },
+  mercato: (room, rng, run) => { for (let i = 0; i < 3; i++) room.pickups.push({...pickItem(rng.f() < 0.5 ? 's' : 'd', rng, run), x: tileX(4 + i * 2), y: tileY(3) + 6, ped: true, hearts: 1}); },
+  errore: (room, rng, run) => { room.pickups.push({...pickItem('tbsxd', rng, run), x: CX, y: CY, ped: true}); for (let i = 0; i < 6; i++) room.pickups.push({kind: rng.pick(['coin', 'bomb', 'key', 'heart', 'pill', 'battery']), x: tileX(2 + i * 2), y: tileY(5)}); },
+};
+const ROOM_ODDS = {biblioteca: d => d > 1 && 0.25, caveau: () => 0.18, dadi: d => d > 2 && 0.14, camera: () => 0.2, mercato: d => d > 2 && 0.12, errore: () => 0.05};
+function roomExtras(room, rng) { // the beggars and machines: the arcade gets one more, a quiet room may have one sitting there
+  if (room.type === 'sala') { const pk = room.pickups.find(p => p.kind === 'beggar'); if (pk && rng.f() < 0.6) pk.kind = rng.pick(['diavoletto', 'chiavaro', 'bombarolo']); room.pickups.push({kind: rng.pick(['indovina', 'gru', 'campanelle']), x: tileX(6), y: tileY(1) + 6, static: true, need: rng.i(3, 6)}); }
+  if (room.type === 'normal' && room.cleared) { const pk = room.pickups.find(p => p.kind === 'beggar'); if (pk && rng.f() < 0.5) pk.kind = rng.pick(['diavoletto', 'chiavaro', 'bombarolo']); }
+}
+
+/* ---------- six beggars and machines, in pixels like the old ones ---------- */
+const MACH = {
+  diavoletto: {name: 'Mendicante del diavolo', pay: p => hearts(p) > 2 && !p.inv && (hurtPlayer(1, 'il mendicante del diavolo', true, true), true), win: (pk, p) => { if (rnd() < 0.6) G.room.pickups.push({...pickItem('d', RND, G.run), x: pk.x, y: pk.y + 10, ped: true}); else spill(p, 2, ['black', 'soul'], pk.x, pk.y + 20); }},
+  chiavaro: {name: 'Mendicante delle chiavi', pay: p => p.keys > 0 && (p.keys--, true), win: pk => { for (let i = 0; i < 2; i++) dropPickup(rnd() < 0.35 ? 'goldchest' : 'chest', pk.x + (i ? 30 : -30), pk.y + 30); }},
+  bombarolo: {name: 'Mendicante delle bombe', pay: p => p.bombs > 0 && (p.bombs--, true), win: (pk, p) => { if (rnd() < 0.4) G.room.pickups.push({...pickItem('x', RND, G.run), x: pk.x, y: pk.y + 10, ped: true}); else spill(p, 4, ['bomb'], pk.x, pk.y + 20); }},
+};
+const FORTUNES = ['Oggi la cantina ti sorride', 'Un boss ti teme', 'Fidati del gatto nero', 'Le monete tornano a chi le dona', 'Sotto la Torre di Berta c\'è un tesoro', 'Diffida delle cipolle', 'Il Pek ti aspetta', 'Non tutte le porte sono porte', 'Piero ti guarda', 'Una pillola ti cambierà la vita'];
+EXTRA_PICKUPS.diavoletto = EXTRA_PICKUPS.chiavaro = EXTRA_PICKUPS.bombarolo = (pk, p) => {
+  const M = MACH[pk.kind]; if (!ready(pk) || !M.pay(p)) return false;
+  later(pk, 30); pk.got = (pk.got || 0) + 1; meta('machine', pk.kind); Snd.coin();
+  if (pk.got >= (pk.need || 5)) { M.win(pk, p); pk.taken = true; burst(pk.x, pk.y, '#efe3cf', 12, 2); G.banner = {title: 'Grazie!', sub: M.name + ' ricambia', t: 90, small: true}; }
+  return false;
+};
+EXTRA_PICKUPS.indovina = (pk, p) => {
+  if (!ready(pk) || p.coins < 1) return false; p.coins--; later(pk, 60); meta('machine', 'indovina'); Snd.tone(700, 0.3, 'sine', 0.05, 1200);
+  const x = rnd() + luckOf(p) * 0.02;
+  if (x > 0.9) { dropPickup(pick(['soul', 'card', 'trinket']), pk.x, pk.y + 26, {id: undefined}); G.banner = {title: 'La sorte è con te', sub: '', t: 80, small: true}; }
+  else G.banner = {title: pick(FORTUNES), sub: 'dice l\'indovina', t: 110, small: true};
+  const last = G.room.pickups[G.room.pickups.length - 1]; if (last && last.kind === 'trinket' && !last.id) last.id = pick(TRINKETS).id; if (last && last.kind === 'card' && !last.id) last.id = pick(CARDS).id;
+  return false;
+};
+EXTRA_PICKUPS.gru = (pk, p) => { // three coins a go; now and then the claw brings up an item, and the machine is empty
+  if (!ready(pk) || p.coins < 3) return false; p.coins -= 3; later(pk, 70); meta('machine', 'gru'); pk.spin = 40; Snd.tone(300, 0.6, 'triangle', 0.05, 500);
+  if (rnd() < 0.2 + luckOf(p) * 0.02) { G.room.pickups.push({...pickItem('t', RND, G.run), x: pk.x, y: pk.y + 40, ped: true}); pk.taken = true; burst(pk.x, pk.y, '#f5c400', 14, 2); }
+  return false;
+};
+EXTRA_PICKUPS.campanelle = (pk, p) => { // the three cups: one coin, one in three wins double
+  if (!ready(pk) || p.coins < 1) return false; p.coins--; later(pk, 50); meta('machine', 'campanelle'); pk.spin = 30;
+  if (rnd() < 0.34 + luckOf(p) * 0.02) { const k = pick(['coin', 'bomb', 'key', p.ch.noRed ? 'soul' : 'heart']); dropPickup(k, pk.x - 10, pk.y + 30); dropPickup(k, pk.x + 10, pk.y + 30); Snd.coin(); }
+  else Snd.tone(200, 0.2, 'square', 0.04);
+  return false;
+};
+EXTRA_PICKUPS.dadone = (pk, p) => { // the dice room: one throw, six outcomes
+  if (pk.used) return false; pk.used = true; meta('machine', 'dadone'); const n = ri(1, 6); pk.face = n; burst(pk.x, pk.y, '#f4f4f4', 18, 3); G.flash = 0.4;
+  const say = t => { G.banner = {title: 'Esce il ' + n, sub: t, t: 130, small: true}; };
+  if (n === 1) { const it = pickItem('tbsx', RND, G.run); if (it.kind === 'item') { const I = ITEM[it.id]; p.items.push(I.id); I.fn(p); capHearts(p); meta('item', 'i_' + I.id); say('ti arriva ' + I.name); } else say('niente di niente'); }
+  else if (n === 2) { for (const q of G.room.pickups) if (q.ped && q !== pk) Object.assign(q, pickItem('tbs', RND, G.run)); say('cambia tutto quello che c\'è qui'); }
+  else if (n === 3) { for (let i = 0; i < 6; i++) dropPickup('coin', pk.x + rr(-40, 40), pk.y + rr(20, 50)); say('una pioggia di monete'); }
+  else if (n === 4) { healAll(p); p.soul += 2; capHearts(p); say('ti senti rinato'); }
+  else if (n === 5) { G.room.pickups.push({...pickItem('t', RND, G.run), x: pk.x, y: pk.y + 50, ped: true}); say('un regalo'); }
+  else { spill(p, 3, ['bomb', 'key', 'card', 'pill'], pk.x, pk.y + 30); say('un po\' di tutto'); }
+  return false;
+};
+EXTRA_PICKUPS.letto = (pk, p) => { // lie down: full red hearts, and if they were full already, two soul hearts
+  if (pk.used) return false; pk.used = true; meta('machine', 'letto'); const full = p.red >= p.maxRed; healAll(p); if (full || p.ch.noRed) { p.soul += 2; capHearts(p); }
+  G.banner = {title: 'Che dormita!', sub: full ? 'Due cuori anima' : 'Tutti i cuori pieni', t: 110, small: true}; Snd.tone(330, 1, 'sine', 0.05, 220); G.fadeIn = 30; return false;
+};
+// the sprites
+const machSpr = (kind, f) => spr('mach' + kind + f, () => { const [cv, x] = mkc(28, 36);
+  if (kind === 'diavoletto' || kind === 'chiavaro' || kind === 'bombarolo') { // beggars like the first one, each with their own colours and what they hold
+    const cloak = {diavoletto: '#6a1414', chiavaro: '#3a4a6a', bombarolo: '#3a3a3e'}[kind], skin = kind === 'diavoletto' ? '#d0503a' : '#d9b08a';
+    PR(x, 2, 32, 24, 3, '#7a3a2a'); PE(x, 13, 26, 9, 6.5, cloak, shade(cloak, -0.3), shade(cloak, 0.2)); PE(x, 7, 30, 4, 2.5, shade(cloak, -0.3)); PE(x, 19, 30, 4, 2.5, shade(cloak, -0.3));
+    PE(x, 13, 14, 10, 9.5, shade(cloak, -0.2)); PE(x, 13, 15.5, 7.5, 7.5, skin, shade(skin, -0.25), shade(skin, 0.2));
+    PR(x, 9, 15, 2, 2, '#1a1418'); PR(x, 15, 15, 2, 2, '#1a1418'); PR(x, 9, 15, 1, 1, kind === 'diavoletto' ? '#ff4040' : '#ffffff'); PR(x, 15, 15, 1, 1, kind === 'diavoletto' ? '#ff4040' : '#ffffff');
+    if (kind === 'diavoletto') { PR(x, 6, 4, 2, 4, '#e8e0d0'); PR(x, 18, 4, 2, 4, '#e8e0d0'); PR(x, 10, 19, 6, 1, '#4a0a0a'); PR(x, 11, 20, 1, 1, '#ffffff'); PR(x, 14, 20, 1, 1, '#ffffff'); }
+    else { PE(x, 13, 20, 4.5, 2.4, '#8a7a6a'); PR(x, 11, 19, 4, 1, '#4a2a22'); }
+    const up = f % 2; if (kind === 'chiavaro') { PR(x, 19, 20 - up, 7, 2, '#d9b24a'); PR(x, 24, 18 - up, 3, 5, '#d9b24a'); PR(x, 25, 19 - up, 1, 3, cloak); }
+    else if (kind === 'bombarolo') { PE(x, 22, 21 - up, 4, 4, '#2a2a30', '#141418', '#5a5a62'); PR(x, 23, 15 - up, 1, 3, '#8a6a3a'); PR(x, 24, 14 - up, 1, 1, up ? '#ffd040' : '#ff8a2a'); }
+    else { PR(x, 19, 19 - up, 6, 6, '#3a1a1a'); PR(x, 20, 20 - up, 4, 4, '#d02a2a'); }
+  } else if (kind === 'indovina') { // a fortune-teller booth: a turban, a crystal ball that glows
+    PR(x, 1, 6, 26, 28, '#5a2a6a'); PR(x, 1, 6, 26, 2, '#e8b64a'); PR(x, 3, 9, 22, 13, '#1a0e20'); PE(x, 14, 14, 6, 5.5, '#c88a5a', '#a06a3a'); PE(x, 14, 9, 7, 3.5, '#d02a2a', '#901a1a'); PR(x, 13, 6, 2, 2, '#5ad0ff');
+    PR(x, 11, 14, 2, 1, '#1a1418'); PR(x, 16, 14, 2, 1, '#1a1418'); PE(x, 14, 26, 4, 4, f % 2 ? '#a0e0ff' : '#6ab0f0', '#3a7ab0', '#ffffff'); PR(x, 8, 31, 12, 2, '#3a1a4a'); PR(x, 12, 2, 4, 4, '#e8b64a');
+  } else if (kind === 'gru') { // a claw machine: glass box of toys, the claw on top
+    PR(x, 2, 2, 24, 32, '#2a8ad8'); PR(x, 4, 5, 20, 17, '#a8d8f0'); PR(x, 4, 5, 20, 1, '#ffffff'); const cx = 8 + (f * 3) % 12;
+    PR(x, cx, 6, 1, 6 + (f % 2) * 3, '#5a5f66'); PR(x, cx - 2, 12 + (f % 2) * 3, 5, 1, '#5a5f66'); PR(x, cx - 2, 13 + (f % 2) * 3, 1, 2, '#5a5f66'); PR(x, cx + 2, 13 + (f % 2) * 3, 1, 2, '#5a5f66');
+    for (const [tx, col] of [[6, '#f070a0'], [11, '#f5c400'], [16, '#5ac05a'], [20, '#d02a2a']]) PE(x, tx, 19, 2.5, 2.5, col); PR(x, 9, 25, 10, 3, '#1c1c21'); PE(x, 20, 28, 2, 2, '#e9302a'); PR(x, 2, 2, 24, 2, '#f5c400');
+  } else if (kind === 'campanelle') { // three cups on a little table
+    PR(x, 0, 24, 28, 4, '#8a5a2b'); PR(x, 0, 24, 28, 1, '#a8703c'); PR(x, 3, 28, 2, 7, '#5a3418'); PR(x, 23, 28, 2, 7, '#5a3418');
+    for (let k = 0; k < 3; k++) { const cx = 4 + ((k + (f % 3)) % 3) * 8, up = f % 3 === k ? 2 : 0; PR(x, cx, 16 - up, 6, 8, '#c8402a'); PR(x, cx + 1, 15 - up, 4, 1, '#c8402a'); PR(x, cx, 16 - up, 1, 8, '#e06a4a'); }
+    if (f % 3 === 1) PE(x, 14, 23, 1.5, 1.5, '#f4f4f4');
+  } else if (kind === 'dadone') { // the big die in the middle of the dice room
+    PR(x, 2, 8, 24, 24, '#f4f4f4'); PR(x, 2, 8, 24, 3, '#ffffff'); PR(x, 2, 29, 24, 3, '#c8c8d0'); PR(x, 23, 8, 3, 24, '#d8d8e0');
+    const pips = {1: [[14, 20]], 2: [[8, 14], [20, 26]], 3: [[8, 14], [14, 20], [20, 26]], 4: [[8, 14], [20, 14], [8, 26], [20, 26]], 5: [[8, 14], [20, 14], [14, 20], [8, 26], [20, 26]], 6: [[8, 13], [20, 13], [8, 20], [20, 20], [8, 27], [20, 27]]}[f || 6];
+    for (const [px, py] of pips) PE(x, px, py, 2, 2, '#1a1418');
+  } else if (kind === 'letto') { // an iron bed with a red blanket
+    PR(x, 1, 6, 3, 28, '#3a3a40'); PR(x, 24, 14, 3, 20, '#3a3a40'); PR(x, 3, 18, 22, 10, '#b3121b'); PR(x, 3, 18, 22, 2, '#d03a3a'); PR(x, 4, 13, 9, 6, '#f4ecd8'); PR(x, 3, 28, 22, 2, '#5a3418');
+    if (f) { PE(x, 8, 14, 3, 3, '#d9b08a'); PR(x, 14, 8, 1, 1, '#c8c8f0'); PR(x, 16, 6, 2, 1, '#c8c8f0'); }
+  }
+  return pixOutline(cv); });
+for (const kind of ['diavoletto', 'chiavaro', 'bombarolo', 'indovina', 'gru', 'campanelle', 'dadone', 'letto'])
+  EXTRA_DRAW[kind] = (c, x, y, pk) => { const sp = pk.spin > 0; if (sp) pk.spin--; const f = kind === 'dadone' ? pk.face || 0 : kind === 'letto' ? (pk.used ? 1 : 0) : sp ? (G.tick >> 2) % 3 : (G.tick + pk.x) % 90 < 12 ? (G.tick >> 2) % 2 : 0;
+    pixShadow(c, pk.x, pk.y + 8, 15); blit(c, machSpr(kind, f), pk.x, pk.y + 10, 0.5, 1); if (pk.got && MACH[kind]) label(pk.x, pk.y - 34, pk.got + '/' + (pk.need || 5), 11, '#e8b64a'); };
+
+/* ---------- sixty trinkets ---------- */
+const BLOCK_TRINKETS = [
+  ['t_tappo', 'Tappo di sughero', 'Danno in su', 'Danno +0,4.', 'nut,#c8904a', {stat: {dmg: 0.4}}],
+  ['t_cavatappi', 'Cavatappi', 'Lacrime che trapassano a volte', 'Una lacrima su sei passa attraverso i nemici.', 'spiral,#c8ccd2', {shoot: (p, t) => { if (rnd() < 0.17) t.pierce = true; }}],
+  ['t_bicchiere', 'Bicchiere da osteria', 'Cadenza in su', 'Spari un po\' più spesso.', 'glass,#e8f4f8', {stat: {tears: 0.5}}],
+  ['t_salvadanaio', 'Salvadanaio rotto', 'Monete quando ti colpiscono', 'Quando ti colpiscono perdi qualche moneta... ma ne trovi altre.', 'box,#f070a0', {hurt: p => { for (let i = 0; i < 2; i++) dropPickup('coin', p.x + rr(-30, 30), p.y + rr(-30, 30)); }}],
+  ['t_chiodo2', 'Chiodo da maniscalco', 'Velocità in su', 'Velocità +0,15.', 'sword,#8a8f96', {stat: {speed: 0.15}}],
+  ['t_lente', 'Lente d\'ingrandimento', 'Gittata in su', 'Gittata +1,5.', 'eye,#c8e0f0', {stat: {range: 1.5}}],
+  ['t_quadrifoglio', 'Quadrifoglio', 'Fortuna +2', 'Fortuna +2 finché lo tieni.', 'leaf,#3a9a3a', {stat: {luck: 2}}],
+  ['t_cornetto', 'Cornetto rosso', 'Scaccia il malocchio', 'Fortuna +1 e niente maledizioni ai piani nuovi.', 'horn,#d02a2a', {stat: {luck: 1}, floor: () => { if (G.floor) G.floor.curse = null; }}],
+  ['t_santino', 'Santino di San Sepolcro', 'Un cuore anima a ogni boss', 'Battendo un boss trovi mezzo cuore anima.', 'cross,#f4ead0', {kill: (p, e) => { if (EN[e.type] && EN[e.type].boss) dropPickup('soul', e.x, e.y); }}],
+  ['t_fiammifero', 'Fiammifero', 'Lacrime che bruciano a volte', 'Una lacrima su otto incendia.', 'candle,#ffa040', {shoot: (p, t) => { if (rnd() < 0.12) t.burn = true; }}],
+  ['t_ghiaccio', 'Cubetto di ghiaccio', 'Lacrime che rallentano', 'Una lacrima su sei rallenta i nemici.', 'gem,#a8e0ff', {shoot: (p, t) => { if (rnd() < 0.17) t.slow = true; }}],
+  ['t_vipera', 'Dente di vipera', 'Lacrime velenose a volte', 'Una lacrima su sette avvelena.', 'tooth,#6aa04a', {shoot: (p, t) => { if (rnd() < 0.14) t.poison = true; }}],
+  ['t_calamita', 'Calamita da frigo', 'Lacrime che cercano', 'Una lacrima su cinque insegue i nemici.', 'magnet,#d02a2a', {shoot: (p, t) => { if (rnd() < 0.2) t.homing = true; }}],
+  ['t_pane', 'Crosta di pane', 'Mezzo cuore a ogni piano', 'A ogni piano nuovo recuperi mezzo cuore.', 'bread,#d8a058', {floor: p => heal(p, 1)}],
+  ['t_formaggino', 'Formaggino', 'Ogni tanto un cuore', 'Pulita una stanza, a volte trovi un cuore.', 'cheese,#f5d060', {clear: p => { if (rnd() < 0.08) dropPickup(p.ch.noRed ? 'soul' : 'heart', p.x + rr(-40, 40), p.y + 30); }}],
+  ['t_mattone', 'Mezzo mattone', 'Bombe a ogni piano', 'All\'inizio di ogni piano trovi una bomba.', 'box,#a8483a', {floor: p => dropPickup('bomb', p.x + 20, p.y + 40)}],
+  ['t_portachiavi', 'Portachiavi', 'Chiavi a ogni piano', 'All\'inizio di ogni piano trovi una chiave.', 'key,#d9b24a', {floor: p => dropPickup('key', p.x - 20, p.y + 40)}],
+  ['t_scontrino', 'Scontrino lungo', 'Monete dalle stanze', 'Pulita una stanza, a volte trovi una moneta in più.', 'ticket,#f4ead0', {clear: p => { if (rnd() < 0.25) dropPickup('coin', p.x + rr(-40, 40), p.y + 30); }}],
+  ['t_pila', 'Pila scarica', 'Carica dalle stanze', 'Pulita una stanza, a volte l\'attivo si carica di più.', 'bolt,#f5c400', {clear: p => { if (rnd() < 0.2 && p.active && ACTIVES[p.active.id]) p.active.charge = Math.min(ACTIVES[p.active.id].charge, p.active.charge + 1); }}],
+  ['t_osso', 'Osso di pollo', 'Danno contro i boss', 'Danno +0,6 nelle stanze dei boss.', 'bone,#f4ecd8', {stat: {}, hit: (p, e) => { if (EN[e.type] && EN[e.type].boss) damageEnemy(e, 0.6, 0, 0, true); }}],
+  ['t_spilla', 'Spilla da balia', 'Colpo di ritorno', 'Quando ti colpiscono, i nemici attorno si prendono un anello di lacrime.', 'sword,#c8ccd2', {hurt: p => { playerRing(p.x, p.y, 8, dmgOf(p)); }}],
+  ['t_conchiglia', 'Conchiglia di Montedoglio', 'A volte il colpo non passa', 'Un colpo su otto non ti fa niente.', 'orb,#f0c8b0', {hurt: () => rnd() < 0.125}],
+  ['t_campanello', 'Campanello da bici', 'Spaventa i nemici', 'Entrando in una stanza, i nemici restano fermi un attimo.', 'bell,#c8ccd2', {enter: () => { for (const e of G.enemies) if (!EN[e.type].boss) e.cd = Math.max(e.cd || 0, 60), e.appear = Math.max(e.appear || 0, 40); }}],
+  ['t_sveglia', 'Sveglia rotta', 'Tempo lento a ogni stanza', 'Entrando in una stanza piena, il tempo rallenta per due secondi.', 'clock,#e8b64a', {enter: () => { if (G.enemies.length) G.slow = Math.max(G.slow, 120); }}],
+  ['t_mappa', 'Mappa strappata', 'Vedi il boss', 'A ogni piano vedi dov\'è la stanza del boss e quella del tesoro.', 'map,#e8dcc0', {floor: () => { for (const r of G.floor.rooms) if (r.type === 'boss' || r.type === 'treasure') r.seen = true; }}],
+  ['t_bussola', 'Bussolina', 'Le stanze speciali', 'A ogni piano vedi tutte le stanze speciali.', 'compass,#c8ccd2', {floor: () => { for (const r of G.floor.rooms) if (r.type !== 'normal' && r.type !== 'secret' && r.type !== 'supersegreta') r.seen = true; }}],
+  ['t_piuma', 'Piuma di piccione', 'Velocità e lacrime', 'Velocità +0,1 e gittata +0,5.', 'feather,#8d96a3', {stat: {speed: 0.1, range: 0.5}}],
+  ['t_ditale', 'Ditale', 'Lacrime più grandi', 'Danno +0,2 e lacrime un po\' più veloci.', 'ring,#c8ccd2', {stat: {dmg: 0.2, ss: 0.2}}],
+  ['t_biglia', 'Biglia di vetro', 'Lacrime veloci', 'Le lacrime volano più veloci.', 'ball,#5ab0e0', {stat: {ss: 0.4}}],
+  ['t_gomitolo', 'Gomitolo', 'Gittata e cadenza', 'Gittata +1 e cadenza un po\' più alta.', 'ball,#e86a8a', {stat: {range: 1, tears: 0.3}}],
+  ['t_dente', 'Dente da latte', 'Una moneta a ogni uccisione, a volte', 'Un nemico su venti lascia una moneta.', 'tooth,#f4f4f4', {kill: (p, e) => { if (rnd() < 0.05) dropPickup('coin', e.x, e.y); }}],
+  ['t_ossicino', 'Ossicino di gatto', 'Cuori neri dai boss', 'Battendo un boss trovi un cuore nero.', 'bone,#2a2228', {kill: (p, e) => { if (EN[e.type] && EN[e.type].boss) dropPickup('black', e.x + 20, e.y); }}],
+  ['t_peperoncino', 'Peperoncino', 'Danno quando sei ferito', 'Con un cuore o meno, danno +1.', 'fruit,#d02a2a', {hit: (p, e) => { if (hearts(p) <= 2) damageEnemy(e, 1, 0, 0, true); }}],
+  ['t_aglio', 'Spicchio d\'aglio', 'Tiene lontani i vampiri', 'I nemici che ti toccano si prendono un colpo.', 'nut,#f4ecd8', {hurt: (p, cause) => { for (const e of G.enemies) if (Math.hypot(e.x - p.x, e.y - p.y) < 60) damageEnemy(e, dmgOf(p) * 2, 0, 0); }}],
+  ['t_ombrellino', 'Ombrellino da cocktail', 'Fortuna nelle macchine', 'Fortuna +1 e le slot pagano di più.', 'flag,#f070a0', {stat: {luck: 1}}],
+  ['t_tessera', 'Tessera del Pek', 'Sconti', 'Fortuna +1 e un cuore di più alla fine di ogni piano.', 'ticket,#e86a8a', {stat: {luck: 1}, floor: p => { if (rnd() < 0.5) heal(p, 1); }}],
+  ['t_gettone', 'Gettone del telefono', 'Una moneta in più', 'Quando prendi una moneta, a volte ne arriva un\'altra.', 'coin,#c9952a', {clear: p => { if (rnd() < 0.15) dropPickup('coin', p.x, p.y + 40); }}],
+  ['t_francobollo', 'Francobollo', 'Carte dai piani', 'A volte, all\'inizio di un piano, trovi una carta.', 'ticket,#5a8ad8', {floor: p => { if (rnd() < 0.4) dropPickup('card', p.x, p.y + 50, {id: pick(CARDS).id}); }}],
+  ['t_cerotto', 'Cerotto', 'Cura dalle stanze', 'Pulita una stanza, a volte recuperi mezzo cuore.', 'drop,#f0c8a8', {clear: p => { if (rnd() < 0.1) heal(p, 1); }}],
+  ['t_pillolina', 'Pillolina bianca', 'Pillole dai piani', 'A volte, all\'inizio di un piano, trovi una pillola.', 'pill,#f4f4f4', {floor: p => { if (rnd() < 0.5) dropPickup('pill', p.x, p.y + 50, {c: ri(0, PILL_COLS.length - 1)}); }}],
+  ['t_lanternino', 'Lanternino', 'Mai al buio', 'Danno +0,2 e il buio non ti fa paura.', 'lantern,#ffd070', {stat: {dmg: 0.2}, floor: () => { if (G.floor && G.floor.curse === 'buio') G.floor.curse = null; }}],
+  ['t_stellina', 'Stellina adesiva', 'Tutto un po\' meglio', 'Danno, cadenza, velocità e gittata un poco in su.', 'star,#f5d020', {stat: {dmg: 0.15, tears: 0.15, speed: 0.05, range: 0.5}}],
+  ['t_lunetta', 'Lunetta di latta', 'Danno di notte', 'Danno +0,6 nelle stanze buie.', 'moon,#c8ccd2', {stat: {dmg: 0.25}}],
+  ['t_soletto', 'Sole di carta', 'Cura a ogni boss', 'Battendo un boss recuperi un cuore.', 'sun,#f5c400', {kill: (p, e) => { if (EN[e.type] && EN[e.type].boss) heal(p, 2); }}],
+  ['t_goccia', 'Goccia di vetro', 'Lacrime doppie a volte', 'Una volta su dieci spari due lacrime.', 'drop,#5ab0e0', {shoot: (p, t) => { if (rnd() < 0.1) G.tears.push({...t, vx: t.vx * 0.9 + t.vy * 0.15, vy: t.vy * 0.9 - t.vx * 0.15, hits: new Set()}); }}],
+  ['t_fungo', 'Funghetto secco', 'Più grande, più forte', 'Danno +0,3 e un poco più lento.', 'mushroom,#d02a2a', {stat: {dmg: 0.3, speed: -0.05}}],
+  ['t_uva', 'Acino d\'uva', 'Cadenza in su', 'Cadenza +0,4.', 'grapes,#7a3a9a', {stat: {tears: 0.4}}],
+  ['t_pera', 'Pera cotta', 'Gittata in su', 'Gittata +2.', 'pear,#c8b040', {stat: {range: 2}}],
+  ['t_piumino', 'Piumino della nonna', 'Attivi più carichi', 'All\'inizio di ogni piano l\'attivo è carico.', 'feather,#f4f4f4', {floor: p => { if (p.active && ACTIVES[p.active.id]) p.active.charge = ACTIVES[p.active.id].charge; }}],
+  ['t_teschietto', 'Teschietto di zucchero', 'Uccisioni esplosive a volte', 'Un nemico su dieci esplode quando muore.', 'skull,#f4ecd8', {kill: (p, e) => { if (rnd() < 0.1) playerRing(e.x, e.y, 6, dmgOf(p)); }}],
+  ['t_guanto', 'Guanto da forno', 'Il fuoco non brucia', 'I fuochi e le esplosioni ti fanno meno male... a volte niente.', 'glove,#d8a868', {hurt: (p, cause) => !!cause && /fuoco|barile|esplos|bomba/.test(cause) && rnd() < 0.6}],
+  ['t_corona', 'Coroncina di carta', 'Re della stanza', 'Pulendo una stanza senza farti colpire, a volte una moneta da cinque.', 'crown,#f5d020', {hurt: p => { p._crownHit = G.room; }, clear: p => { if (p._crownHit !== G.room && rnd() < 0.15) dropPickup('nickel', p.x, p.y + 40); }}],
+  ['t_scarpetta', 'Scarpetta da ballo', 'Velocità in su', 'Velocità +0,2.', 'shoe,#e86a8a', {stat: {speed: 0.2}}],
+  ['t_portafortuna', 'Ferro di cavallo d\'oro', 'Fortuna +3', 'Fortuna +3 finché lo tieni.', 'magnet,#e8b64a', {stat: {luck: 3}}],
+  ['t_gemmina', 'Gemmina falsa', 'Danno e fortuna', 'Danno +0,3 e fortuna +1.', 'gem,#d02a8a', {stat: {dmg: 0.3, luck: 1}}],
+  ['t_pozione', 'Boccetta vuota', 'Una pillola diventa buona', 'All\'inizio di ogni piano, mezzo cuore anima.', 'potion,#a070e0', {floor: p => { p.soul += 1; capHearts(p); }}],
+  ['t_bacchetta', 'Bacchetta del Mago Magio', 'Lacrime magiche', 'Una lacrima su dieci insegue e trapassa.', 'wand,#a070e0', {shoot: (p, t) => { if (rnd() < 0.1) { t.homing = true; t.pierce = true; } }}],
+  ['t_pergamena', 'Pergamena', 'Mappa a ogni piano', 'A ogni piano vedi la mappa (ma non le segrete).', 'scroll,#e8dcc0', {floor: () => revealMap(false)}],
+  ['t_portafogli', 'Portafogli vuoto', 'Più monete se sei povero', 'Con meno di cinque monete, pulire una stanza ne regala una.', 'wallet,#5a3a20', {clear: p => { if (p.coins < 5) dropPickup('coin', p.x, p.y + 40); }}],
+  ['t_telefonino', 'Telefonino', 'Chiamata d\'emergenza', 'Con mezzo cuore, entrando in una stanza ne recuperi uno.', 'phone,#3a3a40', {enter: p => { if (hearts(p) <= 1) heal(p, 2); }}],
+];
+for (const [id, name, sub, info, icon, perk] of BLOCK_TRINKETS) { const t = {id, name, sub, icon: id, col: '#f4f4f4', info}; TRINKETS.push(t); TRINKET[id] = t; PERK[id] = perk; BOSSART.iconFrom(id, icon); }
+
+/* ---------- fifteen challenges ---------- */
+const BLOCK_CHALLENGES = [
+  {id: 'vetro2', name: 'Fragile', ch: 'pinciu', desc: 'Un solo cuore anima e niente cuori rossi per tutta la partita.', setup: (run, p) => { p.maxRed = 0; p.red = 0; p.soul = 2; p.black = 0; p.ch = {...p.ch, noRed: true}; }},
+  {id: 'lumaca', name: 'Lumaca', ch: 'davidone', desc: 'Lentissimo, ma ogni lacrima vale per tre.', setup: (run, p) => { p.speed -= 0.4; p.mult = (p.mult || 1) * 3; }},
+  {id: 'fulmine', name: 'Il fulmine', ch: 'alex', desc: 'Velocissimo e con le lacrime che trapassano, ma un solo cuore.', setup: (run, p) => { p.speed += 0.6; p.flags.pierce = true; p.maxRed = 2; p.red = 2; p.soul = 0; }},
+  {id: 'cieco', name: 'Alla cieca', ch: 'gumi', desc: 'Ogni piano ha la maledizione del Cieco e dell\'Ignoto.', setup: run => { run.curses = ['cieco', 'ignoto']; }},
+  {id: 'labirinto', name: 'Smarrito', ch: 'maiga', desc: 'Niente mappa e stanze al buio, ma vedi le segrete.', setup: (run, p) => { run.curses = ['perso', 'buio']; p.flags.secrets = true; }},
+  {id: 'boomerang', name: 'Torna indietro', ch: 'pake', desc: 'Lacrime a boomerang che rimbalzano, ma gittata cortissima.', setup: (run, p) => { p.flags.boomerang = true; p.flags.bounce = true; p.range = 140; }},
+  {id: 'esploso', name: 'Tutto esplode', ch: 'faif', desc: 'Le lacrime esplodono, ma spari pianissimo.', setup: (run, p) => { p.flags.explode = true; p.delay += 14; }},
+  {id: 'spettro', name: 'Lo spettro', ch: 'raspo', desc: 'Voli e passi attraverso le rocce, ma il danno è dimezzato.', setup: (run, p) => { p.flags.flight = true; p.flags.spectral = true; p.mult = (p.mult || 1) * 0.5; }},
+  {id: 'quattro', name: 'Quattro venti', ch: 'manfro', desc: 'Spari in quattro direzioni, ma piano.', setup: (run, p) => { p.flags.quad = true; p.delay += 8; }},
+  {id: 'contadino', name: 'Il contadino', ch: 'ghera', desc: 'Parti con un ninnolo a caso e senza una moneta: quello che ti serve lo coltivi.', setup: (run, p) => { p.trinket = pick(BLOCK_TRINKETS)[0]; p.coins = 0; }},
+  {id: 'mendicante', name: 'Il mendicante', ch: 'capa', desc: 'Parti senza niente: niente bombe, niente chiavi, niente monete e l\'attivo scarico.', setup: (run, p) => { p.bombs = 0; p.keys = 0; p.coins = 0; if (p.active) p.active.charge = 0; }},
+  {id: 'gigante', name: 'Il gigante', ch: 'piero', desc: 'Lacrime enormi e potenti, ma lente e rare.', setup: (run, p) => { p.flags.big = true; p.mult = (p.mult || 1) * 2.2; p.delay += 12; p.ss = (p.ss || 1) * 0.7; }},
+  {id: 'velenoso', name: 'Veleno', ch: 'vina', desc: 'Ogni lacrima avvelena, ma il danno diretto è basso.', setup: (run, p) => { p.flags.poison = true; p.mult = (p.mult || 1) * 0.6; }},
+  {id: 'dannato', name: 'Il dannato', ch: 'gabbo', desc: 'Solo cuori neri e patti col diavolo a ogni piano.', setup: (run, p) => { p.maxRed = 0; p.red = 0; p.soul = 0; p.black = 6; p.flags.goat = true; p.ch = {...p.ch, noRed: true}; }},
+  {id: 'maratona', name: 'Maratona', ch: 'nuppobot', desc: 'Batti Piero entro 15 minuti, senza fermarti.', setup: run => { run.limit = 60 * 60 * 15; }},
+];
+for (const ch of BLOCK_CHALLENGES) { CHALLENGES.push(ch); CHAL[ch.id] = ch; }
 /* ================= profile, unlocks, achievements, collection and the cloud ================= */
 // Filled in by build.sh for the GitHub copy; empty here, so the artifact keeps everything on the device
 const FIREBASE = {projectId: 'biturgiasotterranea', apiKey: 'AIzaSyD9KcmjPkkVnEBc2wnghVJAifY5GIEqOkU'};
@@ -8238,6 +8827,9 @@ const BOSS_ACH = {
   faruk: 'Chiuso per ferie', jesus: 'Ultimo tuffo', mecha: 'Ultimo giro', sindaco: 'Mandato scaduto', robottone: 'Carica esaurita',
   piede: 'Pedicure', guardianocamp: 'Luce spenta',
   cenciarelli: 'Chiuso per sempre', botte: 'Vino versato', gattone: 'Sette vite finite', carpa: 'Pesce fuor d\'acqua', paperona: 'Squittio finale',
+  reblatte: 'Trono di briciole', muffamadre: 'Arieggiare i locali', cantiniere: 'Cantina chiusa', castellano: 'Il castello è caduto', dama: 'La torre è vuota',
+  pentolona: 'Acqua spenta', sfoglina: 'Sfoglia strappata', luccione: 'Pescato!', reginanutrie: 'Abdicazione', megapanino: 'Panino digerito',
+  friggitrice: 'Olio esausto', buttafuori: 'Stasera si entra', jukeboss: 'Disco rotto', trottolona: 'Giro finito', squalo: 'Fine dell\'estate',
 };
 const ACH = [
   {id: 'primo', name: 'Primo sangue', desc: 'Uccidi il tuo primo nemico.', icon: 'meat', test: P => P.stats.kills >= 1},
@@ -8330,7 +8922,9 @@ function meta(ev, data) {
   const st = P.stats, run = G.run;
   switch (ev) {
     case 'run': st.runs++; markSeen('a_' + run.ch.active); break;
-    case 'kill': st.kills++; break;
+    case 'kill': st.kills++; if (data) (st.killsBy = st.killsBy || {})[data] = (st.killsBy[data] || 0) + 1; break;
+    case 'room': if (!(st.roomsSeen = st.roomsSeen || {})[data]) { st.roomsSeen[data] = 1; checkProgress(); } return;
+    case 'machine': (st.machines = st.machines || {})[data] = (st.machines[data] || 0) + 1; break;
     case 'boss': st.bosses[data] = (st.bosses[data] || 0) + 1; if (!run.hitInBoss) st.flawless++; break;
     case 'floor': st.floorsBy[run.ch.id] = Math.max(st.floorsBy[run.ch.id] || 0, data); st.bestDepth = Math.max(st.bestDepth, data + 1); break;
     case 'item': markSeen(data); run.got = (run.got || 0) + 1; st.mostItems = Math.max(st.mostItems, G.p.items.length); if (G.p.flags.flight) st.flew = 1; break;
@@ -8464,6 +9058,41 @@ const Cloud = {
     return (await r.json()).filter(x => x.document).map(x => ({...fromFS({mapValue: {fields: x.document.fields}}), _id: x.document.name.split('/').pop()}));
   },
 };
+/* ================= a hundred more achievements for the big block ================= */
+// the bosses of the block add their own through BOSS_ACH; these are the rest
+{
+  const S = P => P.stats, kb = (P, t) => ((S(P).killsBy || {})[t] || 0), mach = (P, t) => ((S(P).machines || {})[t] || 0);
+  const add = (id, name, desc, icon, test) => ACH.push({id, name, desc, icon, test});
+  for (const ch of BLOCK_CHALLENGES) add('c_' + ch.id, ch.name + ' superata', 'Vinci la sfida «' + ch.name + '».', 'trophy', P => P.chal.includes(ch.id));
+  const ROOM_ACH = {biblioteca: ['Topo di biblioteca', 'scroll', 'in una biblioteca'], caveau: ['Scassinatore', 'keys', 'in un caveau'], dadi: ['Alea iacta est', 'cards', 'nella stanza dei dadi'], camera: ['Pisolino', 'heart', 'in una camera da letto'], mercato: ['Affari loschi', 'pentagram', 'nel mercato nero'], errore: ['Errore 404', 'skull', 'nella stanza dell\'errore']};
+  for (const [t, [name, icon, where]] of Object.entries(ROOM_ACH)) add('r_' + t, name, 'Entra ' + where + '.', icon, P => !!(S(P).roomsSeen || {})[t]);
+  const MACH_ACH = [['diavoletto', 'Patto da poco', 'Fai un\'offerta al mendicante del diavolo.', 'goat'], ['chiavaro', 'Mazzo di chiavi', 'Dai una chiave al mendicante delle chiavi.', 'keys'], ['bombarolo', 'Artificiere', 'Dai una bomba al mendicante delle bombe.', 'bomb'],
+    ['indovina', 'Il futuro è scritto', 'Fatti leggere il futuro dall\'indovina.', 'saint'], ['gru', 'Mano ferma', 'Gioca alla gru.', 'cup'], ['campanelle', 'Dov\'è la pallina?', 'Gioca alle tre campanelle.', 'coinhole']];
+  for (const [t, name, desc, icon] of MACH_ACH) add('m_' + t, name, desc, icon, P => mach(P, t) >= 1);
+  const KILL_ACH = [['blatta', 'Disinfestatore', 'blatte'], ['ragnone', 'Aracnofobia', 'ragnoni'], ['muffa', 'Antimuffa', 'muffe'], ['armatura', 'Ferraglia', 'armature vuote'], ['balestra', 'Arcieri senza arco', 'balestre'],
+    ['mattarello', 'Spianatore', 'mattarelli'], ['uovo', 'Frittata', 'uova'], ['pentola', 'Coperchio saltato', 'pentole'], ['luccio', 'Pescatore della domenica', 'lucci'], ['granchio', 'Granchiata', 'granchi'],
+    ['patatina', 'Fritto misto', 'patatine'], ['spiedino', 'Grigliata', 'spiedini'], ['oliva', 'Aperitivo', 'olive'], ['jukebox', 'Silenzio in sala', 'jukebox'], ['trottola', 'Giramondo', 'trottole'],
+    ['palloncino', 'Festa finita', 'palloncini'], ['medusa', 'Bagnasciuga', 'meduse'], ['specchio', 'Sette anni di guai', 'specchi'], ['ratto', 'Derattizzatore', 'ratti di fogna'], ['biscotto', 'Inzuppato', 'biscotti']];
+  for (const [t, name, plural] of KILL_ACH) add('k_' + t, name, 'Uccidi 15 ' + plural + '.', 'skull', P => kb(P, t) >= 15);
+  for (const [n, name] of [[2500, 'Mattatoio'], [5000, 'Leggenda delle cantine'], [10000, 'Non ne resta nessuno']]) add('kills' + n, name, 'Uccidi ' + n.toLocaleString('it-IT') + ' nemici in totale.', 'crossbow', P => S(P).kills >= n);
+  for (const [n, name] of [[10, 'Habitué'], [50, 'Di casa'], [100, 'Ci abito'], [250, 'Pietra delle cantine']]) add('runs' + n, name, 'Gioca ' + n + ' partite.', 'map', P => S(P).runs >= n);
+  for (const [n, name] of [[10, 'Rialzati'], [50, 'Duro a morire']]) add('deaths' + n, name, 'Muori ' + n + ' volte.', 'skull', P => (S(P).deaths || 0) >= n);
+  for (const [n, name] of [[5, 'Abitudine alla vittoria'], [10, 'Campione'], [25, 'Fuoriclasse'], [50, 'Imbattibile'], [100, 'Il signore delle cantine']]) add('wins' + n, name, 'Vinci ' + n + ' partite.', 'trophy', P => S(P).wins >= n);
+  for (const [n, name] of [[5, 'Gusto per il difficile'], [10, 'Masochista']]) add('hard' + n, name, 'Vinci ' + n + ' partite in modalità Difficile.', 'pentagram', P => (S(P).hardWins || 0) >= n);
+  for (const ch of CHARS) add('w3_' + ch.id, 'Tre volte ' + ch.name, 'Vinci tre partite con ' + ch.name + '.', 'medal', P => (S(P).winsBy[ch.id] || 0) >= 3);
+  const MISC = [['secrets10', 'Cercatore', 'Trova 10 stanze segrete.', 'map', P => S(P).secrets >= 10], ['secrets50', 'Muri di cartone', 'Trova 50 stanze segrete.', 'map', P => S(P).secrets >= 50],
+    ['rocks50', 'Spaccapietre', 'Fai saltare 50 rocce.', 'bomb', P => S(P).rocks >= 50], ['rocks200', 'Cava di pietra', 'Fai saltare 200 rocce.', 'bombsack', P => S(P).rocks >= 200],
+    ['bought25', 'Cliente fisso', 'Compra 25 cose nei negozi.', 'wallet', P => S(P).bought >= 25], ['bought100', 'Spendaccione', 'Compra 100 cose nei negozi.', 'wallet', P => S(P).bought >= 100],
+    ['donated100', 'Santo patrono', 'Dona 100 monete ai mendicanti.', 'coinhole', P => S(P).donated >= 100], ['deals10', 'Anima venduta', 'Fai 10 patti col diavolo.', 'goat', P => S(P).deals >= 10],
+    ['angels5', 'Amico degli angeli', 'Prendi 5 doni dall\'angelo.', 'wings', P => (S(P).angels || 0) >= 5], ['cards50', 'Mazziere', 'Usa 50 carte.', 'cards', P => (S(P).cards || 0) >= 50],
+    ['pills50', 'Farmacista', 'Prendi 50 pillole.', 'onion', P => (S(P).pillsUsed || 0) >= 50], ['champs50', 'Caccia ai campioni', 'Uccidi 50 nemici campioni.', 'medal', P => (S(P).champs || 0) >= 50],
+    ['tr5', 'Mutante', 'Trasformati 5 volte.', 'halo', P => (S(P).transforms || 0) >= 5], ['tr10', 'Metamorfosi', 'Trasformati 10 volte.', 'halo', P => (S(P).transforms || 0) >= 10],
+    ['coins99', 'Paperone', 'Arriva a 99 monete in una partita.', 'coinhole', P => S(P).coinsMax >= 99], ['items30', 'Accumulatore', 'Tieni 30 oggetti in una partita.', 'mantle', P => S(P).mostItems >= 30],
+    ['minis10', 'Peccatore pentito', 'Sconfiggi 10 tra peccati e cavalieri.', 'cross', P => (S(P).minis || 0) >= 10], ['minis50', 'Esorcista', 'Sconfiggi 50 tra peccati e cavalieri.', 'cross', P => (S(P).minis || 0) >= 50],
+    ['newboss', 'Facce nuove', 'Sconfiggi 5 dei boss nuovi.', 'medal', P => 'reblatte muffamadre cantiniere castellano dama pentolona sfoglina luccione reginanutrie megapanino friggitrice buttafuori jukeboss trottolona squalo'.split(' ').filter(b => (S(P).bosses[b] || 0) > 0).length >= 5],
+    ['allrooms', 'Agente immobiliare', 'Entra in tutte e sei le stanze nuove.', 'keys', P => Object.keys(NEW_ROOMS).every(t => (S(P).roomsSeen || {})[t])]];
+  for (const [id, name, desc, icon, test] of MISC) add(id, name, desc, icon, test);
+}
 /* ================= input, menus and the loop ================= */
 const BODY_FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
 const DISPLAY_FONT = '"Grenze Gotisch", "Palatino Linotype", Georgia, serif';
@@ -8614,6 +9243,7 @@ function showSheet(id, state) {
   if (id === 'feed' || id === 'feedlist') { if (state !== 'pause') Music.play('menu'); }
   resize();
 }
+let menuFxReady = false;
 function showTitle() {
   if (!PROF) { showLogin(); return; }
   showSheet('title');
@@ -8621,6 +9251,7 @@ function showTitle() {
   syncContinue();
   drawCast();
   $('tStart').focus({preventScroll: true});
+  if (menuFxReady) menuFx(); // the particles on the first screen (25-pixui.js)
 }
 function showLogin() {
   showSheet('login');
@@ -8650,6 +9281,7 @@ function setMode(hard) {
   $('hardIn').checked = hard; store('bs-hard', hard);
   $('modeN').setAttribute('aria-checked', !hard); $('modeH').setAttribute('aria-checked', hard);
   $('select').classList.toggle('hardmode', hard);
+  setPixText($('select').querySelector('h2'), 'Chi scende?', 22, hard ? 'red' : 'gold', 72); // the heading turns red with the mode
 }
 $('modeN').addEventListener('click', () => { setMode(false); Snd.tone(440, 0.08, 'triangle', 0.06); });
 $('modeH').addEventListener('click', () => { setMode(true); Snd.tone(110, 0.25, 'sawtooth', 0.08, 70); });
@@ -8732,7 +9364,7 @@ function selectChar(i) {
 }
 function fillCard(i) {
   const ch = CHARS[i], locked = !isUnlocked(ch.id);
-  setPixText($('selName'), ch.name, 18, 'ink', 56);
+  setPixText($('selName'), ch.name, 22, 'ink', 56);
   $('selCard').classList.toggle('locked', locked);
   $('selLock').hidden = !locked;
   if (locked) $('selLock').textContent = 'Bloccato. ' + UNLOCKS[ch.id].cond;
@@ -9317,12 +9949,19 @@ function paint(w, h, fn) { // a sprite pixel by pixel: fn gives '#hex', [r, g, b
 }
 // a 5×7 pixel alphabet for the signs
 const FONT5 = {A: '.###.#...##...#######...##...##...#', B: '####.#...##...#####.#...##...#####.', C: '.###.#...##....#....#....#...#.###.', D: '####.#...##...##...##...##...#####.', E: '######....#....####.#....#....#####', F: '######....#....####.#....#....#....',
-  G: '.###.#...##....#.####...##...#.####', H: '#...##...##...########...##...##...#', I: '.###...#....#....#....#....#...###.', L: '#....#....#....#....#....#....#####', M: '#...###.###.#.##.#.##...##...##...#', N: '#...###..##.#.##..###...##...##...#',
+  G: '.###.#...##....#.####...##...#.####', H: '#...##...##...#######...##...##...#', I: '.###...#....#....#....#....#...###.', L: '#....#....#....#....#....#....#####', M: '#...###.###.#.##.#.##...##...##...#', N: '#...###..##.#.##..###...##...##...#',
   O: '.###.#...##...##...##...##...#.###.', P: '####.#...##...#####.#....#....#....', R: '####.#...##...#####.#.#..#..#.#...#', S: '.#####....#.....###.....#....#####.', T: '#####..#....#....#....#....#....#..', U: '#...##...##...##...##...##...#.###.',
-  V: '#...##...##...##...##...#.#.#...#..', Z: '#####....#...#...#...#...#....#####', '.': '......................#....#......', ' ': ''};
+  V: '#...##...##...##...##...#.#.#...#..', Z: '#####....#...#...#...#...#....#####', '.': '..........................##...##..', ' ': '',
+  J: '..###...#....#....#....#.#..#..##..', K: '#...##..#.#.#..##...#.#..#..#.#...#', Q: '.###.#...##...##...##.#.##..#..##.#', W: '#...##...##...##.#.##.#.##.#.#.#.#.', X: '#...##...#.#.#...#...#.#.#...##...#', Y: '#...##...#.#.#...#....#....#....#..',
+  '!': '..#....#....#....#....#.........#..', '?': '.###.#...#....#...#...#.........#..', "'": '..#....#...........................', ',': '......................#....#...#...', '-': '................###................',
+  0: '.###.#...##..###.#.###..##...#.###.', 1: '..#...##....#....#....#....#...###.', 2: '.###.#...#....#...#...#...#...#####', 3: '####.....#....#.###.....#....#####.', 4: '...#...##..#.#.#..#.#####...#....#.',
+  5: '######....####.....#....##...#.###.', 6: '.###.#....#....####.#...##...#.###.', 7: '#####....#...#...#...#....#....#...', 8: '.###.#...##...#.###.#...##...#.###.', 9: '.###.#...##...#.####....##...#.###.'};
 function ptext(c, str, x, y, col, k = 1, shadow) { // left-aligned at x; returns the width
   let cx = x;
-  for (const ch of str.toUpperCase().replace('À', 'A')) { const g = FONT5[ch] || ''; for (let i = 0; i < g.length; i++) if (g[i] === '#') { if (shadow) P1(c, cx + (i % 5) * k + k, y + Math.floor(i / 5) * k + k, k, k, shadow); P1(c, cx + (i % 5) * k, y + Math.floor(i / 5) * k, k, k, col); } cx += 6 * k; }
+  for (const raw of str) { const d = raw.normalize('NFD'), ch = d[0].toUpperCase(), acc = d[1], g = FONT5[ch] || '';
+    for (let i = 0; i < g.length; i++) if (g[i] === '#') { if (shadow) P1(c, cx + (i % 5) * k + k, y + Math.floor(i / 5) * k + k, k, k, shadow); P1(c, cx + (i % 5) * k, y + Math.floor(i / 5) * k, k, k, col); }
+    if (acc === '\u0300' || acc === '\u0301') { const l = acc === '\u0300'; P1(c, cx + (l ? 1 : 3) * k, y - 3 * k, k, k, col); P1(c, cx + 2 * k, y - 2 * k, k, k, col); } // the accent, a little stroke above
+    cx += 6 * k; }
   return cx - x - k;
 }
 const ptextW = (str, k = 1) => str.length * 6 * k - k;
@@ -9637,42 +10276,57 @@ function playEnding(ch, onEnd) {
   Snd.init(); Music.play('ending');
   playFilm('ending', ENDING_LEN, (c, w, h, t) => drawEnding(c, w, h, t, ch), onEnd, false);
 }
+const PIXEL_FONT = '"Pixelify Sans", "Barlow Condensed", sans-serif';
+// the scene is painted on the opening's pixel canvas, then blown up sharp; the ending is typed on a scrap of paper below
+const paperSpr = () => spr('paper', () => { const [cv, x] = paint(448, 56, (i, j) => { const top = 2 + Math.round(hash(i >> 2, 1) * 2), bot = 53 - Math.round(hash(i >> 2, 2) * 2);
+  if (j < top || j > bot) return; const n = hash(i, j); return j === top ? '#fff8e8' : j === bot ? '#a8987a' : n > 0.97 ? '#d8c8a8' : n < 0.02 ? '#f8f0dc' : (i + j) % 2 && n > 0.6 ? '#e4d6b8' : '#e9dcc0'; }); return pixOutline(cv, [42, 29, 20]); });
 function drawEnding(c, w, h, t, ch) {
-  const s = Math.min(w / STAGE_W, h / STAGE_H), ox = (w - STAGE_W * s) / 2, oy = (h - STAGE_H * s) / 2;
-  const a = Math.min(smooth(t / 0.8), smooth((ENDING_LEN - t) / 0.8));
-  c.save(); c.translate(ox, oy); c.scale(s, s); c.beginPath(); c.rect(0, 0, STAGE_W, STAGE_H); c.clip();
-  c.globalAlpha = a;
-  c.save(); c.translate(0, -26); (ENDING_SCENES[ch.id] || ENDING_SCENES.vina)(c, t, ch); c.restore(); // lifted so the paper strip doesn't cover anyone
-  // the paper strip with the ending, typed out
-  const txt = ENDINGS[ch.id], n = Math.floor(clamp((t - 1) / 5.5, 0, 1) * txt.length);
-  c.fillStyle = 'rgba(233,220,192,.94)'; c.fillRect(20, 216, 440, 46); c.fillStyle = '#2a1d14'; c.font = `600 11.5px ${BODY_FONT}`; c.textAlign = 'left';
-  wrapText(c, txt.slice(0, n), 30, 230, 420, 13);
+  const C = sigCanvas(); C.fillStyle = '#070504'; C.fillRect(0, 0, STAGE_W, STAGE_H);
+  C.save(); C.translate(0, -26); (ENDING_SCENES[ch.id] || ENDING_SCENES.vina)(C, t, ch); C.restore(); // lifted so the paper doesn't cover anyone
+  C.drawImage(paperSpr(), 16, 210);
+  const s = Math.min(w / STAGE_W, h / STAGE_H), ox = (w - STAGE_W * s) / 2, oy = (h - STAGE_H * s) / 2, a = Math.min(smooth(t / 0.8), smooth((ENDING_LEN - t) / 0.8));
+  c.save(); c.globalAlpha = a; c.imageSmoothingEnabled = false; c.drawImage(SIG.cv, Math.round(ox), Math.round(oy), Math.round(STAGE_W * s), Math.round(STAGE_H * s));
+  const txt = ENDINGS[ch.id], n = Math.floor(clamp((t - 1) / 5.5, 0, 1) * txt.length); // typed out
+  c.fillStyle = '#2a1d14'; c.font = `500 ${Math.round(10.5 * s)}px ${PIXEL_FONT}`; c.textAlign = 'left';
+  wrapText(c, txt.slice(0, n), ox + 30 * s, oy + 226 * s, 424 * s, 12 * s);
   c.restore();
-  c.globalAlpha = 1;
 }
 function wrapText(c, txt, x, y, maxW, lh) {
   let line = '', yy = y;
   for (const word of txt.split(' ')) { const test = line ? line + ' ' + word : word; if (c.measureText(test).width > maxW && line) { c.fillText(line, x, yy); line = word; yy += lh; } else line = test; }
   if (line) c.fillText(line, x, yy);
 }
-function hero(c, ch, x, y, sc, o = {}) { const items = G.run && ch === G.run.ch && G.p ? G.p.items : []; outlined(c, x, y - 12 * sc, 50 * sc, cc => drawChar(cc, ch, x, y, {scale: sc, shadow: false, items, ...o})); ell(c, x, y + 14 * sc, 11 * sc, 3.5 * sc, 'rgba(0,0,0,.35)'); } // the hero wears everything picked up this run
-function bubble(c, x, y, txt, size = 13) {
-  c.font = `800 ${size}px ${DISPLAY_FONT}`; const wd = c.measureText(txt).width + 16;
-  c.fillStyle = '#f4f0e6'; rrect(c, x - wd / 2, y - size - 6, wd, size + 12, 6); c.fill(); c.beginPath(); c.moveTo(x - 4, y + 6); c.lineTo(x + 2, y + 13); c.lineTo(x + 6, y + 6); c.fill();
-  c.fillStyle = '#2a1d14'; c.textAlign = 'center'; c.fillText(txt, x, y + 1);
+function hero(c, ch, x, y, sc, o = {}) { // the hero's sprite at a whole number of pixels, wearing everything picked up this run
+  const items = G.run && ch === G.run.ch && G.p ? G.p.items : [], k = Math.max(1, Math.round(sc / PIXK)), wv = Math.sin(o.walk || 0);
+  const sp = heroSpr(ch, o.face || 's', o.walk ? (wv > 0.3 ? 1 : wv < -0.3 ? 2 : 0) : 0, {items}), feet = y + 13.5 * sc;
+  PE(c, Math.round(x), Math.round(feet), 9 * k, 2.5 * k, 'rgba(0,0,0,.4)'); c.save(); c.imageSmoothingEnabled = false; c.drawImage(sp, Math.round(x - 13 * k), Math.round(feet - 31 * k), 26 * k, 34 * k); c.restore();
 }
-// backdrops
-function skyNight(c, top = '#0e1430', bottom = '#3a2448') { const g = c.createLinearGradient(0, 0, 0, 200); g.addColorStop(0, top); g.addColorStop(1, bottom); c.fillStyle = g; c.fillRect(0, 0, STAGE_W, STAGE_H); for (let i = 0; i < 40; i++) { c.globalAlpha *= 0.6 + hash(i, 1) * 0.4; circ(c, hash(i, 2) * STAGE_W, hash(i, 3) * 120, hash(i, 4) * 1.2 + 0.3, '#fff6d8'); c.globalAlpha /= 0.6 + hash(i, 1) * 0.4; } }
-function skySunset(c) { const g = c.createLinearGradient(0, 0, 0, 200); g.addColorStop(0, '#3a2a5a'); g.addColorStop(0.6, '#e07a4a'); g.addColorStop(1, '#f5c46a'); c.fillStyle = g; c.fillRect(0, 0, STAGE_W, STAGE_H); circ(c, 360, 150, 26, '#ffe0a0'); }
-function town(c, lit) { // Sansepolcro's roofs and the tower of Berta
-  const cols = ['#2a1d24', '#33222a', '#281a20'];
-  for (let i = 0; i < 9; i++) { const x = i * 56 - 10, hgt = 60 + hash(i, 9) * 50; c.fillStyle = cols[i % 3]; c.fillRect(x, 190 - hgt, 58, hgt); c.beginPath(); c.moveTo(x - 4, 190 - hgt); c.lineTo(x + 29, 178 - hgt); c.lineTo(x + 62, 190 - hgt); c.fill(); if (lit) for (let k = 0; k < 4; k++) if (hash(i, k) > 0.4) { c.fillStyle = 'rgba(255,200,110,.75)'; c.fillRect(x + 8 + (k % 2) * 26, 200 - hgt + Math.floor(k / 2) * 22, 10, 12); } }
-  c.fillStyle = '#1e141a'; c.fillRect(214, 40, 34, 150); for (let k = 0; k < 4; k++) c.fillRect(212 + k * 9, 32, 6, 9);
+function bubble(c, x, y, txt, size = 13) { // a speech bubble lettered in the sign alphabet
+  const k = size >= 15 ? 2 : 1, wd = ptextW(txt, k) + 10, hh = 7 * k + 8, x0 = Math.round(x - wd / 2), y0 = Math.round(y - hh + 2);
+  P1(c, x0 - 1, y0, wd + 2, hh, '#2a1d14'); P1(c, x0, y0 - 1, wd, hh + 2, '#2a1d14'); P1(c, x0, y0, wd, hh, '#f4f0e6'); P1(c, x0, y0 + hh - 2, wd, 2, '#d8d0c0');
+  for (let i = 0; i < 5; i++) { P1(c, x - 2 + i, y0 + hh + i, 4 - i, 1, '#f4f0e6'); P1(c, x - 3 + i, y0 + hh + i, 1, 1, '#2a1d14'); P1(c, x + 2, y0 + hh + i, 1, 1, '#2a1d14'); }
+  ptext(c, txt, x0 + 5, y0 + 4, '#2a1d14', k);
 }
-function ground(c, col, y = 190) { c.fillStyle = col; c.fillRect(0, y, STAGE_W, STAGE_H - y); c.fillStyle = 'rgba(0,0,0,.18)'; for (let x = 0; x < STAGE_W; x += 24) c.fillRect(x, y, 1, STAGE_H - y); }
-function roomBack(c, wall, floor) { c.fillStyle = wall; c.fillRect(0, 0, STAGE_W, STAGE_H); c.fillStyle = 'rgba(0,0,0,.15)'; for (let y = 0; y < 190; y += 20) for (let x = (y / 20 % 2) * 20 - 40; x < STAGE_W; x += 40) c.fillRect(x, y, 38, 18); ground(c, floor); }
-function lamp(c, x, on = true) { c.fillStyle = '#1a1418'; c.fillRect(x - 2, 90, 4, 100); c.fillRect(x - 10, 88, 20, 4); if (on) { const g = c.createRadialGradient(x, 96, 2, x, 96, 60); g.addColorStop(0, 'rgba(255,210,120,.55)'); g.addColorStop(1, 'rgba(255,210,120,0)'); c.fillStyle = g; c.fillRect(x - 60, 36, 120, 160); circ(c, x, 96, 5, '#ffd88a'); } }
-function confetti(c, t, n = 40) { for (let i = 0; i < n; i++) { const x = (hash(i, 5) * STAGE_W + Math.sin(t + i) * 10) % STAGE_W, y = ((hash(i, 6) * 300 + t * (30 + hash(i, 7) * 30)) % 230) - 20; c.fillStyle = ['#d2202a', '#e8b64a', '#2b5aa8', '#25d366', '#f4f4f4'][i % 5]; c.save(); c.translate(x, y); c.rotate(t * 3 + i); c.fillRect(-2, -1, 4, 2.5); c.restore(); } }
+// backdrops, in pixels like the opening
+function skyNight(c, top = '#0e1430', bottom = '#3a2448') { c.drawImage(skySpr('n' + top + bottom, [[0, top], [1, bottom]], STAGE_H), 0, 0); stars(c, performance.now() / 1000, 60, 140); }
+function skySunset(c) { c.drawImage(skySpr('sunset', [[0, '#3a2a5a'], [0.4, '#a8505a'], [0.62, '#e07a4a'], [0.8, '#f5c46a'], [1, '#f8d890']], STAGE_H), 0, 0); glow(c, 360, 150, 70, '#6a3a10'); PE(c, 360, 150, 26, 26, '#ffe8a8', '#ffd080', '#fff8e0'); for (const y of [146, 156, 166]) P1(c, 334, y, 52, 1, '#f8c070'); }
+const townSpr = lit => spr('town' + lit, () => { const [cv, x] = mkc(STAGE_W, 200);
+  for (let i = 0; i < 9; i++) { const x0 = i * 56 - 10, hgt = 60 + Math.round(hash(i, 9) * 50), top = 190 - hgt, col = ['#2a1d24', '#33222a', '#281a20'][i % 3];
+    PR(x, x0, top, 58, hgt, col); PR(x, x0 + 56, top, 2, hgt, shade(col, -0.3)); for (let r = 0; r < 13; r++) PR(x, x0 - 4 + r * 2.5, top - r, 66 - r * 5, 1, r % 3 ? '#4a2a24' : '#5a3428'); // the roof, row by row
+    for (let k = 0; k < 4; k++) if (hash(i, k) > 0.4) { const wx = x0 + 8 + (k % 2) * 26, wy = top + 10 + Math.floor(k / 2) * 22; if (lit) { PR(x, wx, wy, 10, 12, '#ffd078'); PR(x, wx, wy + 6, 10, 6, '#f0a050'); PR(x, wx + 4, wy, 2, 12, '#6a3a1a'); } else PR(x, wx, wy, 10, 12, '#140c10'); }
+    if (hash(i, 7) > 0.5) PR(x, x0 + 40, top - 16, 6, 10, shade(col, -0.2)); }
+  PR(x, 214, 40, 34, 150, '#1e141a'); PR(x, 242, 40, 6, 150, '#140c10'); for (let k = 0; k < 4; k++) PR(x, 212 + k * 9, 32, 6, 9, '#1e141a'); PR(x, 228, 60, 6, 10, lit ? '#ffd078' : '#0a0608'); // the tower of Berta
+  return cv; });
+function town(c, lit) { c.drawImage(townSpr(!!lit), 0, 0); }
+const groundSpr = (col, hgt) => spr('ground' + col + hgt, () => paint(STAGE_W, hgt, (i, j) => { const rows = [0, 5, 11, 18, 26, 35, 45, 56, 68, 81, 95]; let r = 0; while (rows[r + 1] !== undefined && j >= rows[r + 1]) r++;
+  const w2 = 14 + r * 5, bx = (i + r * 9) % w2, by = j - rows[r], m = hash(Math.floor((i + r * 9) / w2), r); if (by === 0 || bx === 0) return shade(col, -0.35); if (by === 1) return shade(col, 0.15); return m > 0.8 ? shade(col, 0.08) : m < 0.2 ? shade(col, -0.12) : col; })[0]);
+function ground(c, col, y = 190) { c.drawImage(groundSpr(col, STAGE_H + 30 - y), 0, y); }
+const wallSpr2 = col => spr('rwall' + col, () => paint(STAGE_W, 200, (i, j) => { const row = Math.floor(j / 12), by = j % 12, bx = (i + (row % 2) * 13) % 26, m = hash(Math.floor((i + (row % 2) * 13) / 26), row), n = hash(i, j);
+  if (by === 0 || bx === 0) return shade(col, -0.3); let k = m > 0.75 ? 0.08 : m < 0.25 ? -0.08 : 0; if (by === 1) k += 0.08; if (by === 11 || bx === 25) k -= 0.1; if (n > 0.95) k -= 0.08; return shade(col, k); })[0]);
+function roomBack(c, wall, floor) { c.drawImage(wallSpr2(wall), 0, 0); P1(c, 0, 186, STAGE_W, 4, shade(wall, -0.4)); ground(c, floor); }
+function lamp(c, x, on = true) { if (on) { glow(c, x - 7, 104, 50, '#7a5a28'); glow(c, x - 7, 104, 18, '#c8a050'); } c.drawImage(lampSpr(), Math.round(x - 10), 92); }
+function confetti(c, t, n = 40) { for (let i = 0; i < n; i++) { const x = (hash(i, 5) * STAGE_W + Math.sin(t + i) * 10) % STAGE_W, y = ((hash(i, 6) * 300 + t * (30 + hash(i, 7) * 30)) % 230) - 20, f = Math.floor(t * 6 + i) % 3;
+  P1(c, x, y, f === 1 ? 1 : 3, f === 1 ? 3 : 2, ['#d2202a', '#e8b64a', '#2b5aa8', '#25d366', '#f4f4f4'][i % 5]); } }
 const walkTo = (t, t0, t1, x0, x1) => lerp(x0, x1, smooth((t - t0) / (t1 - t0)));
 const ENDING_SCENES = {
   vina(c, t, ch) { // out of the cellar, into Via XX Settembre at night
@@ -9703,160 +10357,4 @@ const ENDING_SCENES = {
     hero(c, ch, 160, 196, 2.3, {face: 'e'}); drawIcon(c, 'phone', '#25d366', 196, 150, 26);
     const secs = Math.floor(clamp((t - 1) / 7, 0, 1) * 600);
     c.fillStyle = '#dcf8c6'; rrect(c, 220, 70, 150, 34, 8); c.fill(); c.fillStyle = '#25d366'; for (let i = 0; i < 22; i++) { const hh = 3 + Math.abs(Math.sin(t * 6 + i)) * 10; c.fillRect(236 + i * 5, 87 - hh / 2, 3, hh); }
-    c.fillStyle = '#2a1d14'; c.font = `700 10px ${BODY_FONT}`; c.textAlign = 'right'; c.fillText(Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0'), 364, 100);
-    ['vina', 'gumi', 'alex'].forEach((id, i) => { const f = CHARS.find(x => x.id === id); hero(c, f, 330 + i * 45, 200, 1.3, {face: 'n'}); if (t > 4) { c.fillStyle = '#efe3cf'; c.font = `700 10px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText('z', 338 + i * 45, 140 - ((t * 10 + i * 5) % 12)); } });
-  },
-  alex(c, t, ch) { // back at the bar for the evening shift
-    roomBack(c, '#4a3020', '#5a3e28');
-    c.fillStyle = '#c9cdd2'; rrect(c, 60, 110, 70, 50, 4); c.fill(); c.fillStyle = '#3a3a3e'; c.fillRect(70, 122, 50, 16);
-    hero(c, ch, 240, 170, 2.2); // behind the counter
-    c.fillStyle = '#6b4226'; c.fillRect(0, 160, STAGE_W, 34); c.fillStyle = '#8a5a34'; c.fillRect(0, 156, STAGE_W, 6);
-    const cx = walkTo(t, 2.5, 4, 240, 360); drawIcon(c, 'cup', '#f4f4f4', cx, 146, 22);
-    c.globalAlpha *= 0.5; for (let i = 0; i < 3; i++) circ(c, cx - 3 + i * 3, 130 - ((t * 14 + i * 6) % 18), 2.5, '#efe3cf'); c.globalAlpha /= 0.5;
-    if (t > 4.5) bubble(c, 240, 92, 'Un caffè? Arriva subito.', 12);
-  },
-  gumi(c, t, ch) { // blows on the barrel, counts the bullets
-    skyNight(c, '#101418', '#2a2a34'); town(c, true); ground(c, '#2e2a2e'); lamp(c, 380);
-    hero(c, ch, 220, 196, 2.4, {face: 'e'}); drawIcon(c, 'gun', '#f0c040', 262, 150, 26);
-    c.globalAlpha *= 0.5; for (let i = 0; i < 4; i++) circ(c, 274 + Math.sin(t * 2 + i) * 3, 138 - ((t * 12 + i * 7) % 26), 2 + i * 0.6, '#c8ccc0'); c.globalAlpha /= 0.5;
-    const n = Math.floor(clamp((t - 3) / 4, 0, 1) * 9); for (let i = 0; i < n; i++) { c.fillStyle = '#c9952a'; rrect(c, 120 + i * 14, 70, 6, 16, 2); c.fill(); c.fillStyle = '#f0c040'; c.fillRect(120 + i * 14, 66, 6, 6); }
-  },
-  capa(c, t, ch) { // red shorts, a Campari, the whole piazza
-    skySunset(c); town(c, false); ground(c, '#9a7a5a');
-    const raise = smooth((t - 2) / 1);
-    hero(c, ch, 240, 196, 2.6);
-    c.save(); c.translate(272, 150 - raise * 40); c.rotate(-0.3 * raise); drawIcon(c, 'bottle', '#d2202a', 0, 0, 24); c.restore();
-    if (t > 3.2) { confetti(c, t, 24); bubble(c, 240, 82, 'Cin cin!', 15); if (once('cin')) { Snd.tone(1568, 0.3, 'triangle', 0.06); Snd.tone(2093, 0.4, 'triangle', 0.05, null, 0.08); } }
-  },
-  davidone(c, t, ch) { // off to the Alpe della Luna
-    skyNight(c, '#14183a', '#4a3a6a'); circ(c, 380, 60, 22, '#f4ead6'); circ(c, 388, 54, 20, '#14183a');
-    c.fillStyle = '#2a2448'; c.beginPath(); c.moveTo(0, 190); c.lineTo(120, 90); c.lineTo(220, 170); c.lineTo(330, 70); c.lineTo(480, 180); c.lineTo(480, 270); c.lineTo(0, 270); c.fill();
-    c.fillStyle = '#1a1830'; c.beginPath(); c.moveTo(0, 230); c.quadraticCurveTo(240, 160, 480, 200); c.lineTo(480, 270); c.lineTo(0, 270); c.fill();
-    const x = walkTo(t, 0.5, 9, 80, 420), y = 226 - (x - 80) * 0.08;
-    c.fillStyle = '#6b4a2a'; rrect(c, x - 22, y - 46, 14, 22, 3); c.fill();
-    hero(c, ch, x, y, 1.9, {walk: t * 8, face: 'e'});
-  },
-  nuppobot(c, t, ch) { // saves the game and switches off for the night
-    roomBack(c, '#20262c', '#2a3036');
-    hero(c, ch, 240, 196, 2.6);
-    const msg = t < 3 ? 'SALVATAGGIO…' : 'MISSIONE COMPIUTA';
-    c.fillStyle = '#16323a'; rrect(c, 150, 60, 180, 40, 6); c.fill(); c.fillStyle = '#5ff2ff'; c.font = `700 14px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText(msg, 240, 85);
-    if (t < 3) { c.fillStyle = '#5ff2ff'; c.fillRect(170, 92, 140 * clamp((t - 0.5) / 2.3, 0, 1), 4); }
-    if (t > 6) { c.fillStyle = `rgba(0,0,0,${smooth((t - 6) / 1.5) * 0.8})`; c.fillRect(0, 0, STAGE_W, STAGE_H); if (t > 7.6) { c.fillStyle = '#5ff2ff'; c.font = `800 14px ${DISPLAY_FONT}`; c.fillText('Bip.', 240, 150); } if (once('bip') && t > 7.6) Snd.tone(1200, 0.15, 'square', 0.04); }
-  },
-  pake(c, t, ch) { // a new card: Piero della Francesca, holographic
-    roomBack(c, '#1f2a44', '#2a3450');
-    hero(c, ch, 150, 196, 2.3, {face: 'e'});
-    c.save(); c.translate(300, 120 + Math.sin(t * 1.5) * 6); c.scale(Math.cos(t * 1.4), 1);
-    const g = c.createLinearGradient(-30, -42, 30, 42); ['#ff6a8a', '#ffd34a', '#6aff9a', '#6ad3ff', '#b07ad6'].forEach((col, i) => g.addColorStop(((i / 4 + t * 0.2) % 1 + 1) % 1, col));
-    c.fillStyle = g; rrect(c, -30, -42, 60, 84, 5); c.fill(); c.fillStyle = 'rgba(20,10,10,.75)'; c.fillRect(-22, -32, 44, 50); c.restore();
-    c.save(); c.translate(300, 126 + Math.sin(t * 1.5) * 6); c.scale(Math.cos(t * 1.4) * 0.62, 0.62); drawEnemyBody(c, {type: 'piero', t: t * 60, hp: 1, max: 1, r: 26}, 1, t * 60); c.restore(); // the master himself on the card
-    c.fillStyle = '#efe3cf'; c.font = `700 11px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText('Edizione limitata', 300, 186);
-  },
-  manfro(c, t, ch) { // to the E45 on the motorbike, shouting
-    skySunset(c);
-    c.fillStyle = '#3a3a3e'; c.fillRect(0, 170, STAGE_W, 60); c.fillStyle = '#e8b64a'; for (let x = -((t * 240) % 60); x < STAGE_W; x += 60) c.fillRect(x, 198, 30, 4);
-    ground(c, '#5a7a3a', 230);
-    const x = t < 2 ? 120 : walkTo(t, 2, 6, 120, 560);
-    hero(c, ch, x, 172, 2, {face: 'e'}); drawIcon(c, 'moto', '#d2202a', x, 186, 64);
-    if (t > 1.2 && t < 4.2) bubble(c, x + 10, 110, 'BANZAI!', 16);
-    if (once('vroom') && t > 2) { Snd.tone(90, 1.2, 'sawtooth', 0.1, 260); Snd.noise(0.8, 0.1, 700); }
-    for (let i = 0; i < 3; i++) { drawIcon(c, 'bird', '#8d96a3', 60 + i * 26, 240 + Math.abs(Math.sin(t * 4 + i)) * -3, 20); for (let k = 0; k < 4; k++) ell(c, 54 + i * 26 + k * 4, 252, 1.6, 0.8, '#f8f6ee'); }
-  },
-  faif(c, t, ch) { // a beer, the moustache, the trophy, the whole stadium
-    c.fillStyle = '#1a2a1a'; c.fillRect(0, 0, STAGE_W, STAGE_H);
-    for (let i = 0; i < 160; i++) circ(c, (i % 40) * 12 + 6, 30 + Math.floor(i / 40) * 18 + Math.sin(t * 5 + i) * 2, 5, ['#d2202a', '#141417', '#e0b090', '#f4f4f4'][i % 4]);
-    c.fillStyle = '#3a8a3a'; c.fillRect(0, 110, STAGE_W, 160); c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 2; c.beginPath(); c.arc(240, 200, 50, 0, 7); c.stroke();
-    const up = smooth((t - 2.5) / 1);
-    hero(c, ch, 240, 196, 2.5);
-    drawIcon(c, 'trophy', '#e8b64a', 240, 120 - up * 30, 40); drawIcon(c, 'can', '#e8a83a', 280, 160, 20);
-    if (t > 3.5) { confetti(c, t); if (once('crowd')) Snd.noise(2.5, 0.12, 1800, 0.6); }
-  },
-  ghera(c, t, ch) { // a windowsill full of pots, the plants growing as you watch, spores floating up
-    c.fillStyle = '#2a3a2a'; c.fillRect(0, 0, STAGE_W, 270); c.fillStyle = '#3a2a1e'; c.fillRect(0, 186, STAGE_W, 84); c.fillStyle = '#6a4a2a'; c.fillRect(300, 150, 220, 12);
-    for (let i = 0; i < 4; i++) { const px = 320 + i * 52, grow = smooth((t - 0.6 - i * 0.4) / 1.2); c.fillStyle = '#c8683a'; c.fillRect(px - 12, 128, 24, 22); c.fillStyle = '#3a8a3a'; c.fillRect(px - 1, 128 - 40 * grow, 3, 40 * grow);
-      if (grow > 0.3) for (const s of [-1, 1]) ell(c, px + s * 8, 128 - 26 * grow, 8 * grow, 3.5 * grow, '#4ab04a'); }
-    hero(c, ch, 200, 196, 2.5);
-    for (let i = 0; i < 18; i++) { const x = (hash(i, 3) * STAGE_W + Math.sin(t + i) * 14) % STAGE_W, y = 270 - ((hash(i, 4) * 270 + t * 30) % 270); circ(c, x, y, 2, 'rgba(232,240,208,.75)'); }
-  },
-  gabbo(c, t, ch) { // London in the rain: the clock tower, the umbrella opening, one long note on the shofar
-    c.fillStyle = '#1a2236'; c.fillRect(0, 0, STAGE_W, 270); c.fillStyle = '#2a3046'; c.fillRect(0, 196, STAGE_W, 74);
-    c.fillStyle = '#121828'; c.fillRect(60, 60, 40, 136); c.fillRect(66, 40, 28, 24); c.beginPath(); c.moveTo(66, 40); c.lineTo(80, 14); c.lineTo(94, 40); c.fill(); // the clock tower
-    circ(c, 80, 74, 10, '#e8d8a0'); c.strokeStyle = '#3a3020'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(80, 74); c.lineTo(80, 67); c.moveTo(80, 74); c.lineTo(85, 76); c.stroke();
-    c.fillStyle = '#121828'; c.fillRect(380, 120, 90, 76); c.fillRect(392, 96, 18, 26); c.fillRect(440, 96, 18, 26); // and a bridge's towers
-    const open = smooth((t - 1.8) / 0.8);
-    hero(c, ch, 240, 196, 2.5);
-    c.save(); c.translate(272, 96); c.fillStyle = '#1a1a22'; c.fillRect(-1.5, 0, 3, 70);
-    c.beginPath(); c.ellipse(0, 0, 62 * open + 6, 28 * open + 4, 0, Math.PI, 0); c.fill(); c.fillStyle = '#2a2a36'; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(0, -28 * open - 4); c.lineTo(i * 25 * open, 0); c.lineTo(i * 25 * open + 4, 0); c.fill(); } c.restore(); // the umbrella over his head
-    if (t > 3.2) { drawIcon(c, 'horn', '#d9b27a', 196, 150, 48); if (once('shofar')) { Snd.tone(233, 1.4, 'sawtooth', 0.1, 220); Snd.tone(349, 1, 'sawtooth', 0.07, 360, 0.6); } }
-    c.strokeStyle = 'rgba(170,200,230,.45)'; c.lineWidth = 1; c.beginPath(); for (let i = 0; i < 70; i++) { const x = (hash(i, 1) * STAGE_W + t * 40) % STAGE_W, y = (hash(i, 2) * 270 + t * 260) % 270; if (Math.abs(x - 272) < 64 * open && y > 96 && y < 200) continue; c.moveTo(x, y); c.lineTo(x - 3, y + 10); } c.stroke(); // rain, but not under the umbrella
-  },
-  maiga(c, t, ch) { // closes the laptop, one last joint, one beer
-    roomBack(c, '#22242a', '#2c2e34');
-    c.fillStyle = '#5a3a1e'; c.fillRect(250, 160, 160, 8); c.fillRect(256, 168, 6, 22); c.fillRect(398, 168, 6, 22);
-    const shut = smooth((t - 2.5) / 0.8);
-    c.fillStyle = '#3a3d44'; c.fillRect(300, 152, 70, 8);
-    c.save(); c.translate(300, 152); c.scale(1, 1 - shut * 0.95); c.fillStyle = '#2a2d34'; c.fillRect(0, -44, 70, 44); c.fillStyle = '#0c1a10'; c.fillRect(4, -40, 62, 36);
-    if (shut < 0.5) { c.fillStyle = '#5aff7a'; for (let i = 0; i < 6; i++) c.fillRect(8, -36 + i * 5, 10 + hash(i, Math.floor(t * 3)) * 40, 2); } c.restore();
-    hero(c, ch, 200, 196, 2.4, {face: 'e'});
-    drawIcon(c, 'can', '#e8a83a', 392, 146, 20);
-    if (t > 4) { c.globalAlpha *= 0.4; for (let i = 0; i < 6; i++) circ(c, 220 + Math.sin(t + i) * 10, 140 - ((t * 10 + i * 12) % 70), 6 + i, '#b8c0a8'); c.globalAlpha /= 0.4; }
-    if (t > 6) bubble(c, 200, 100, 'Bug risolto.', 13);
-  },
-};
-startIntro();
-/* ================= the menus in pixels: titles and buttons lettered like the opening's title, on the cellar wall ================= */
-// the lettering is the display font drawn small, cut to hard pixels, then given a colour ramp, a depth and an outline, and blown up sharp
-const PIXW = {
-  title: {fill: ['#ffffff', '#fff4dc', '#efe0c0', '#d8c098'], depth: ['#b3121b', '#6a0a10'], out: '#140606'},
-  gold: {fill: ['#fff6c0', '#f8d470', '#e8b64a', '#b8862a'], depth: ['#7a3a10', '#3a1a06'], out: '#140806'},
-  ink: {fill: ['#4a2e1c', '#3a2416', '#2a1a10', '#2a1a10'], depth: ['#c0a47e', '#c0a47e'], out: null},
-};
-function pixWordSpr(text, px, style = 'title') {
-  const st = PIXW[style], fonts = document.fonts ? document.fonts.status : '';
-  return spr('pw' + style + px + fonts + text, () => {
-    const [m, mx] = mkc(8, 8); mx.font = `800 ${px}px ${DISPLAY_FONT}`;
-    const tw = Math.ceil(mx.measureText(text).width) + 4, th = Math.ceil(px * 1.25), dep = Math.max(1, Math.round(px / 9)), pad = 2;
-    m.width = tw; m.height = th; mx.font = `800 ${px}px ${DISPLAY_FONT}`; mx.fillStyle = '#fff'; mx.textBaseline = 'alphabetic'; mx.fillText(text, 2, Math.round(px * 0.95));
-    const md = mx.getImageData(0, 0, tw, th).data, on = (i, j) => i >= 0 && j >= 0 && i < tw && j < th && md[(j * tw + i) * 4 + 3] > 110;
-    let top = th, bot = 0; for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) if (on(i, j)) { top = Math.min(top, j); bot = Math.max(bot, j); }
-    return paint(tw + pad * 2, th + dep + pad * 2, (x, y) => { const i = x - pad, j = y - pad;
-      if (on(i, j)) { const k = (j - top) / Math.max(1, bot - top); return !on(i, j - 1) ? st.fill[0] : st.fill[k < 0.4 ? 1 : k < 0.75 ? 2 : 3]; }
-      for (let d = 1; d <= dep; d++) if (on(i, j - d)) return st.depth[d <= dep / 2 ? 0 : 1];
-      if (st.out && (on(i - 1, j) || on(i + 1, j) || on(i, j + 1) || on(i, j - dep - 1) || on(i - 1, j - dep) || on(i + 1, j - dep))) return st.out; })[0];
-  });
-}
-const PIXEL_TEXT = new Map(); // element → how to letter it, so it can be redone when the fonts arrive or the screen turns
-function pixCanvas(sp, k) { const cv = document.createElement('canvas'); cv.width = sp.width; cv.height = sp.height; cv.className = 'pw'; cv.setAttribute('aria-hidden', 'true'); cv.getContext('2d').drawImage(sp, 0, 0); cv.style.width = sp.width * k + 'px'; cv.style.height = sp.height * k + 'px'; return cv; }
-function setPixText(el, text, px = 18, style = 'gold', cssH = 44) {
-  if (!el) return;
-  PIXEL_TEXT.set(el, [text, px, style, cssH]);
-  const sp = pixWordSpr(text, px, style), k = Math.max(1, Math.round(cssH / sp.height));
-  const sr = document.createElement('span'); sr.className = 'sr'; sr.textContent = text;
-  el.replaceChildren(sr, pixCanvas(sp, Math.min(k, Math.max(1, Math.floor((innerWidth - 40) / sp.width)))));
-}
-function pixTitle() { // the big title on the first screen, the same sprite the opening ends on, with its subtitle in the sign alphabet
-  const h1 = document.querySelector('#title .title'); if (!h1) return;
-  const sp = titleSpr(), k = Math.max(1, Math.floor(Math.min((innerWidth - 24) / sp.width, innerHeight * 0.38 / sp.height)));
-  const sub = 'LE CANTINE DI SANSEPOLCRO', [sc, sx] = mkc(ptextW(sub) + 2, 9); ptext(sx, sub, 0, 0, '#e8b64a', 1, '#2a1406');
-  const sr = document.createElement('span'); sr.className = 'sr'; sr.textContent = 'Biturgia Sotterranea, le cantine di Sansepolcro';
-  const t = pixCanvas(sp, k), s2 = pixCanvas(sc, Math.max(1, Math.min(k + 1, Math.floor((innerWidth - 24) / sc.width)))); s2.style.marginTop = '10px';
-  h1.replaceChildren(sr, t, s2);
-}
-const PIX_ARROW = d => `<svg viewBox="0 0 8 11" width="24" height="33" shape-rendering="crispEdges" aria-hidden="true"><path fill="#140606" d="${d > 0 ? 'M1 0h2v1h1v1h1v1h1v1h1v3h-1v1h-1v1h-1v1h-1v1h-2z' : 'M7 0h-2v1h-1v1h-1v1h-1v1h-1v3h1v1h1v1h1v1h1v1h2z'}"/><path fill="#efe3cf" d="${d > 0 ? 'M2 1h1v1h1v1h1v1h1v3h-1v1h-1v1h-1v1h-1z' : 'M6 1h-1v1h-1v1h-1v1h-1v3h1v1h1v1h1v1h1z'}"/><path fill="#e8b64a" d="${d > 0 ? 'M2 6h1v1h1v1h-1v1h-1z' : 'M6 6h-1v1h-1v1h1v1h1z'}"/></svg>`;
-function pixMenus() {
-  pixTitle();
-  for (const h of document.querySelectorAll('.sheet h2')) setPixText(h, (PIXEL_TEXT.get(h) || [h.textContent])[0], 18, 'gold', 46);
-  for (const b of document.querySelectorAll('.big')) setPixText(b, (PIXEL_TEXT.get(b) || [b.textContent.trim()])[0], 15, 'title', 50);
-  const sn = $('selName'); if (sn && PIXEL_TEXT.has(sn)) setPixText(sn, PIXEL_TEXT.get(sn)[0], 18, 'ink', 56);
-  for (const b of document.querySelectorAll('.modeBtn b')) setPixText(b, (PIXEL_TEXT.get(b) || [b.textContent])[0], 14, b.closest('.hard') ? 'title' : 'gold', 40);
-  const L = $('carL'), R = $('carR'); if (L) L.innerHTML = PIX_ARROW(-1); if (R) R.innerHTML = PIX_ARROW(1);
-  const wall = 'url(' + caveSpr().toDataURL() + ')'; // the cellar wall from the opening behind the first screens, darkened so the words stand out
-  for (const id of ['title', 'select', 'login']) { const el = $(id); if (el) { el.style.backgroundImage = `radial-gradient(ellipse at 50% 38%, rgba(19,13,11,.35) 0%, rgba(19,13,11,.86) 75%), ${wall}`; el.classList.add('wall'); } }
-}
-pixMenus();
-if (document.fonts) document.fonts.ready.then(() => { SPR.delete('titlePix'); pixMenus(); });
-let pixResizeT = 0; window.addEventListener('resize', () => { clearTimeout(pixResizeT); pixResizeT = setTimeout(pixMenus, 150); });
-</script>
-
-</html>
+    c.fillStyle = '#2a1d14'; c.fon
