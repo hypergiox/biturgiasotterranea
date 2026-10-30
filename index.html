@@ -9822,7 +9822,7 @@ function saveRun() {
   try {
     const fl = G.floor, idx = new Map(fl.rooms.map((r, i) => [r, i])), links = [], li = new Map();
     const rooms = fl.rooms.map(r => {
-      const o = {...r, grid: Array.from(r.grid), hp: Array.from(r.hp), doors: {}, bg: null, decals: r.decals.slice(-60)};
+      const o = {...r, grid: Array.from(r.grid), hp: Array.from(r.hp), doors: {}, bg: null, _pix: undefined, decals: r.decals.slice(-60)}; // the painted backdrop is a canvas: it can't be saved, it's painted again
       for (const [d, l] of Object.entries(r.doors)) {
         if (!li.has(l)) { li.set(l, links.length); links.push({a: idx.get(l.a), b: idx.get(l.b), kind: l.kind, hidden: l.hidden, locked: l.locked}); }
         o.doors[d] = li.get(l);
@@ -9842,7 +9842,7 @@ function resumeRun() {
     Snd.init(); Music.start();
     const ch = CHARS.find(c => c.id === s.run.ch), rng = makeRng(1); rng.restore(s.run.rng);
     G.run = {...s.run, ch, rng, taken: new Set(s.run.taken), pillKnown: new Set(s.run.pillKnown)};
-    const rooms = s.floor.rooms.map(o => ({...o, grid: Uint8Array.from(o.grid), hp: Uint8Array.from(o.hp), doors: {}, bg: null}));
+    const rooms = s.floor.rooms.map(o => ({...o, grid: Uint8Array.from(o.grid), hp: Uint8Array.from(o.hp), doors: {}, bg: null, _pix: undefined})); // older saves kept an empty backdrop: paint it again
     const links = s.floor.links.map(l => ({...l, a: rooms[l.a], b: rooms[l.b]}));
     s.floor.rooms.forEach((o, i) => { for (const [d, n] of Object.entries(o.doors)) rooms[i].doors[d] = links[n]; });
     const depth = s.floor.depth;
