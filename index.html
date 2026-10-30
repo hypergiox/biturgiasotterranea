@@ -10357,4 +10357,207 @@ const ENDING_SCENES = {
     hero(c, ch, 160, 196, 2.3, {face: 'e'}); drawIcon(c, 'phone', '#25d366', 196, 150, 26);
     const secs = Math.floor(clamp((t - 1) / 7, 0, 1) * 600);
     c.fillStyle = '#dcf8c6'; rrect(c, 220, 70, 150, 34, 8); c.fill(); c.fillStyle = '#25d366'; for (let i = 0; i < 22; i++) { const hh = 3 + Math.abs(Math.sin(t * 6 + i)) * 10; c.fillRect(236 + i * 5, 87 - hh / 2, 3, hh); }
-    c.fillStyle = '#2a1d14'; c.fon
+    c.fillStyle = '#2a1d14'; c.font = `700 10px ${BODY_FONT}`; c.textAlign = 'right'; c.fillText(Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0'), 364, 100);
+    ['vina', 'gumi', 'alex'].forEach((id, i) => { const f = CHARS.find(x => x.id === id); hero(c, f, 330 + i * 45, 200, 1.3, {face: 'n'}); if (t > 4) { c.fillStyle = '#efe3cf'; c.font = `700 10px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText('z', 338 + i * 45, 140 - ((t * 10 + i * 5) % 12)); } });
+  },
+  alex(c, t, ch) { // back at the bar for the evening shift
+    roomBack(c, '#4a3020', '#5a3e28');
+    c.fillStyle = '#c9cdd2'; rrect(c, 60, 110, 70, 50, 4); c.fill(); c.fillStyle = '#3a3a3e'; c.fillRect(70, 122, 50, 16);
+    hero(c, ch, 240, 170, 2.2); // behind the counter
+    c.fillStyle = '#6b4226'; c.fillRect(0, 160, STAGE_W, 34); c.fillStyle = '#8a5a34'; c.fillRect(0, 156, STAGE_W, 6);
+    const cx = walkTo(t, 2.5, 4, 240, 360); drawIcon(c, 'cup', '#f4f4f4', cx, 146, 22);
+    c.globalAlpha *= 0.5; for (let i = 0; i < 3; i++) circ(c, cx - 3 + i * 3, 130 - ((t * 14 + i * 6) % 18), 2.5, '#efe3cf'); c.globalAlpha /= 0.5;
+    if (t > 4.5) bubble(c, 240, 92, 'Un caffè? Arriva subito.', 12);
+  },
+  gumi(c, t, ch) { // blows on the barrel, counts the bullets
+    skyNight(c, '#101418', '#2a2a34'); town(c, true); ground(c, '#2e2a2e'); lamp(c, 380);
+    hero(c, ch, 220, 196, 2.4, {face: 'e'}); drawIcon(c, 'gun', '#f0c040', 262, 150, 26);
+    c.globalAlpha *= 0.5; for (let i = 0; i < 4; i++) circ(c, 274 + Math.sin(t * 2 + i) * 3, 138 - ((t * 12 + i * 7) % 26), 2 + i * 0.6, '#c8ccc0'); c.globalAlpha /= 0.5;
+    const n = Math.floor(clamp((t - 3) / 4, 0, 1) * 9); for (let i = 0; i < n; i++) { c.fillStyle = '#c9952a'; rrect(c, 120 + i * 14, 70, 6, 16, 2); c.fill(); c.fillStyle = '#f0c040'; c.fillRect(120 + i * 14, 66, 6, 6); }
+  },
+  capa(c, t, ch) { // red shorts, a Campari, the whole piazza
+    skySunset(c); town(c, false); ground(c, '#9a7a5a');
+    const raise = smooth((t - 2) / 1);
+    hero(c, ch, 240, 196, 2.6);
+    c.save(); c.translate(272, 150 - raise * 40); c.rotate(-0.3 * raise); drawIcon(c, 'bottle', '#d2202a', 0, 0, 24); c.restore();
+    if (t > 3.2) { confetti(c, t, 24); bubble(c, 240, 82, 'Cin cin!', 15); if (once('cin')) { Snd.tone(1568, 0.3, 'triangle', 0.06); Snd.tone(2093, 0.4, 'triangle', 0.05, null, 0.08); } }
+  },
+  davidone(c, t, ch) { // off to the Alpe della Luna
+    skyNight(c, '#14183a', '#4a3a6a'); circ(c, 380, 60, 22, '#f4ead6'); circ(c, 388, 54, 20, '#14183a');
+    c.fillStyle = '#2a2448'; c.beginPath(); c.moveTo(0, 190); c.lineTo(120, 90); c.lineTo(220, 170); c.lineTo(330, 70); c.lineTo(480, 180); c.lineTo(480, 270); c.lineTo(0, 270); c.fill();
+    c.fillStyle = '#1a1830'; c.beginPath(); c.moveTo(0, 230); c.quadraticCurveTo(240, 160, 480, 200); c.lineTo(480, 270); c.lineTo(0, 270); c.fill();
+    const x = walkTo(t, 0.5, 9, 80, 420), y = 226 - (x - 80) * 0.08;
+    c.fillStyle = '#6b4a2a'; rrect(c, x - 22, y - 46, 14, 22, 3); c.fill();
+    hero(c, ch, x, y, 1.9, {walk: t * 8, face: 'e'});
+  },
+  nuppobot(c, t, ch) { // saves the game and switches off for the night
+    roomBack(c, '#20262c', '#2a3036');
+    hero(c, ch, 240, 196, 2.6);
+    const msg = t < 3 ? 'SALVATAGGIO…' : 'MISSIONE COMPIUTA';
+    c.fillStyle = '#16323a'; rrect(c, 150, 60, 180, 40, 6); c.fill(); c.fillStyle = '#5ff2ff'; c.font = `700 14px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText(msg, 240, 85);
+    if (t < 3) { c.fillStyle = '#5ff2ff'; c.fillRect(170, 92, 140 * clamp((t - 0.5) / 2.3, 0, 1), 4); }
+    if (t > 6) { c.fillStyle = `rgba(0,0,0,${smooth((t - 6) / 1.5) * 0.8})`; c.fillRect(0, 0, STAGE_W, STAGE_H); if (t > 7.6) { c.fillStyle = '#5ff2ff'; c.font = `800 14px ${DISPLAY_FONT}`; c.fillText('Bip.', 240, 150); } if (once('bip') && t > 7.6) Snd.tone(1200, 0.15, 'square', 0.04); }
+  },
+  pake(c, t, ch) { // a new card: Piero della Francesca, holographic
+    roomBack(c, '#1f2a44', '#2a3450');
+    hero(c, ch, 150, 196, 2.3, {face: 'e'});
+    c.save(); c.translate(300, 120 + Math.sin(t * 1.5) * 6); c.scale(Math.cos(t * 1.4), 1);
+    const g = c.createLinearGradient(-30, -42, 30, 42); ['#ff6a8a', '#ffd34a', '#6aff9a', '#6ad3ff', '#b07ad6'].forEach((col, i) => g.addColorStop(((i / 4 + t * 0.2) % 1 + 1) % 1, col));
+    c.fillStyle = g; rrect(c, -30, -42, 60, 84, 5); c.fill(); c.fillStyle = 'rgba(20,10,10,.75)'; c.fillRect(-22, -32, 44, 50); c.restore();
+    c.save(); c.translate(300, 126 + Math.sin(t * 1.5) * 6); c.scale(Math.cos(t * 1.4) * 0.62, 0.62); drawEnemyBody(c, {type: 'piero', t: t * 60, hp: 1, max: 1, r: 26}, 1, t * 60); c.restore(); // the master himself on the card
+    c.fillStyle = '#efe3cf'; c.font = `700 11px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText('Edizione limitata', 300, 186);
+  },
+  manfro(c, t, ch) { // to the E45 on the motorbike, shouting
+    skySunset(c);
+    c.fillStyle = '#3a3a3e'; c.fillRect(0, 170, STAGE_W, 60); c.fillStyle = '#e8b64a'; for (let x = -((t * 240) % 60); x < STAGE_W; x += 60) c.fillRect(x, 198, 30, 4);
+    ground(c, '#5a7a3a', 230);
+    const x = t < 2 ? 120 : walkTo(t, 2, 6, 120, 560);
+    hero(c, ch, x, 172, 2, {face: 'e'}); drawIcon(c, 'moto', '#d2202a', x, 186, 64);
+    if (t > 1.2 && t < 4.2) bubble(c, x + 10, 110, 'BANZAI!', 16);
+    if (once('vroom') && t > 2) { Snd.tone(90, 1.2, 'sawtooth', 0.1, 260); Snd.noise(0.8, 0.1, 700); }
+    for (let i = 0; i < 3; i++) { drawIcon(c, 'bird', '#8d96a3', 60 + i * 26, 240 + Math.abs(Math.sin(t * 4 + i)) * -3, 20); for (let k = 0; k < 4; k++) ell(c, 54 + i * 26 + k * 4, 252, 1.6, 0.8, '#f8f6ee'); }
+  },
+  faif(c, t, ch) { // a beer, the moustache, the trophy, the whole stadium
+    c.fillStyle = '#1a2a1a'; c.fillRect(0, 0, STAGE_W, STAGE_H);
+    for (let i = 0; i < 160; i++) circ(c, (i % 40) * 12 + 6, 30 + Math.floor(i / 40) * 18 + Math.sin(t * 5 + i) * 2, 5, ['#d2202a', '#141417', '#e0b090', '#f4f4f4'][i % 4]);
+    c.fillStyle = '#3a8a3a'; c.fillRect(0, 110, STAGE_W, 160); c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 2; c.beginPath(); c.arc(240, 200, 50, 0, 7); c.stroke();
+    const up = smooth((t - 2.5) / 1);
+    hero(c, ch, 240, 196, 2.5);
+    drawIcon(c, 'trophy', '#e8b64a', 240, 120 - up * 30, 40); drawIcon(c, 'can', '#e8a83a', 280, 160, 20);
+    if (t > 3.5) { confetti(c, t); if (once('crowd')) Snd.noise(2.5, 0.12, 1800, 0.6); }
+  },
+  ghera(c, t, ch) { // a windowsill full of pots, the plants growing as you watch, spores floating up
+    c.fillStyle = '#2a3a2a'; c.fillRect(0, 0, STAGE_W, 270); c.fillStyle = '#3a2a1e'; c.fillRect(0, 186, STAGE_W, 84); c.fillStyle = '#6a4a2a'; c.fillRect(300, 150, 220, 12);
+    for (let i = 0; i < 4; i++) { const px = 320 + i * 52, grow = smooth((t - 0.6 - i * 0.4) / 1.2); c.fillStyle = '#c8683a'; c.fillRect(px - 12, 128, 24, 22); c.fillStyle = '#3a8a3a'; c.fillRect(px - 1, 128 - 40 * grow, 3, 40 * grow);
+      if (grow > 0.3) for (const s of [-1, 1]) ell(c, px + s * 8, 128 - 26 * grow, 8 * grow, 3.5 * grow, '#4ab04a'); }
+    hero(c, ch, 200, 196, 2.5);
+    for (let i = 0; i < 18; i++) { const x = (hash(i, 3) * STAGE_W + Math.sin(t + i) * 14) % STAGE_W, y = 270 - ((hash(i, 4) * 270 + t * 30) % 270); circ(c, x, y, 2, 'rgba(232,240,208,.75)'); }
+  },
+  gabbo(c, t, ch) { // London in the rain: the clock tower, the umbrella opening, one long note on the shofar
+    c.fillStyle = '#1a2236'; c.fillRect(0, 0, STAGE_W, 270); c.fillStyle = '#2a3046'; c.fillRect(0, 196, STAGE_W, 74);
+    c.fillStyle = '#121828'; c.fillRect(60, 60, 40, 136); c.fillRect(66, 40, 28, 24); c.beginPath(); c.moveTo(66, 40); c.lineTo(80, 14); c.lineTo(94, 40); c.fill(); // the clock tower
+    circ(c, 80, 74, 10, '#e8d8a0'); c.strokeStyle = '#3a3020'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(80, 74); c.lineTo(80, 67); c.moveTo(80, 74); c.lineTo(85, 76); c.stroke();
+    c.fillStyle = '#121828'; c.fillRect(380, 120, 90, 76); c.fillRect(392, 96, 18, 26); c.fillRect(440, 96, 18, 26); // and a bridge's towers
+    const open = smooth((t - 1.8) / 0.8);
+    hero(c, ch, 240, 196, 2.5);
+    c.save(); c.translate(272, 96); c.fillStyle = '#1a1a22'; c.fillRect(-1.5, 0, 3, 70);
+    c.beginPath(); c.ellipse(0, 0, 62 * open + 6, 28 * open + 4, 0, Math.PI, 0); c.fill(); c.fillStyle = '#2a2a36'; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(0, -28 * open - 4); c.lineTo(i * 25 * open, 0); c.lineTo(i * 25 * open + 4, 0); c.fill(); } c.restore(); // the umbrella over his head
+    if (t > 3.2) { drawIcon(c, 'horn', '#d9b27a', 196, 150, 48); if (once('shofar')) { Snd.tone(233, 1.4, 'sawtooth', 0.1, 220); Snd.tone(349, 1, 'sawtooth', 0.07, 360, 0.6); } }
+    c.strokeStyle = 'rgba(170,200,230,.45)'; c.lineWidth = 1; c.beginPath(); for (let i = 0; i < 70; i++) { const x = (hash(i, 1) * STAGE_W + t * 40) % STAGE_W, y = (hash(i, 2) * 270 + t * 260) % 270; if (Math.abs(x - 272) < 64 * open && y > 96 && y < 200) continue; c.moveTo(x, y); c.lineTo(x - 3, y + 10); } c.stroke(); // rain, but not under the umbrella
+  },
+  maiga(c, t, ch) { // closes the laptop, one last joint, one beer
+    roomBack(c, '#22242a', '#2c2e34');
+    c.fillStyle = '#5a3a1e'; c.fillRect(250, 160, 160, 8); c.fillRect(256, 168, 6, 22); c.fillRect(398, 168, 6, 22);
+    const shut = smooth((t - 2.5) / 0.8);
+    c.fillStyle = '#3a3d44'; c.fillRect(300, 152, 70, 8);
+    c.save(); c.translate(300, 152); c.scale(1, 1 - shut * 0.95); c.fillStyle = '#2a2d34'; c.fillRect(0, -44, 70, 44); c.fillStyle = '#0c1a10'; c.fillRect(4, -40, 62, 36);
+    if (shut < 0.5) { c.fillStyle = '#5aff7a'; for (let i = 0; i < 6; i++) c.fillRect(8, -36 + i * 5, 10 + hash(i, Math.floor(t * 3)) * 40, 2); } c.restore();
+    hero(c, ch, 200, 196, 2.4, {face: 'e'});
+    drawIcon(c, 'can', '#e8a83a', 392, 146, 20);
+    if (t > 4) { c.globalAlpha *= 0.4; for (let i = 0; i < 6; i++) circ(c, 220 + Math.sin(t + i) * 10, 140 - ((t * 10 + i * 12) % 70), 6 + i, '#b8c0a8'); c.globalAlpha /= 0.4; }
+    if (t > 6) bubble(c, 200, 100, 'Bug risolto.', 13);
+  },
+};
+startIntro();
+/* ================= the menus in pixels: titles and buttons lettered like the opening's title, on the cellar wall ================= */
+// the lettering is the display font drawn small, cut to hard pixels, then given a colour ramp, a depth and an outline, and blown up sharp
+const PIXW = {
+  title: {fill: ['#ffffff', '#fff4dc', '#efe0c0', '#d8c098'], depth: ['#b3121b', '#6a0a10'], out: '#140606'},
+  gold: {fill: ['#fff6c0', '#f8d470', '#e8b64a', '#b8862a'], depth: ['#7a3a10', '#3a1a06'], out: '#140806'},
+  red: {fill: ['#ffc8b8', '#ff7a6a', '#e8382e', '#a81818'], depth: ['#5a0606', '#2a0202'], out: '#120404'},
+  ink: {fill: ['#4a2e1c', '#3a2416', '#2a1a10', '#2a1a10'], depth: ['#c0a47e', '#c0a47e'], out: null},
+};
+// each letter is set on its own with a gap after it, so the outlines never run the letters together
+function pixWordSpr(text, px, style = 'title', font = 'display') {
+  const st = PIXW[style], fonts = document.fonts ? document.fonts.status : '', face = `800 ${px}px ${DISPLAY_FONT}`, gap = Math.max(1, Math.round(px / 12));
+  return spr('pw' + style + px + font + fonts + text, () => {
+    let on, tw, th, dep, pad = 2;
+    if (font === 'sign') { // the sign alphabet, capitals 5×7 with two pixels between letters: always crisp, never touching
+      const word = text.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); tw = word.length * 7 - 2; th = 7; dep = 1;
+      on = (i, j) => { if (i < 0 || j < 0 || j >= 7 || i >= tw || i % 7 > 4) return false; const g = FONT5[word[Math.floor(i / 7)]] || ''; return g[j * 5 + i % 7] === '#'; };
+    } else {
+      const [m, mx] = mkc(8, 8); mx.font = face;
+      const adv = [...text].map(ch => mx.measureText(ch).width); tw = Math.ceil(adv.reduce((a, b) => a + b + gap, 0)) + 4; th = Math.ceil(px * 1.3); dep = Math.max(1, Math.round(px / 9));
+      m.width = tw; m.height = th; mx.font = face; mx.fillStyle = '#fff'; mx.textBaseline = 'alphabetic';
+      let cx = 2; [...text].forEach((ch, i) => { mx.fillText(ch, Math.round(cx), Math.round(px * 0.98)); cx += adv[i] + gap; });
+      const md = mx.getImageData(0, 0, tw, th).data; on = (i, j) => i >= 0 && j >= 0 && i < tw && j < th && md[(j * tw + i) * 4 + 3] > 140;
+    }
+    let top = th, bot = 0; for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) if (on(i, j)) { top = Math.min(top, j); bot = Math.max(bot, j); }
+    return paint(tw + pad * 2, th + dep + pad * 2, (x, y) => { const i = x - pad, j = y - pad;
+      if (on(i, j)) { const k = (j - top) / Math.max(1, bot - top); return !on(i, j - 1) ? st.fill[0] : st.fill[k < 0.4 ? 1 : k < 0.75 ? 2 : 3]; }
+      for (let d = 1; d <= dep; d++) if (on(i, j - d)) return st.depth[d <= dep / 2 ? 0 : 1];
+      if (st.out && (on(i - 1, j) || on(i + 1, j) || on(i, j + 1) || on(i, j - dep - 1))) return st.out; })[0];
+  });
+}
+const PIXEL_TEXT = new Map(); // element → how to letter it, so it can be redone when the fonts arrive or the screen turns
+function pixCanvas(sp, k) { const cv = document.createElement('canvas'); cv.width = sp.width; cv.height = sp.height; cv.className = 'pw'; cv.setAttribute('aria-hidden', 'true'); cv.getContext('2d').drawImage(sp, 0, 0); cv.style.width = sp.width * k + 'px'; cv.style.height = sp.height * k + 'px'; return cv; }
+function setPixText(el, text, px = 18, style = 'gold', cssH = 44, font = 'display') {
+  if (!el) return;
+  PIXEL_TEXT.set(el, [text, px, style, cssH, font]);
+  const sp = pixWordSpr(text, px, style, font), k = Math.max(1, Math.round(cssH / sp.height));
+  const sr = document.createElement('span'); sr.className = 'sr'; sr.textContent = text;
+  el.replaceChildren(sr, pixCanvas(sp, Math.min(k, Math.max(1, Math.floor((innerWidth - 40) / sp.width)))));
+}
+function pixTitle() { // the big title on the first screen, the same sprite the opening ends on, with its subtitle in the sign alphabet
+  const h1 = document.querySelector('#title .title'); if (!h1) return;
+  const sp = titleSpr(), k = Math.max(1, Math.floor(Math.min((innerWidth - 24) / sp.width, innerHeight * 0.38 / sp.height)));
+  const sub = 'LE CANTINE DI SANSEPOLCRO', [sc, sx] = mkc(ptextW(sub) + 2, 9); ptext(sx, sub, 0, 0, '#e8b64a', 1, '#2a1406');
+  const sr = document.createElement('span'); sr.className = 'sr'; sr.textContent = 'Biturgia Sotterranea, le cantine di Sansepolcro';
+  const t = pixCanvas(sp, k), s2 = pixCanvas(sc, Math.max(1, Math.min(k + 1, Math.floor((innerWidth - 24) / sc.width)))); s2.style.marginTop = '10px';
+  h1.replaceChildren(sr, t, s2);
+}
+const PIX_ARROW = d => `<svg viewBox="0 0 8 11" width="24" height="33" shape-rendering="crispEdges" aria-hidden="true"><path fill="#140606" d="${d > 0 ? 'M1 0h2v1h1v1h1v1h1v1h1v3h-1v1h-1v1h-1v1h-1v1h-2z' : 'M7 0h-2v1h-1v1h-1v1h-1v1h-1v3h1v1h1v1h1v1h1v1h2z'}"/><path fill="#efe3cf" d="${d > 0 ? 'M2 1h1v1h1v1h1v1h1v3h-1v1h-1v1h-1v1h-1z' : 'M6 1h-1v1h-1v1h-1v1h-1v3h1v1h1v1h1v1h1z'}"/><path fill="#e8b64a" d="${d > 0 ? 'M2 6h1v1h1v1h-1v1h-1z' : 'M6 6h-1v1h-1v1h1v1h1z'}"/></svg>`;
+function pixMenus() {
+  pixTitle();
+  // headings keep the gothic letters, set larger; on buttons the letters are the pixel font, which stays readable when small
+  for (const h of document.querySelectorAll('.sheet h2')) { const was = PIXEL_TEXT.get(h); setPixText(h, (was || [h.textContent])[0], 22, was ? was[2] : 'gold', 72); }
+  for (const b of document.querySelectorAll('.big')) setPixText(b, (PIXEL_TEXT.get(b) || [b.textContent.trim()])[0], 7, 'title', 36, 'sign');
+  const sn = $('selName'); if (sn && PIXEL_TEXT.has(sn)) setPixText(sn, PIXEL_TEXT.get(sn)[0], 22, 'ink', 56);
+  for (const b of document.querySelectorAll('.modeBtn b')) setPixText(b, (PIXEL_TEXT.get(b) || [b.textContent])[0], 7, b.closest('.hard') ? 'red' : 'gold', 26, 'sign');
+  const L = $('carL'), R = $('carR'); if (L) L.innerHTML = PIX_ARROW(-1); if (R) R.innerHTML = PIX_ARROW(1);
+  const wall = 'url(' + caveSpr().toDataURL() + ')'; // the cellar wall from the opening behind the first screens, darkened so the words stand out
+  for (const id of ['title', 'select', 'login']) { const el = $(id); if (el) { el.style.setProperty('--wall', wall); el.classList.add('wall'); } }
+}
+pixMenus();
+if (document.fonts) document.fonts.ready.then(() => { SPR.delete('titlePix'); pixMenus(); });
+let pixResizeT = 0; window.addEventListener('resize', () => { clearTimeout(pixResizeT); pixResizeT = setTimeout(pixMenus, 150); });
+
+/* ---------- the first screen comes alive: embers rising, dust in the light, drops falling from the vault, a spider, now and then a rat ---------- */
+// drawn small (a third of the screen) and blown up sharp, so every speck is a fat pixel like the game's
+const MFX = {cv: null, c: null, on: false, t: 0, last: 0, parts: [], drips: [], rat: -1};
+function menuFx() {
+  const sheet = $('title'); if (!sheet) return;
+  if (!MFX.cv) { MFX.cv = document.createElement('canvas'); MFX.cv.className = 'menufx'; MFX.cv.setAttribute('aria-hidden', 'true'); sheet.prepend(MFX.cv); MFX.c = MFX.cv.getContext('2d'); }
+  if (MFX.on) return; MFX.on = true; MFX.last = performance.now(); requestAnimationFrame(menuFxFrame);
+}
+function menuFxFrame(now) {
+  const sheet = $('title');
+  if (!sheet || sheet.hidden || FILM.on && FILM.kind !== 'intro') { MFX.on = false; return; }
+  requestAnimationFrame(menuFxFrame);
+  const dt = Math.min(0.05, (now - MFX.last) / 1000); MFX.last = now; MFX.t += dt;
+  const cv = MFX.cv, W2 = Math.ceil(innerWidth / 3), H2 = Math.ceil(innerHeight / 3), c = MFX.c, t = MFX.t;
+  if (cv.width !== W2 || cv.height !== H2) { cv.width = W2; cv.height = H2; }
+  c.clearRect(0, 0, W2, H2);
+  const ty = H2 * 0.2; // about where the title sits
+  glow(c, W2 / 2, ty, Math.round(Math.min(W2, H2) * 0.45), '#3a1a08', 0.55 + Math.sin(t * 7) * 0.08 + Math.sin(t * 13) * 0.05); // a fire's light flickering on the wall
+  const P = MFX.parts;
+  while (P.length < Math.round(W2 * H2 / 900)) { const ember = Math.random() < 0.55; P.push({x: Math.random() * W2, y: ember ? H2 + Math.random() * H2 * 0.5 : Math.random() * H2, vx: (Math.random() - 0.5) * 4, vy: ember ? -(8 + Math.random() * 14) : -(1 + Math.random() * 2), ember, life: 0, max: ember ? 3 + Math.random() * 5 : 6 + Math.random() * 8, ph: Math.random() * 6}); }
+  for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; p.life += dt; p.x += (p.vx + Math.sin(t * 1.7 + p.ph) * (p.ember ? 6 : 2)) * dt; p.y += p.vy * dt;
+    if (p.life > p.max || p.y < -4) { P.splice(i, 1); continue; }
+    const k = p.life / p.max;
+    if (p.ember) P1(c, p.x, p.y, 1, 1, k < 0.3 ? '#fff0a0' : k < 0.6 ? '#ffa040' : k < 0.85 ? '#c84a18' : '#5a2010');
+    else if (Math.sin(t * 3 + p.ph * 5) > -0.3) { c.globalAlpha = Math.sin(k * Math.PI) * 0.8; P1(c, p.x, p.y, 1, 1, '#d8c8a8'); c.globalAlpha = 1; } }
+  if (Math.random() < dt * 0.9) MFX.drips.push({x: 6 + Math.random() * (W2 - 12), y: 0, vy: 0, splash: -1}); // water dripping from the vault
+  for (let i = MFX.drips.length - 1; i >= 0; i--) { const d = MFX.drips[i];
+    if (d.splash < 0) { d.vy += 160 * dt; d.y += d.vy * dt; P1(c, d.x, d.y, 1, 2, '#9ab8d8'); P1(c, d.x, d.y, 1, 1, '#e0f0ff'); if (d.y > H2 - 3) d.splash = 0; }
+    else { d.splash += dt; const s = d.splash * 30; for (const dx of [-1, 1]) P1(c, d.x + dx * s, H2 - 3 - s * (2 - s / 3), 1, 1, '#9ab8d8'); if (d.splash > 0.25) MFX.drips.splice(i, 1); } }
+  const sx = Math.round(W2 * 0.9), sl = Math.round((Math.sin(t * 0.6) * 0.5 + 0.5) * H2 * 0.3) + 4; // a spider letting itself down and climbing back
+  for (let y = 0; y < sl; y++) if (y % 2 === 0) P1(c, sx, y, 1, 1, '#6a6070');
+  P1(c, sx - 1, sl, 3, 2, '#1a1418'); P1(c, sx, sl + 2, 1, 1, '#1a1418'); for (const [lx, ly] of [[-2, 0], [2, 0], [-2, 2], [2, 2]]) P1(c, sx + lx + (Math.floor(t * 6) % 2 ? Math.sign(lx) : 0), sl + ly, 1, 1, '#1a1418'); P1(c, sx, sl, 1, 1, '#c03030');
+  const rt = (t % 14) / 3; if (rt < 1) { const rx = -10 + rt * (W2 + 20), ry = H2 - 4, f = Math.floor(t * 16) % 2; // a rat scurrying across the floor
+    P1(c, rx, ry - 2, 6, 2, '#4a3a34'); P1(c, rx + 5, ry - 3, 2, 2, '#4a3a34'); P1(c, rx + 6, ry - 3, 1, 1, '#ff4a4a'); P1(c, rx - 4, ry - 1 - f, 4, 1, '#8a6a6a'); P1(c, rx + 1 + f, ry, 1, 1, '#2a2020'); P1(c, rx + 4 - f, ry, 1, 1, '#2a2020'); }
+}
+menuFxReady = true; menuFx();
+</script>
+
+</html>
