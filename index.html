@@ -432,7 +432,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v2.1.2';
+const VERSION = 'v2.2';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -4717,8 +4717,10 @@ function ravioloPix(x, cx, cy, s, f) { // a ravioli the size of a man, crowned, 
   for (const px of [-8, -3, 2, 7]) PR(x, Math.round(cx + px * s), Math.round(cy - R2 - 4 * s), Math.max(2, Math.round(3 * s)), Math.round(5 * s), '#e8b64a');
 }
 function drawPixBoss(c, e, flip, t) { // the boss sprite: feet on its shadow, turned towards you, white when hit
-  const frame = Math.floor(t / 14) % 2, key = 'boss' + e.type + frame + (e.flash > 0 ? 'w' : '');
-  const s = spr(key, () => { const base = spr('boss' + e.type + frame, () => PIXBOSS[e.type](frame, e)); return e.flash > 0 ? tinted(base, '#ffffff', 0.7) : base; });
+  let key, build;
+  if (BOSSART.has(e.type)) { const [m, i] = BOSSART.pose(e, t); key = BOSSART.get(e.type, m, i); build = () => SPR.get(key); } // drawn in Isaac's line, animated
+  else { const frame = Math.floor(t / 14) % 2; key = 'boss' + e.type + frame; build = () => PIXBOSS[e.type](frame, e); }
+  const s = spr(key + (e.flash > 0 ? 'w' : ''), () => { const base = spr(key, build); return e.flash > 0 ? tinted(base, '#ffffff', 0.7) : base; });
   const foot = e.r * 0.85;
   if (isPix(c)) { const k = c === LIVE.c ? PXS : 1; c.save(); const m = c.getTransform(); c.setTransform(flip < 0 ? -1 : 1, 0, 0, 1, Math.round(m.e), Math.round(m.f + foot * m.d)); c.imageSmoothingEnabled = false; c.drawImage(s, -Math.round(s.width / 2) * k, -s.height * k, s.width * k, s.height * k); c.restore(); return; }
   const u = 1 / PIXK; c.save(); c.scale(flip < 0 ? -1 : 1, 1); c.imageSmoothingEnabled = false; c.drawImage(s, -s.width / 2 * u, foot - s.height * u, s.width * u, s.height * u); c.restore();
@@ -5835,6 +5837,480 @@ Object.assign(PIXBOSS, {
     PR(x, 18, 28, 13, 1, '#e8b64a'); PE(x, 24, 29, 1.2, 1.2, '#e8b64a'); // a gold necklace
   }),
 });
+/* ================= the bosses drawn in Isaac's line ================= */
+// Every boss is drawn big with soft shapes and thick outlines, one pose per frame of its animation, then read back
+// into pixels a block at a time like the icons. The frames follow what the boss is doing: walking, shooting, its own moves.
+const BOSSART = (() => {
+// hand-drawn Isaac-style boss portraits: organic shapes, thick dark outlines, a shaded side and a lit side
+const OUT = '#211313';
+const A = {};
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function tone(h, k) { const [r, g, b] = hexRgb(h); const f = v => Math.max(0, Math.min(255, Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+function rand(seed) { let s = seed * 9301 + 49297; return () => ((s = (s * 9301 + 49297) % 233280) / 233280); }
+function smoothPath(c, pts, closed = true) {
+  const n = pts.length; c.beginPath();
+  if (!closed) { c.moveTo(pts[0][0], pts[0][1]); for (let i = 0; i < n - 1; i++) { const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(n - 1, i + 2)]; c.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]); } return; }
+  for (let i = 0; i < n; i++) { const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n]; if (!i) c.moveTo(p1[0], p1[1]); c.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]); }
+  c.closePath();
+}
+// an organic outline round an ellipse: lumps and dents, never a perfect geometric shape
+function lumpy(cx, cy, rx, ry, o = {}) {
+  const n = o.n || 16, w = o.wob ?? 0.07, R = rand(o.seed || 1), rot = o.rot || 0, pts = [];
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + rot, k = 1 + (R() - 0.5) * 2 * w + (o.flat && Math.sin(a) > 0.3 ? -(Math.sin(a) - 0.3) * o.flat : 0); pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]); }
+  return pts;
+}
+// fill, shade the lower right, light the upper left, then the outline
+function shape(c, pts, col, o = {}) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  const w = x1 - x0, h = y1 - y0, closed = o.open !== true;
+  c.save(); smoothPath(c, pts, closed); c.fillStyle = tone(col, o.dark ?? -0.32); c.fill(); c.clip();
+  c.translate(-w * (o.sx ?? 0.09), -h * (o.sy ?? 0.12)); smoothPath(c, pts, closed); c.fillStyle = col; c.fill();
+  c.setTransform(c.getTransform()); c.restore();
+  if (o.light !== false) { c.save(); smoothPath(c, pts, closed); c.clip(); c.fillStyle = tone(col, 0.32); c.globalAlpha = 0.7; c.beginPath(); c.ellipse(x0 + w * (o.lx ?? 0.3), y0 + h * (o.ly ?? 0.25), w * (o.lw ?? 0.14), h * (o.lh ?? 0.09), -0.5, 0, 7); c.fill(); c.restore(); }
+  if (o.inner) { c.save(); smoothPath(c, pts, closed); c.clip(); o.inner(c, x0, y0, w, h); c.restore(); }
+  smoothPath(c, pts, closed); c.lineWidth = o.line ?? 5; c.strokeStyle = OUT; c.lineJoin = 'round'; c.stroke();
+}
+// a limb, a tail, a tube: a tapered outline along a centre line
+function tube(c, line, r0, r1, col, o = {}) {
+  const L = [], R2 = [];
+  for (let i = 0; i < line.length; i++) {
+    const p = line[i], q = line[Math.min(line.length - 1, i + 1)], pp = line[Math.max(0, i - 1)], dx = q[0] - pp[0], dy = q[1] - pp[1], l = Math.hypot(dx, dy) || 1, r = r0 + (r1 - r0) * i / (line.length - 1);
+    L.push([p[0] - dy / l * r, p[1] + dx / l * r]); R2.unshift([p[0] + dy / l * r, p[1] - dx / l * r]);
+  }
+  const e = line[line.length - 1], s = line[0];
+  shape(c, [...L, [e[0] + (e[0] - line[line.length - 2][0]) * 0.15, e[1] + (e[1] - line[line.length - 2][1]) * 0.15], ...R2, [s[0] - (line[1][0] - s[0]) * 0.15, s[1] - (line[1][1] - s[1]) * 0.15]], col, o);
+}
+function stroke(c, pts, w = 2.5, col = OUT) { smoothPath(c, pts, false); c.lineWidth = w; c.strokeStyle = col; c.lineCap = 'round'; c.stroke(); }
+function eye(c, x, y, r, o = {}) { // a round staring eye: white, a big black pupil, a shine
+  c.save(); c.beginPath(); c.ellipse(x, y, r, r * (o.h || 1.05), 0, 0, 7); c.fillStyle = o.white || '#f6f2ea'; c.fill(); c.lineWidth = Math.max(2.5, r * 0.22); c.strokeStyle = OUT; c.stroke();
+  if (o.veins) { c.strokeStyle = '#c0404a'; c.lineWidth = 1.2; for (let k = 0; k < 4; k++) { const a = k * 1.6 + 0.4; c.beginPath(); c.moveTo(x + Math.cos(a) * r * 0.95, y + Math.sin(a) * r * 0.95); c.lineTo(x + Math.cos(a + 0.2) * r * 0.55, y + Math.sin(a + 0.2) * r * 0.55); c.stroke(); } }
+  const px = x + (o.look || [0, 0])[0] * r * 0.3, py = y + (o.look || [0, 0])[1] * r * 0.3, pr = r * (o.pupil || 0.55);
+  c.beginPath(); c.arc(px, py, pr, 0, 7); c.fillStyle = o.iris || '#120a0a'; c.fill();
+  c.beginPath(); c.arc(px - pr * 0.35, py - pr * 0.4, pr * 0.3, 0, 7); c.fillStyle = '#ffffff'; c.fill(); c.restore();
+}
+function hollow(c, x, y, rx, ry, o = {}) { // an empty black socket, sometimes weeping
+  c.save(); c.beginPath(); c.ellipse(x, y, rx, ry, o.rot || 0, 0, 7); c.fillStyle = '#0c0606'; c.fill(); c.lineWidth = 3; c.strokeStyle = OUT; c.stroke();
+  if (o.glint) { c.beginPath(); c.arc(x + rx * 0.2, y - ry * 0.1, Math.max(1.5, rx * 0.18), 0, 7); c.fillStyle = o.glint; c.fill(); }
+  if (o.tear) { const col = o.tear === true ? '#a8101a' : o.tear; c.fillStyle = col; c.beginPath(); c.moveTo(x - rx * 0.3, y + ry * 0.7); c.quadraticCurveTo(x - rx * 0.5, y + ry * 2.6, x - rx * 0.1, y + ry * (2.4 + (o.tl || 0))); c.quadraticCurveTo(x + rx * 0.3, y + ry * 1.6, x + rx * 0.1, y + ry * 0.7); c.fill(); c.lineWidth = 2; c.stroke(); }
+  c.restore();
+}
+function mouth(c, pts, o = {}) { // a mouth: dark inside, teeth along the top and bottom, a tongue
+  c.save(); smoothPath(c, pts); c.fillStyle = o.inside || '#3a0c10'; c.fill(); c.clip();
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  c.fillStyle = '#140405'; c.beginPath(); c.ellipse((x0 + x1) / 2, (y0 + y1) / 2 + (y1 - y0) * 0.1, (x1 - x0) * 0.38, (y1 - y0) * 0.34, 0, 0, 7); c.fill();
+  if (o.tongue) { c.fillStyle = o.tongue === true ? '#d05a6a' : o.tongue; c.beginPath(); c.ellipse((x0 + x1) / 2 + (x1 - x0) * 0.08, y1 - (y1 - y0) * 0.12, (x1 - x0) * 0.26, (y1 - y0) * 0.26, 0, 0, 7); c.fill(); c.strokeStyle = '#8a2a3a'; c.lineWidth = 2; c.beginPath(); c.moveTo((x0 + x1) / 2 + (x1 - x0) * 0.08, y1 - (y1 - y0) * 0.3); c.lineTo((x0 + x1) / 2 + (x1 - x0) * 0.08, y1); c.stroke(); }
+  const R = rand(o.seed || 3), teeth = (y, dir, n) => { for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, tx = x0 + (x1 - x0) * (0.08 + t * 0.84), tw = (x1 - x0) / n * 0.42 * (0.8 + R() * 0.4), th = (y1 - y0) * (o.long || 0.26) * (0.7 + R() * 0.6);
+    c.fillStyle = o.toothCol || '#f2ead4'; c.beginPath(); c.moveTo(tx - tw, y); c.lineTo(tx + tw, y); c.lineTo(tx + tw * 0.4, y + dir * th); c.quadraticCurveTo(tx, y + dir * th * 1.15, tx - tw * 0.4, y + dir * th); c.closePath(); c.fill(); c.lineWidth = 1.8; c.strokeStyle = OUT; c.stroke(); } };
+  if (o.top !== 0) teeth(y0, 1, o.top || 6); if (o.bottom) teeth(y1, -1, o.bottom);
+  c.restore();
+  smoothPath(c, pts); c.lineWidth = o.line ?? 4.5; c.strokeStyle = OUT; c.stroke();
+}
+function blood(c, x, y, s, R = rand(7)) { // a pool of blood on the floor with drops
+  c.save(); c.fillStyle = '#b3101c'; smoothPath(c, lumpy(x, y, 30 * s, 8 * s, {n: 12, wob: 0.25, seed: Math.round(x)})); c.fill();
+  c.fillStyle = '#7a0810'; smoothPath(c, lumpy(x + 6 * s, y + 2 * s, 16 * s, 4 * s, {n: 10, wob: 0.2, seed: Math.round(y)})); c.fill();
+  for (let i = 0; i < 6; i++) { c.beginPath(); c.ellipse(x + (R() - 0.5) * 90 * s, y + (R() - 0.3) * 14 * s, 3 + R() * 4 * s, 1.5 + R() * 2 * s, 0, 0, 7); c.fillStyle = '#b3101c'; c.fill(); }
+  c.restore();
+}
+function shadow(c, x, y, rx, ry = rx * 0.22) { c.save(); c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 7); c.fill(); c.restore(); }
+function drool(c, x, y, len, col = '#e8f0d8') { c.save(); c.strokeStyle = OUT; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 3, y + len * 0.6, x, y + len); c.stroke(); c.strokeStyle = col; c.lineWidth = 3; c.stroke(); c.beginPath(); c.arc(x, y + len + 2, 4, 0, 7); c.fillStyle = col; c.fill(); c.lineWidth = 2.5; c.strokeStyle = OUT; c.stroke(); c.restore(); }
+function fly(c, x, y) { c.save(); c.fillStyle = '#d8dce0'; c.strokeStyle = OUT; c.lineWidth = 1.5; for (const s of [-1, 1]) { c.beginPath(); c.ellipse(x + s * 5, y - 4, 4.5, 3, s * 0.5, 0, 7); c.fill(); c.stroke(); } c.beginPath(); c.ellipse(x, y, 4, 5, 0, 0, 7); c.fillStyle = '#2a2a2e'; c.fill(); c.stroke(); c.restore(); }
+function wrinkle(c, x, y, w, bend = 3, lw = 2.5) { stroke(c, [[x - w / 2, y], [x, y - bend], [x + w / 2, y]], lw); }
+
+function rectPts(x0, y0, x1, y1, k = 6) { // a box that stays a box under the smoothing: many points along each side
+  const p = []; for (let i = 0; i < k; i++) p.push([x0 + (x1 - x0) * i / k, y0]); for (let i = 0; i < k; i++) p.push([x1, y0 + (y1 - y0) * i / k]);
+  for (let i = 0; i < k; i++) p.push([x1 - (x1 - x0) * i / k, y1]); for (let i = 0; i < k; i++) p.push([x0, y1 - (y1 - y0) * i / k]); return p; }
+
+// Giovanni Buitoni in the style of Isaac's monsters: one big doughy blob of flesh, a huge mouth, beady eyes,
+// stubby limbs, a crushed chef's hat and the rolling pin. p: {bob, step, sq, mode: 'walk'|'wind'|'charge'|'stun', t}
+const FL = '#d8aa98', FLD = '#c09080', APR = '#ece4d2', WOOD = '#d6a468';
+function stars(c, cx, cy, t) { for (let i = 0; i < 3; i++) { const a = t * Math.PI + i * 2.1, x = cx + Math.cos(a) * 62, y = cy + Math.sin(a) * 16;
+  const pts = []; for (let k = 0; k < 10; k++) { const r = k % 2 ? 8 : 18, b = k / 10 * Math.PI * 2 - Math.PI / 2; pts.push([x + Math.cos(b) * r, y + Math.sin(b) * r]); }
+  c.save(); c.beginPath(); pts.forEach(([X, Y], k) => k ? c.lineTo(X, Y) : c.moveTo(X, Y)); c.closePath(); c.fillStyle = '#f5d64a'; c.fill(); c.lineWidth = 3; c.strokeStyle = OUT; c.stroke(); c.restore(); } }
+function pin(c, x0, y0, x1, y1) { // the rolling pin: a fat wooden roll with two handles, floury and bloody
+  const dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy), ux = dx / l, uy = dy / l;
+  tube(c, [[x0 - ux * 14, y0 - uy * 14], [x0, y0]], 6, 6, '#8a5a2b'); tube(c, [[x1, y1], [x1 + ux * 14, y1 + uy * 14]], 6, 6, '#8a5a2b');
+  tube(c, [[x0, y0], [x1, y1]], 13, 13, WOOD, {inner: c2 => { c2.fillStyle = '#b3101c'; smoothPath(c2, lumpy(x0 + dx * 0.7, y0 + dy * 0.7, 14, 10, {seed: 5, wob: 0.35})); c2.fill();
+    c2.fillStyle = 'rgba(255,255,255,.55)'; smoothPath(c2, lumpy(x0 + dx * 0.3, y0 + dy * 0.3, 12, 8, {seed: 2, wob: 0.3})); c2.fill(); }});
+}
+function BUI(c, p = {}) {
+  const mode = p.mode || 'walk', bob = p.bob || 0, st = p.step || 0, sq = p.sq || 0, stun = mode === 'stun', angry = mode === 'wind' || mode === 'charge';
+  const cx = 150, cy = 172 + bob + (stun ? 26 : 0), rx = 84 * (1 + sq), ry = 80 * (1 - sq) * (stun ? 0.86 : 1);
+  shadow(c, 150, 270, 92); if (stun || mode === 'walk' && p.blood !== false) blood(c, 118, 270, 1.1);
+  // legs: two short stumps, the walk lifts one then the other
+  if (!stun) { tube(c, [[cx - 38, cy + ry * 0.6], [cx - 40 - st * 4, 258 - Math.max(0, st) * 10]], 18, 16, FLD); tube(c, [[cx + 38, cy + ry * 0.6], [cx + 40 - st * 4, 258 - Math.max(0, -st) * 10]], 18, 16, FLD);
+    for (const [fx, up] of [[cx - 42 - st * 4, Math.max(0, st)], [cx + 42 - st * 4, Math.max(0, -st)]]) shape(c, lumpy(fx, 262 - up * 10, 21, 11, {seed: 3, flat: 0.4}), '#5a4038'); }
+  else { tube(c, [[cx - 50, cy + 40], [cx - 92, 252]], 18, 15, FLD); tube(c, [[cx + 50, cy + 40], [cx + 92, 252]], 18, 15, FLD);
+    shape(c, lumpy(cx - 98, 254, 13, 19, {seed: 3}), '#5a4038'); shape(c, lumpy(cx + 98, 254, 13, 19, {seed: 4}), '#5a4038'); }
+  // the far arm (left) when walking; when winding up both arms go up behind the head
+  const armL = angry ? [[cx - 66, cy - 30], [cx - 82, cy - 82], [cx - 60, cy - 116]] : stun ? [[cx - 72, cy - 6], [cx - 108, cy + 28], [cx - 112, cy + 56]] : [[cx - 72, cy - 14], [cx - 96, cy + 22 + st * 6], [cx - 92, cy + 50 + st * 6]];
+  const armR = angry ? [[cx + 66, cy - 30], [cx + 82, cy - 82], [cx + 60, cy - 116]] : stun ? [[cx + 72, cy - 6], [cx + 108, cy + 28], [cx + 112, cy + 56]] : [[cx + 72, cy - 14], [cx + 100, cy + 14 - st * 6], [cx + 104, cy + 40 - st * 6]];
+  if (angry) pin(c, cx - 70, cy - 124 - (mode === 'charge' ? 6 : 0), cx + 70, cy - 124 - (mode === 'charge' ? 6 : 0));
+  tube(c, armL, 17, 13, FL); if (!angry) shape(c, lumpy(armL[2][0], armL[2][1], 15, 13, {seed: 6}), FLD);
+  // the body-head: one blob of dough-pale flesh, a belly fold, stretch marks
+  const body = lumpy(cx, cy, rx, ry, {seed: 11, wob: 0.045, n: 18, flat: 0.15});
+  shape(c, body, FL, {lw: 0.18, lh: 0.1, lx: 0.28, ly: 0.18, inner: c2 => {
+    c2.fillStyle = tone(FL, -0.12); smoothPath(c2, lumpy(cx, cy + ry * 0.62, rx * 0.8, ry * 0.4, {seed: 2, wob: 0.05})); c2.fill(); // the belly sag
+    c2.fillStyle = APR; smoothPath(c2, [[cx - rx * 0.62, cy + ry * 0.28], [cx + rx * 0.62, cy + ry * 0.28], [cx + rx * 0.72, cy + ry * 1.1], [cx - rx * 0.72, cy + ry * 1.1]]); c2.fill(); // the apron
+    c2.fillStyle = tone(APR, -0.22); c2.fillRect(cx + rx * 0.25, cy + ry * 0.28, rx * 0.5, ry); 
+    c2.fillStyle = '#2b5aa8'; c2.fillRect(cx - rx * 0.66, cy + ry * 0.26, rx * 1.32, 9); // the Buitoni-blue band
+    c2.fillStyle = '#b3101c'; smoothPath(c2, lumpy(cx + 22, cy + ry * 0.62, 20, 14, {seed: 9, wob: 0.35})); c2.fill(); smoothPath(c2, lumpy(cx - 30, cy + ry * 0.48, 8, 7, {seed: 4, wob: 0.3})); c2.fill();
+    c2.fillRect(cx + 16, cy + ry * 0.62, 5, 24); c2.fillRect(cx + 30, cy + ry * 0.62, 4, 16);
+    c2.lineWidth = 4; c2.strokeStyle = OUT; c2.beginPath(); c2.moveTo(cx - rx * 0.62, cy + ry * 0.28); c2.lineTo(cx - rx * 0.72, cy + ry * 1.1); c2.moveTo(cx + rx * 0.62, cy + ry * 0.28); c2.lineTo(cx + rx * 0.72, cy + ry * 1.1); c2.stroke();
+  }});
+  stroke(c, [[cx - 44, cy + ry * 0.05], [cx - 34, cy + ry * 0.12]], 3); stroke(c, [[cx + 50, cy - ry * 0.02], [cx + 40, cy + ry * 0.08]], 3); // fat folds at the cheeks
+  // the hat: a crushed chef's toque, tipped over in the stun
+  const hx = stun ? cx - 104 : cx + 8, hy = stun ? 236 : cy - ry - 4, hr = stun ? -1.3 : -0.18 + (mode === 'charge' ? -0.1 : 0);
+  c.save(); c.translate(hx, hy); c.rotate(hr);
+  shape(c, lumpy(0, -22, 36, 22, {seed: 5, wob: 0.16, n: 11}), '#f4f0e6', {line: 4.5}); shape(c, rectPts(-28, -6, 28, 8, 4), '#e2dccc', {line: 4.5, light: false});
+  c.fillStyle = '#b3101c'; c.beginPath(); c.ellipse(14, -26, 6, 4, 0, 0, 7); c.fill(); c.restore();
+  // the face, low on the blob like Isaac's fat ones: heavy brows, little black eyes, the mouth takes the rest
+  const ey = cy - ry * 0.42, mo = mode === 'charge' ? 1.35 : mode === 'wind' ? 1.15 : stun ? 0.7 : 0.9 + (p.t || 0) * 0.1;
+  if (stun) { for (const [ex, er] of [[cx - 30, 15], [cx + 32, 19]]) { c.save(); c.beginPath(); c.arc(ex, ey, er, 0, 7); c.fillStyle = '#f6f2ea'; c.fill(); c.lineWidth = 3.5; c.strokeStyle = OUT; c.stroke();
+      c.beginPath(); for (let a = 0; a < 10; a += 0.3) { const r = er * 0.9 * a / 10, b = a + (p.t || 0) * 3; a ? c.lineTo(ex + Math.cos(b) * r, ey + Math.sin(b) * r) : c.moveTo(ex, ey); } c.lineWidth = 3; c.stroke(); c.restore(); } }
+  else { eye(c, cx - 30, ey + 2, 14, {pupil: 0.6, look: angry ? [0, 0.5] : [0.2, 0.3]}); eye(c, cx + 32, ey, 18, {pupil: 0.55, look: angry ? [0, 0.5] : [0.2, 0.3]});
+    const bd = angry ? 10 : 4; stroke(c, [[cx - 46, ey - 18 - bd * 0.2], [cx - 30, ey - 16 + 0], [cx - 14, ey - 10 + bd * 0.4]], 6); stroke(c, [[cx + 14, ey - 12 + bd * 0.4], [cx + 30, ey - 20], [cx + 50, ey - 22 - bd * 0.2]], 6); }
+  const mw = angry ? 64 : 56, mh = 34 * mo, my = cy - ry * 0.12;
+  mouth(c, [[cx - mw, my], [cx, my - 6], [cx + mw, my + 2], [cx + mw * 0.7, my + mh * 0.75], [cx, my + mh], [cx - mw * 0.75, my + mh * 0.7]], {top: 6, bottom: 4, tongue: !angry, long: 0.34, seed: 4});
+  if (!angry) drool(c, cx + 34, my + mh * 0.7, stun ? 30 : 18 + (p.t || 0) * 8);
+  else { c.save(); c.fillStyle = '#9ad0f0'; c.strokeStyle = OUT; c.lineWidth = 2.5; for (const [x, y] of [[cx - 86, cy - 60], [cx + 92, cy - 50]]) { c.beginPath(); c.moveTo(x, y - 12); c.quadraticCurveTo(x + 9, y + 2, x, y + 6); c.quadraticCurveTo(x - 9, y + 2, x, y - 12); c.fill(); c.stroke(); } c.restore(); } // sweat
+  // the near arm: holds the pin down at his side when walking, both up when winding, limp in the stun
+  if (!angry) { tube(c, armR, 17, 13, FL); if (stun) pin(c, cx + 40, 258, cx + 130, 236); else pin(c, armR[2][0] - 40, armR[2][1] - 50, armR[2][0] + 22, armR[2][1] + 30); shape(c, lumpy(armR[2][0] + 2, armR[2][1] + 4, 15, 13, {seed: 8}), FLD); }
+  else { tube(c, armR, 17, 13, FL); shape(c, lumpy(armL[2][0], armL[2][1], 15, 13, {seed: 6}), FLD); shape(c, lumpy(armR[2][0], armR[2][1], 15, 13, {seed: 8}), FLD); }
+  if (stun) stars(c, cx, cy - ry - 18, p.t || 0);
+  if (mode === 'walk') { fly(c, 52 + (p.t || 0) * 6, 70 - (p.t || 0) * 4); fly(c, 246 - (p.t || 0) * 5, 96 + (p.t || 0) * 6); }
+}
+const FRAMES = {
+  walk: [{step: 1, bob: 0, t: 0}, {step: 0, bob: -6, sq: -0.03, t: 1}, {step: -1, bob: 0, t: 0}, {step: 0, bob: -6, sq: -0.03, t: 1}],
+  charge: [{mode: 'wind', bob: 6, sq: 0.06}, {mode: 'charge', bob: -4, sq: -0.04, blood: false}, {mode: 'charge', bob: 2, sq: 0.03, blood: false}],
+  stun: [{mode: 'stun', sq: 0.05, t: 0}, {mode: 'stun', sq: 0.08, t: 0.66}],
+};
+
+// The other bosses in Giovanni Buitoni's line: one blob of body and head, the face low, a big mouth, beady eyes,
+// stubby limbs. Each takes a pose p: {mode, i} — mode 'walk' (i = 0..3), 'atk' (after shooting) or the boss's own states.
+const BOSS2 = {};
+const WALKP = [{st: 1, bob: 0}, {st: 0, bob: -6}, {st: -1, bob: 0}, {st: 0, bob: -6}];
+function wp(p) { return p.mode === 'walk' ? WALKP[p.i % 4] : {st: 0, bob: p.i % 2 ? -3 : 2}; }
+function circle(c, x, y, r, col, lw = 3) { c.save(); c.beginPath(); c.arc(x, y, r, 0, 7); c.fillStyle = col; c.fill(); c.lineWidth = lw; c.strokeStyle = OUT; c.stroke(); c.restore(); }
+function legs2(c, cx, top, st, col, shoe, sp = 36, r = 16) { // two stumps, the walk lifts one then the other
+  for (const [s, up] of [[-1, Math.max(0, st)], [1, Math.max(0, -st)]]) { const fx = cx + s * sp - st * 4; tube(c, [[cx + s * sp, top], [fx, 256 - up * 10]], r + 2, r, col); shape(c, lumpy(fx + s * 2, 260 - up * 10, r + 5, 10, {seed: 3, flat: 0.4}), shoe); }
+}
+function face2(c, cx, ey, o = {}) { // the Isaac face: a smaller and a bigger staring eye, heavy brows, the mouth
+  const a = o.angry || 0, sp = o.sp || 30, r = o.r || 14;
+  if (o.spiral) for (const [ex, er] of [[cx - sp, r], [cx + sp, r * 1.25]]) { c.save(); c.beginPath(); c.arc(ex, ey, er, 0, 7); c.fillStyle = '#f6f2ea'; c.fill(); c.lineWidth = 3.5; c.strokeStyle = OUT; c.stroke(); c.beginPath(); for (let k = 0; k < 10; k += 0.3) { const rr = er * 0.9 * k / 10, b = k + (o.t || 0) * 3; k ? c.lineTo(ex + Math.cos(b) * rr, ey + Math.sin(b) * rr) : c.moveTo(ex, ey); } c.lineWidth = 3; c.stroke(); c.restore(); }
+  else if (o.closed) for (const x of [cx - sp, cx + sp]) stroke(c, [[x - 12, ey], [x, ey + 5], [x + 12, ey]], 5);
+  else { eye(c, cx - sp, ey + 2, r, {pupil: 0.6, look: o.look || [0.2, 0.3], iris: o.iris, white: o.white}); eye(c, cx + sp, ey, r * 1.25, {pupil: 0.56, look: o.look || [0.2, 0.3], iris: o.iris, white: o.white}); }
+  if (o.brows !== false) { const b = 4 + a * 6, bc = o.browCol || OUT; stroke(c, [[cx - sp - 16, ey - r - 4 - b * 0.2], [cx - sp, ey - r - 3], [cx - sp + 16, ey - r + 2 + b * 0.4]], 6, bc); stroke(c, [[cx + sp - 16, ey - r * 1.25 + 2 + b * 0.4], [cx + sp, ey - r * 1.25 - 5], [cx + sp + 20, ey - r * 1.25 - 7 - b * 0.2]], 6, bc); }
+}
+function bigMouth(c, cx, my, w, h, o = {}) { mouth(c, [[cx - w, my], [cx, my - 6], [cx + w, my + 2], [cx + w * 0.7, my + h * 0.75], [cx, my + h], [cx - w * 0.75, my + h * 0.7]], {top: o.top ?? 6, bottom: o.bottom ?? 4, tongue: o.tongue, long: o.long || 0.32, seed: o.seed || 4, toothCol: o.toothCol, inside: o.inside}); }
+function sweat(c, pts) { c.save(); c.fillStyle = '#9ad0f0'; c.strokeStyle = OUT; c.lineWidth = 2.5; for (const [x, y] of pts) { c.beginPath(); c.moveTo(x, y - 12); c.quadraticCurveTo(x + 9, y + 2, x, y + 6); c.quadraticCurveTo(x - 9, y + 2, x, y - 12); c.fill(); c.stroke(); } c.restore(); }
+function puff(c, x, y, r, col = '#c8c8d0', seed = 1) { shape(c, lumpy(x, y, r, r * 0.8, {seed, wob: 0.18, n: 11}), col, {line: 3.5}); }
+
+BOSS2.balestriere = (c, p) => { // the crossbowman: a pale blob in a black-and-white tunic, the red cap with its feather, the crossbow
+  const {st, bob} = wp(p), atk = p.mode === 'atk', cx = 150, cy = 176 + bob, FS = '#e2cab8';
+  legs2(c, cx, cy + 50, st, '#2a2a30', '#4a3020', 30, 14);
+  tube(c, [[cx - 62, cy - 4], [cx - 84, cy + 30 + st * 5], [cx - 80, cy + 54 + st * 5]], 15, 12, FS); shape(c, lumpy(cx - 80, cy + 56 + st * 5, 13, 11, {seed: 2}), FS);
+  shape(c, lumpy(cx, cy, 74, 80, {seed: 7, wob: 0.04, n: 18, flat: 0.12}), FS, {inner: c2 => {
+    c2.fillStyle = '#26262c'; c2.fillRect(cx - 80, cy + 18, 80, 80); c2.fillStyle = '#ece8e0'; c2.fillRect(cx, cy + 18, 80, 80); // the tunic, half and half
+    c2.fillStyle = '#b3101c'; smoothPath(c2, lumpy(cx + 30, cy + 46, 12, 9, {seed: 4, wob: 0.3})); c2.fill(); c2.fillRect(cx + 27, cy + 46, 5, 20);
+    c2.fillStyle = '#c9a24a'; c2.fillRect(cx - 80, cy + 16, 160, 7); }});
+  face2(c, cx, cy - 40, {r: 13, angry: atk ? 1 : 0.3, closed: false});
+  if (atk) stroke(c, [[cx - 44, cy - 38], [cx - 18, cy - 38]], 6); // squinting down the bolt
+  bigMouth(c, cx, cy - 14, atk ? 40 : 34, atk ? 26 : 22, {top: 4, bottom: 5, seed: 6, tongue: !atk});
+  shape(c, lumpy(cx + 4, cy - 82, 58, 22, {seed: 5, wob: 0.1, flat: 0.5}), '#a01820'); tube(c, [[cx - 40, cy - 92], [cx - 78, cy - 112 + (p.i % 2) * 6], [cx - 92, cy - 96 + (p.i % 2) * 6]], 9, 4, '#f0d050'); // cap and feather
+  const by = atk ? cy - 16 : cy + 30; // the crossbow: across the belly, raised to the face to shoot
+  tube(c, [[cx - 108, by], [cx + 40, by]], 7, 7, '#6b4a2a'); stroke(c, [[cx - 88, by - 40], [cx - 104, by], [cx - 88, by + 40]], 9, '#4a3020'); stroke(c, [[cx - 88, by - 40], cx - 40 > 0 ? [cx - (atk ? 30 : 50), by] : 0, [cx - 88, by + 40]].filter(Boolean), 2.5, '#d8d0c0');
+  shape(c, [[cx - 128, by], [cx - 108, by - 7], [cx - 108, by + 7]], '#c9cdd2', {line: 3, light: false});
+  tube(c, [[cx + 62, cy - 4], [cx + 66, by - 6], [cx + 30, by]], 15, 12, FS); shape(c, lumpy(cx + 30, by, 13, 11, {seed: 3}), FS);
+  if (!atk) drool(c, cx + 18, cy - 2, 14 + p.i % 2 * 6);
+};
+
+BOSS2.retopi = (c, p) => { // the Rat King: a fat grey rat blob with a crown, buck teeth, red beady eyes, its subjects tied by the tails
+  const {st, bob} = wp(p), m = p.mode, cx = 150, stun = m === 'stun', ch = m === 'charge', cy = 172 + bob + (stun ? 20 : 0) + (ch ? 10 : 0), FUR = '#8e8076', PINK = '#e8a8a8';
+  const tw = Math.sin((p.i || 0) * 1.6) * 14; tube(c, [[cx + 60, cy + 50], [cx + 110, cy + 30 + tw], [cx + 120, cy - 20 + tw], [cx + 104, cy - 40 + tw]], 8, 3, PINK); // tail
+  for (const [x, s] of [[cx - 96, -1], [cx + 96, 1]]) { // two little rats, tails knotted to his
+    const ry = 238 - (p.i % 2 ? 4 : 0) * (s > 0 ? 1 : -1); shape(c, lumpy(x, ry, 26, 18, {seed: 5}), '#7a6c62'); circle(c, x + s * 8, ry - 18, 7, PINK); circle(c, x + s * 22, ry - 4, 3.5, '#d02020', 2); stroke(c, [[x - s * 24, ry + 6], [x - s * 52, ry + 18]], 4, PINK);
+  }
+  if (!stun) legs2(c, cx, cy + 56, ch ? (p.i % 2 ? 1 : -1) : st, FUR, PINK, 34, 14); else for (const s of [-1, 1]) shape(c, lumpy(cx + s * 70, 252, 22, 11, {seed: 4}), PINK);
+  for (const s of [-1, 1]) { circle(c, cx + s * 62, cy - 62 + (ch ? 16 : 0), 28, FUR, 4.5); circle(c, cx + s * 62, cy - 62 + (ch ? 16 : 0), 16, PINK, 0.1); } // ears
+  shape(c, lumpy(cx, cy, 82 + (stun ? 8 : 0), 78 - (stun ? 10 : 0), {seed: 13, wob: 0.05, n: 18, flat: 0.1}), FUR, {inner: c2 => { c2.fillStyle = '#c8b8aa'; smoothPath(c2, lumpy(cx, cy + 40, 52, 40, {seed: 2})); c2.fill(); }});
+  for (const s of [-1, 1]) for (const k of [0, 1]) stroke(c, [[cx + s * 24, cy - 2 + k * 9], [cx + s * 66, cy - 8 + k * 14]], 2.5, '#f0e8e0'); // whiskers
+  face2(c, cx, cy - 38, {r: 12, iris: '#d02020', angry: ch ? 1 : 0.4, spiral: stun, t: p.i, sp: 28});
+  circle(c, cx, cy - 16, 9, '#e07080'); // nose
+  const mo = ch ? 1.3 : m === 'atk' ? 1.2 : stun ? 0.7 : 1;
+  bigMouth(c, cx, cy + 2, 40, 26 * mo, {top: 0, bottom: 5, tongue: !ch, seed: 2});
+  shape(c, rectPts(cx - 15, cy - 4, cx - 1, cy + 22, 3), '#f2e2a0', {line: 3.5, light: false}); shape(c, rectPts(cx + 1, cy - 4, cx + 15, cy + 22, 3), '#f2e2a0', {line: 3.5, light: false}); // buck teeth
+  c.save(); c.translate(cx + (stun ? 30 : 0), cy - 80 + (ch ? 10 : 0)); c.rotate(stun ? 0.5 : -0.06);
+  shape(c, [[-30, 6], [-34, -26], [-16, -10], [0, -32], [16, -10], [34, -26], [30, 6]], '#e8b64a', {line: 4}); circle(c, 0, -6, 5, '#d2202a', 2.5); c.restore();
+  if (ch) sweat(c, [[cx - 92, cy - 30], [cx + 96, cy - 20]]); if (stun) stars(c, cx, cy - 100, p.i * 0.66);
+  for (const s of [-1, 1]) shape(c, lumpy(cx + s * 70, cy + 30, 14, 12, {seed: 9}), PINK); // little paws
+};
+
+BOSS2.fantasma = (c, p) => { // the ghost of the Torre di Berta: a sheet blob, black staring eyes, a howling mouth, the little tower on its head
+  const a = p.mode !== 'walk', cx = 150, cy = 150 + (p.i % 2 ? -6 : 0), W = '#e8eef6', ph = (p.i || 0) * 1.3;
+  const body = [[cx - 70, cy - 30], [cx - 40, cy - 86], [cx + 40, cy - 86], [cx + 70, cy - 30], [cx + 78, cy + 50]];
+  for (let k = 0; k <= 6; k++) body.push([cx + 78 - k * 26, cy + 96 + Math.sin(k * 1.9 + ph) * 12 + (k % 2 ? -14 : 0)]); body.push([cx - 78, cy + 50]);
+  const arm = a ? [[[cx - 60, cy - 10], [cx - 104, cy - 40], [cx - 118, cy - 74]], [[cx + 60, cy - 10], [cx + 104, cy - 40], [cx + 118, cy - 74]]] : [[[cx - 62, cy], [cx - 96, cy + 22 + Math.sin(ph) * 8], [cx - 108, cy + 50]], [[cx + 62, cy], [cx + 96, cy + 22 - Math.sin(ph) * 8], [cx + 108, cy + 50]]];
+  for (const l of arm) tube(c, l, 16, 8, W, {dark: -0.18});
+  shape(c, body, W, {dark: -0.18});
+  for (const [x, r] of [[cx - 30, 17], [cx + 32, 21]]) { c.save(); c.beginPath(); c.ellipse(x, cy - 34, r, r * 1.2, 0, 0, 7); c.fillStyle = '#100c14'; c.fill(); c.lineWidth = 3.5; c.strokeStyle = OUT; c.stroke(); c.beginPath(); c.arc(x - r * 0.3, cy - 34 - r * 0.4, r * 0.3, 0, 7); c.fillStyle = '#fff'; c.fill(); c.restore(); }
+  c.save(); c.fillStyle = '#141420'; for (const [x, l] of [[cx - 34, 30], [cx + 38, 18]]) { c.beginPath(); c.moveTo(x - 5, cy - 14); c.quadraticCurveTo(x - 8, cy - 14 + l, x, cy - 10 + l); c.quadraticCurveTo(x + 6, cy - 14 + l * 0.6, x + 5, cy - 14); c.fill(); } c.restore(); // black tears
+  const mh = a ? 64 : 40 + (p.i % 2) * 6; mouth(c, [[cx - (a ? 30 : 22), cy + 6], [cx + (a ? 30 : 22), cy + 6], [cx + (a ? 24 : 18), cy + 6 + mh * 0.7], [cx, cy + 6 + mh], [cx - (a ? 24 : 18), cy + 6 + mh * 0.7]], {top: 0, inside: '#140808'});
+  shape(c, rectPts(cx - 26, cy - 128, cx + 26, cy - 84, 4), '#9a8a7a', {line: 4.5}); for (let k = 0; k < 3; k++) shape(c, rectPts(cx - 26 + k * 20, cy - 142, cx - 14 + k * 20, cy - 128, 2), '#9a8a7a', {line: 4, light: false}); shape(c, rectPts(cx - 6, cy - 116, cx + 6, cy - 98, 2), '#1a1414', {line: 3, light: false});
+};
+
+BOSS2.capohippie = (c, p) => { // Ermanno: a floating hippie blob in a plaid shirt, thinning brown hair, ponytail, round glasses, the joint, a cloud of smoke under him
+  const sp = p.mode === 'spiral', atk = p.mode === 'atk', cx = 150, cy = 158 + (p.i % 2 ? -6 : 0), SK = '#e8c4a4';
+  for (let k = 0; k < 5; k++) puff(c, cx - 72 + k * 36, 236 + (k % 2) * 8 + Math.sin(k + (p.i || 0)) * 4, 24 + (k % 2) * 6, '#d0d0d8', k + (p.i || 0)); // the smoke he floats on
+  const R = rand(3), arms = sp ? [[[cx - 66, cy + 6], [cx - 110, cy - 10], [cx - 130, cy - 30]], [[cx + 66, cy + 6], [cx + 110, cy - 10], [cx + 130, cy - 30]]] : [[[cx - 66, cy + 10], [cx - 92, cy + 44], [cx - 86, cy + 70]], [[cx + 66, cy + 10], [cx + 96, cy + 30], [cx + 80, cy + 4]]];
+  const plaid = (c2, x0, y0, w, h) => { c2.strokeStyle = '#4a1010'; c2.lineWidth = 5; for (let x = x0; x < x0 + w; x += 18) { c2.beginPath(); c2.moveTo(x, y0); c2.lineTo(x, y0 + h); c2.stroke(); } for (let y = y0; y < y0 + h; y += 18) { c2.beginPath(); c2.moveTo(x0, y); c2.lineTo(x0 + w, y); c2.stroke(); } };
+  for (const l of arms) tube(c, l, 16, 13, '#b02a2a', {inner: plaid});
+  shape(c, lumpy(cx, cy, 78, 82, {seed: 9, wob: 0.04, n: 18, flat: 0.1}), SK, {inner: c2 => { c2.fillStyle = '#b02a2a'; c2.fillRect(cx - 90, cy + 26, 180, 80); plaid(c2, cx - 90, cy + 26, 180, 80); c2.fillStyle = '#d8d0c0'; c2.beginPath(); c2.moveTo(cx - 20, cy + 26); c2.lineTo(cx + 20, cy + 26); c2.lineTo(cx, cy + 50); c2.fill(); }});
+  for (const l of arms) shape(c, lumpy(l[2][0], l[2][1], 13, 11, {seed: 4}), SK);
+  const ph = sp ? Math.sin((p.i || 0) * 2) * 30 : 0; tube(c, [[cx + 60, cy - 60], [cx + 90 + ph * 0.3, cy - 30], [cx + 84 + ph, cy + 10]], 12, 7, '#6a5040'); // the ponytail
+  for (let i = 0; i < 9; i++) stroke(c, [[cx - 34 + i * 8, cy - 80 + Math.abs(i - 4) * 2], [cx - 36 + i * 8 + (i % 2) * 3, cy - 64 + Math.abs(i - 4) * 2]], 3.5, i % 3 === 1 ? '#a8a098' : '#6a5040'); // thinning hair on top
+  for (const s of [-1, 1]) shape(c, lumpy(cx + s * 72, cy - 44, 13, 26, {seed: 2 + s}), '#6a5040');
+  face2(c, cx, cy - 40, {r: 13, spiral: sp, t: p.i, brows: false, look: [0, 0.2]});
+  for (const [x, r] of [[cx - 30, 20], [cx + 30, 23]]) { c.save(); c.beginPath(); c.arc(x, cy - 40, r, 0, 7); c.lineWidth = 5; c.strokeStyle = '#6a3a9a'; c.stroke(); c.restore(); } stroke(c, [[cx - 10, cy - 42], [cx + 8, cy - 42]], 4, '#6a3a9a'); // round purple glasses
+  for (let i = 0; i < 26; i++) { c.fillStyle = '#9a9088'; c.fillRect(cx - 34 + (i * 37) % 68, cy - 10 + (i * 23) % 26, 3, 3); } // stubble
+  bigMouth(c, cx, cy - 4, atk ? 34 : sp ? 30 : 26, atk ? 30 : sp ? 24 : 14, {top: 4, bottom: 3, seed: 5, tongue: sp});
+  if (!sp) { tube(c, [[cx + 22, cy + 2], [cx + 62, cy - 4]], 4, 4, '#efe8d8', {line: 3, light: false}); circle(c, cx + 64, cy - 4, 5, '#ff6a1a', 2); }
+  if (atk) for (let k = 0; k < 3; k++) puff(c, cx - 50 - k * 22, cy - 10 - k * 26, 14 + k * 5, '#c0c0c8', k + 7);
+  else for (let k = 0; k < 2; k++) puff(c, cx + 74 + k * 10, cy - 24 - k * 24 - (p.i % 2) * 6, 8 + k * 4, '#c0c0c8', k + 2);
+};
+
+BOSS2.sbandierone = (c, p) => { // the flag-waver of Barna: a blob in yellow and blue, a cap, the big flag twirling
+  const {st, bob} = wp(p), spin = p.mode === 'spin', atk = p.mode === 'atk', cx = 150, cy = 178 + bob, SK = '#e4c0a2';
+  const ang = spin ? [-1.1, -0.4, 0.4, 1.1][(p.i || 0) % 4] : -0.35 + (p.mode === 'walk' ? Math.sin((p.i || 0) * 1.6) * 0.15 : 0), hx = cx + 76, hy = cy + 6;
+  const flag = back => { // the pole from his hand, the cloth on it, the Barna colours
+    const fx = Math.sin(ang), fy = -Math.cos(ang); if (back !== !spin) return;
+    const PL = spin ? 112 : 150, tx = hx + fx * PL, ty = hy + fy * PL; tube(c, [[hx - fx * 20, hy - fy * 20], [tx, ty]], 5, 5, '#6b4a2a'); circle(c, tx, ty, 8, '#e8b64a');
+    const ns = ang > 0.2 ? -0.8 : spin ? 0.8 : 1, nx = -fy * ns, ny = fx * ns, wv = (p.i % 2 ? 10 : -10), pts = [[tx - fx * 6, ty - fy * 6], [tx - fx * 6 + nx * 50 + fx * wv, ty - fy * 6 + ny * 50 + fy * wv], [tx - fx * 6 + nx * 96, ty - fy * 6 + ny * 96], [tx - fx * 76 + nx * 92, ty - fy * 76 + ny * 92], [tx - fx * 74 + nx * 46 - fx * wv, ty - fy * 74 + ny * 46 - fy * wv], [tx - fx * 74, ty - fy * 74]];
+    shape(c, pts, '#e8b64a', {line: 4.5, inner: c2 => { c2.save(); c2.strokeStyle = '#2a4a8a'; c2.lineWidth = 22; c2.beginPath(); c2.moveTo(tx - fx * 40, ty - fy * 40); c2.lineTo(tx - fx * 40 + nx * 100, ty - fy * 40 + ny * 100); c2.stroke(); c2.restore(); }});
+  };
+  flag(true);
+  legs2(c, cx, cy + 50, spin ? (p.i % 2 ? 1 : -1) : st, '#2a3a6a', '#3a2418', 30, 14);
+  shape(c, lumpy(cx, cy, 74, 78, {seed: 21, wob: 0.04, n: 18, flat: 0.12}), SK, {inner: c2 => { c2.fillStyle = '#d8a838'; c2.fillRect(cx - 80, cy + 14, 80, 90); c2.fillStyle = '#2a4a8a'; c2.fillRect(cx, cy + 14, 80, 90); c2.fillStyle = '#b3101c'; smoothPath(c2, lumpy(cx - 34, cy + 44, 10, 8, {seed: 6, wob: 0.3})); c2.fill(); c2.fillStyle = '#f0e6d0'; c2.fillRect(cx - 80, cy + 12, 160, 6); }});
+  shape(c, lumpy(cx - 6, cy - 78, 52, 24, {seed: 8, wob: 0.12, flat: 0.5}), '#2a4a8a'); shape(c, lumpy(cx + 30, cy - 92, 16, 12, {seed: 2}), '#d8a838'); // the cap and its pompon
+  face2(c, cx, cy - 38, {r: 13, angry: spin ? 1 : 0.2, look: spin ? [-0.4, -0.4] : [0.2, 0.3]});
+  bigMouth(c, cx, cy - 12, spin || atk ? 38 : 32, spin || atk ? 30 : 18, {top: 5, bottom: 4, seed: 9, tongue: !spin});
+  tube(c, [[cx - 62, cy - 4], [cx - 86, cy + 26 + st * 5], [cx - 78, cy + 50]], 15, 12, SK); shape(c, lumpy(cx - 78, cy + 52, 13, 11, {seed: 5}), SK);
+  tube(c, [[cx + 62, cy - 4], [hx + 10, hy - 26], [hx, hy]], 15, 12, SK); shape(c, lumpy(hx, hy, 13, 11, {seed: 6}), SK);
+  flag(false);
+  if (spin) sweat(c, [[cx - 84, cy - 50]]);
+};
+
+BOSS2.fattucchiera = (c, p) => { // Sonia: a round blob in a black dress, a cloud of blonde curls, lipstick and blush, the shaker of the witch
+  const {st, bob} = wp(p), atk = p.mode === 'atk', tp = p.mode === 'tp', cx = 150, cy = 184 + bob + (tp ? 10 : 0), SK = '#f0c4a4', HAIR = '#ecd470';
+  if (!tp) legs2(c, cx, cy + 46, st, '#e8b8a0', '#1a1a20', 26, 11);
+  const curls = [[cx, cy - 92, 60], [cx - 64, cy - 72, 28], [cx + 64, cy - 72, 28], [cx - 50, cy - 116, 26], [cx + 50, cy - 116, 26], [cx - 18, cy - 140, 26], [cx + 22, cy - 140, 26], [cx - 76, cy - 36, 24], [cx + 76, cy - 36, 24], [cx - 72, cy + 2, 18], [cx + 72, cy + 2, 18]];
+  for (const [x, y, r] of curls) shape(c, lumpy(x, y + (p.i % 2 ? 2 : 0), r, r * 0.92, {seed: Math.round(x * 7 + y), wob: 0.12, n: 14}), HAIR, {line: 4.5});
+  shape(c, lumpy(cx, cy, 70, 68, {seed: 31, wob: 0.04, n: 18, flat: 0.12}), SK, {inner: c2 => { c2.fillStyle = '#24242c'; smoothPath(c2, lumpy(cx, cy + 60, 86, 60, {seed: 2, wob: 0.03})); c2.fill(); c2.strokeStyle = '#e8b64a'; c2.lineWidth = 4; c2.beginPath(); c2.moveTo(cx - 40, cy + 6); c2.quadraticCurveTo(cx, cy + 22, cx + 40, cy + 6); c2.stroke(); }});
+  for (const [x, y] of [[cx - 50, cy - 108], [cx + 40, cy - 124], [cx - 70, cy - 60], [cx + 70, cy - 60], [cx, cy - 104]]) stroke(c, [[x - 8, y], [x, y - 6], [x + 6, y + 2]], 3, '#b8982a');
+  face2(c, cx, cy - 36, {r: 13, iris: '#4a2a6a', angry: atk ? 0.8 : 0, look: [0.1, 0.2]});
+  for (const s of [-1, 1]) { c.save(); c.beginPath(); c.ellipse(cx + s * 50, cy - 14, 11, 7, 0, 0, 7); c.fillStyle = 'rgba(240,110,130,.75)'; c.fill(); c.restore(); }
+  bigMouth(c, cx, cy - 10, atk ? 32 : 24, atk ? 26 : 14, {top: 5, bottom: 3, seed: 8, inside: '#5a0c18'}); stroke(c, [[cx - 26, cy - 12], [cx, cy - 18], [cx + 26, cy - 10]], 4, '#c03040');
+  tube(c, [[cx - 60, cy + 4], [cx - 82, cy + 30], [cx - 74, cy + 52]], 14, 11, SK); shape(c, lumpy(cx - 74, cy + 54, 12, 10, {seed: 4}), SK);
+  const sy = atk ? cy - 86 + (p.i % 2) * 12 : cy - 6, sx = cx + 84; // the shaker: by her side, or raised and shaken
+  tube(c, [[cx + 60, cy + 4], [cx + 90, atk ? cy - 30 : cy + 20], [sx - 6, sy + 30]], 14, 11, SK);
+  shape(c, rectPts(sx - 14, sy - 8, sx + 14, sy + 36, 3), '#c8ccd2', {line: 4}); shape(c, [[sx - 10, sy - 22], [sx + 10, sy - 22], [sx + 14, sy - 8], [sx - 14, sy - 8]], '#9aa0a8', {line: 4, light: false});
+  shape(c, lumpy(sx - 4, sy + 30, 12, 10, {seed: 7}), SK);
+  if (atk || tp) for (const [x, y, r] of tp ? [[cx - 90, cy - 20, 6], [cx + 96, cy + 10, 5], [cx - 60, cy + 70, 5], [cx + 70, cy - 90, 6], [cx, cy - 170, 5]] : [[sx + 26, sy - 20 - (p.i % 2) * 8, 6], [sx + 14, sy - 44, 5], [sx + 34, sy - 56, 4]]) circle(c, x, y, r, '#d0a0ff', 2.5);
+  if (tp) for (let k = 0; k < 6; k++) puff(c, cx - 100 + k * 40, 236 + (k % 2) * 6, 26, '#b090d0', k + (p.i || 0));
+};
+
+BOSS2.mostro = (c, p) => { // the Dam monster: a green toad blob, three eyes, a mouth from side to side, dripping
+  const m = p.mode, air = m === 'air', fall = m === 'fall', hop = m === 'hop', cx = 150, G = '#5a9a6a';
+  const sx = air ? 0.86 : fall ? 1.18 : hop ? 1.1 : 1 + (p.i % 2 ? 0.02 : 0), sy = air ? 1.16 : fall ? 0.78 : hop ? 0.86 : 1 - (p.i % 2 ? 0.03 : 0), rx = 100 * sx, ry = 82 * sy, cy = 262 - ry - (air ? 30 : 6);
+  for (const s of [-1, 1]) { if (air) tube(c, [[cx + s * 50, cy + ry * 0.7], [cx + s * 60, cy + ry + 30]], 16, 12, G); shape(c, lumpy(cx + s * (rx * 0.62), air ? cy + ry + 36 : 254, 30, 14, {seed: 5, flat: 0.4}), tone(G, -0.2)); } // the feet
+  shape(c, lumpy(cx, cy, rx, ry, {seed: 17, wob: 0.04, n: 20, flat: 0.15}), G, {inner: c2 => { c2.fillStyle = '#b8d0a0'; smoothPath(c2, lumpy(cx, cy + ry * 0.62, rx * 0.66, ry * 0.42, {seed: 3})); c2.fill();
+    c2.fillStyle = '#3a6a4a'; for (const [x, y, r] of [[cx - 70, cy - 20, 7], [cx + 76, cy, 6], [cx + 40, cy - 50, 5], [cx - 40, cy + 34, 5]]) { c2.beginPath(); c2.arc(x * 1, y, r, 0, 7); c2.fill(); } }});
+  const ey = cy - ry * 0.55; eye(c, cx - 44, ey + 4, 18, {pupil: 0.55, look: [0, air ? -0.5 : 0.4]}); eye(c, cx + 46, ey, 22, {pupil: 0.5, look: [0, air ? -0.5 : 0.4]}); eye(c, cx + 2, ey - 26, 12, {pupil: 0.6, veins: true, look: [0, air ? -0.5 : 0.4]});
+  const mw = rx * 0.8, mh = air ? 64 : fall ? 30 : hop ? 40 : 44 + (p.i % 2) * 6, my = cy - ry * 0.1;
+  mouth(c, [[cx - mw, my], [cx, my - 8], [cx + mw, my], [cx + mw * 0.7, my + mh * 0.8], [cx, my + mh], [cx - mw * 0.7, my + mh * 0.8]], {top: 9, bottom: 6, tongue: !air, long: 0.3, seed: 11});
+  c.save(); c.fillStyle = '#5fa8c9'; for (const [x, l] of [[cx - 80, 18], [cx + 88, 26], [cx - 20, 14]]) { c.beginPath(); c.ellipse(x, cy + ry * 0.2 + l, 5, 8, 0, 0, 7); c.fill(); c.lineWidth = 2.5; c.strokeStyle = OUT; c.stroke(); } c.restore(); // water dripping
+  if (fall) for (const s of [-1, 1]) puff(c, cx + s * 120, 246, 18, '#9ad0e8', s + 3);
+};
+
+BOSS2.raviolissimo = (c, p) => { // Coccodè CEO: a huge ravioli blob, crimped edges, a collar and red tie, a crown, a big mouth
+  const {st, bob} = wp(p), atk = p.mode === 'atk' || p.mode === 'hop', cx = 150, cy = 152 + bob, Y = '#ecc870', small = p.small;
+  legs2(c, cx, cy + 80, st, '#e2b860', '#6a3a2a', 44, 14);
+  const sq = [[cx - 98, cy - 80], [cx, cy - 92], [cx + 98, cy - 80], [cx + 106, cy], [cx + 98, cy + 84], [cx, cy + 92], [cx - 98, cy + 84], [cx - 106, cy]];
+  for (const s of [-1, 1]) tube(c, [[cx + s * 96, cy + 10], [cx + s * 122, cy + 40 + st * s * 6], [cx + s * 118, cy + 66 + st * s * 6]], 13, 10, Y);
+  shape(c, sq, Y, {inner: c2 => { c2.fillStyle = '#d8a848'; for (let k = 0; k < 18; k++) { const t = k / 17; c2.beginPath(); c2.arc(cx - 96 + t * 192, cy - 86 + Math.abs(t - 0.5) * 12, 6, 0, 7); c2.fill(); c2.beginPath(); c2.arc(cx - 96 + t * 192, cy + 86 - Math.abs(t - 0.5) * 6, 6, 0, 7); c2.fill(); } // crimping
+    c2.fillStyle = '#f6dc96'; smoothPath(c2, lumpy(cx, cy - 4, 76, 66, {seed: 4})); c2.fill(); c2.fillStyle = '#8a3a2a'; smoothPath(c2, lumpy(cx + 94, cy + 76, 22, 18, {seed: 3, wob: 0.2})); c2.fill(); }});
+  for (const s of [-1, 1]) shape(c, lumpy(cx + s * 118, cy + 68 + st * s * 6, 12, 10, {seed: 5}), Y);
+  face2(c, cx, cy - 34, {r: 14, angry: atk ? 1 : 0.5, sp: 34});
+  bigMouth(c, cx, cy - 4, atk ? 50 : 42, atk ? 40 : 24, {top: 6, bottom: 4, seed: 12, tongue: !atk});
+  shape(c, [[cx - 26, cy + 48], [cx, cy + 58], [cx - 12, cy + 70]], '#f4f4f4', {line: 3, light: false}); shape(c, [[cx + 26, cy + 48], [cx, cy + 58], [cx + 12, cy + 70]], '#f4f4f4', {line: 3, light: false});
+  shape(c, [[cx - 8, cy + 56], [cx + 8, cy + 56], [cx + 14, cy + 88], [cx, cy + 100], [cx - 14, cy + 88]], '#c0202a', {line: 3.5});
+  if (!small) shape(c, [[cx - 40, cy - 86], [cx - 44, cy - 124], [cx - 22, cy - 104], [cx, cy - 132], [cx + 22, cy - 104], [cx + 44, cy - 124], [cx + 40, cy - 86]], '#e8b64a', {line: 4});
+  if (atk) sweat(c, [[cx - 110, cy - 60]]); else drool(c, cx + 96, cy + 92, 12 + (p.i % 2) * 6, '#8a3a2a');
+};
+
+BOSS2.torchio = (c, p) => { // the Buitoni pasta press: a rusty iron frame, a fleshy face squashed in the plate, spewing sauce
+  const atk = p.mode === 'atk', cx = 150, d = atk ? 18 + (p.i % 2) * 6 : (p.i % 2) * 6, FL = '#d8aa98';
+  shape(c, rectPts(46, 40, 72, 258), '#5a6068'); shape(c, rectPts(228, 40, 254, 258), '#5a6068');
+  shape(c, rectPts(30, 22, 270, 56, 10), '#787e86', {inner: c2 => { c2.fillStyle = '#3a4048'; for (let i = 0; i < 6; i++) c2.fillRect(50 + i * 36, 34, 18, 10); }});
+  shape(c, rectPts(140, 56, 160, 76 + d, 2), '#4a4e56', {line: 4});
+  for (const [x, y, r] of [[58, 110, 8], [242, 180, 9], [60, 210, 6], [240, 80, 6]]) { c.save(); c.fillStyle = '#9a5a2a'; smoothPath(c, lumpy(x, y, r, r * 1.4, {seed: x, wob: 0.3})); c.fill(); c.restore(); }
+  shape(c, rectPts(76, 70 + d, 224, 96 + d, 8), '#9aa2aa'); // the plate pressing down on him
+  const cy = 176 + d * 0.5, ry = 76 - d * 0.6, rx = 82 + d * 0.4; // his body, squashed under it
+  shape(c, lumpy(cx, cy, rx, ry, {seed: 23, wob: 0.04, n: 18, flat: 0.2}), FL, {inner: c2 => { c2.fillStyle = tone(FL, -0.12); smoothPath(c2, lumpy(cx, cy + ry * 0.6, rx * 0.8, ry * 0.4, {seed: 2})); c2.fill(); }});
+  face2(c, cx, cy - ry * 0.4, {r: 13, angry: 1, look: [0, 0.4]});
+  bigMouth(c, cx, cy - ry * 0.05, atk ? 54 : 40, atk ? 44 : 26, {top: 6, bottom: 5, seed: 13, tongue: !atk, inside: '#5a0c10'});
+  if (atk) for (let i = 0; i < 6; i++) tube(c, [[cx - 30 + i * 12, cy + ry * 0.4], [cx - 40 + i * 16, 262]], 5, 4, i % 2 ? '#c0101a' : '#d8342a', {line: 3, light: false}); // sauce pouring
+  else for (let i = 0; i < 4; i++) tube(c, [[cx - 40 + i * 26, cy + ry * 0.8], [cx - 40 + i * 26, cy + ry * 0.8 + 16 + (i * 17 + (p.i || 0) * 9) % 24]], 4, 3, '#f0cf6b', {line: 3, light: false}); // spaghetti hanging
+  for (const s of [-1, 1]) { tube(c, [[cx + s * rx * 0.9, cy - 10], [cx + s * (rx + 10), cy - 50 - d], [cx + s * (rx - 6), 98 + d]], 13, 10, FL); shape(c, lumpy(cx + s * (rx - 6), 100 + d, 12, 10, {seed: 4}), FL); } // pushing the plate back up
+};
+
+BOSS2.biscia = (c, p) => { // the Tiber snake's head (the body is drawn by the game): green, yellow slit eyes, a mouth full of fangs
+  const atk = p.mode !== 'walk', cx = 150, cy = 160 + (p.i % 2 ? -4 : 0), G = '#448a54';
+  shape(c, lumpy(cx, cy, 98, 90, {seed: 5, wob: 0.05, n: 18, flat: 0.1}), G, {inner: c2 => { c2.strokeStyle = '#2a5a36'; c2.lineWidth = 4; for (let i = 0; i < 7; i++) { c2.beginPath(); c2.arc(cx - 70 + i * 24, cy - 70 + (i % 2) * 10, 10, 0.3, 2.8); c2.stroke(); } c2.fillStyle = '#c9d98a'; smoothPath(c2, lumpy(cx, cy + 70, 60, 34, {seed: 2})); c2.fill(); }});
+  for (const [x, r] of [[cx - 44, 22], [cx + 46, 26]]) { c.save(); c.beginPath(); c.ellipse(x, cy - 36, r, r * 0.85, 0, 0, 7); c.fillStyle = '#f5e04a'; c.fill(); c.lineWidth = 4; c.strokeStyle = OUT; c.stroke(); c.beginPath(); c.ellipse(x, cy - 34, 5, r * 0.7, 0, 0, 7); c.fillStyle = '#100806'; c.fill(); c.beginPath(); c.arc(x - 9, cy - 42, 4, 0, 7); c.fillStyle = '#fff'; c.fill(); c.restore(); }
+  stroke(c, [[cx - 70, cy - 66], [cx - 24, cy - 54]], 7); stroke(c, [[cx + 74, cy - 70], [cx + 24, cy - 56]], 7);
+  bigMouth(c, cx, cy + 4, atk ? 72 : 60, atk ? 66 : 36, {top: 2, bottom: 0, long: 0.7, tongue: '#d2202a', seed: 3});
+  if (atk) { c.save(); c.strokeStyle = OUT; c.lineWidth = 9; c.beginPath(); c.moveTo(cx, cy + 40); c.lineTo(cx + 6, cy + 86); c.stroke(); c.strokeStyle = '#d2202a'; c.lineWidth = 5; c.stroke(); c.restore(); } // the forked tongue out
+  drool(c, cx - 40, cy + 30, 22 + (p.i % 2) * 6, '#b8f070');
+};
+
+BOSS2.guardiano = (c, p) => { // the guard of the Resurrection, risen: a rotten green blob in a red tunic, the helmet, the shield and the spear
+  const {st, bob} = wp(p), aim = p.mode === 'aim', th = p.mode === 'thrust', cx = 150, cy = 176 + bob, SK = '#8e9e6a';
+  legs2(c, cx, cy + 50, th ? 1 : st, SK, '#5a3a20', 32, 14);
+  const sx = th ? cx - 140 : aim ? cx + 40 : cx + 92, sy = th ? cy + 4 : aim ? cy - 10 : cy - 60, sa = th || aim ? Math.PI / 2 : 0; // the spear
+  const spear = () => { c.save(); c.translate(sx, sy); c.rotate(sa); tube(c, [[0, -60], [0, 190]], 5, 5, '#6b4a2a'); shape(c, [[0, -88], [12, -58], [-12, -58]], '#c9cdd2', {line: 4}); c.save(); c.fillStyle = '#b3101c'; c.fillRect(-4, -60, 8, 14); c.restore(); c.restore(); };
+  if (!th) spear();
+  shape(c, lumpy(cx, cy, 76, 78, {seed: 41, wob: 0.04, n: 18, flat: 0.12}), SK, {inner: c2 => { c2.fillStyle = '#9a2a1a'; c2.fillRect(cx - 90, cy + 8, 180, 100); c2.fillStyle = '#c9a24a'; c2.fillRect(cx - 90, cy + 30, 180, 9); c2.fillStyle = '#7a5030'; for (let i = 0; i < 8; i++) c2.fillRect(cx - 70 + i * 18, cy + 40, 12, 40); }});
+  shape(c, [[cx - 80, cy - 40], [cx - 76, cy - 90], [cx, cy - 116], [cx + 76, cy - 90], [cx + 80, cy - 40], [cx + 56, cy - 40], [cx + 54, cy - 66], [cx - 54, cy - 66], [cx - 56, cy - 40]], '#9aa0a8');
+  shape(c, lumpy(cx, cy - 120, 12, 30, {seed: 4, wob: 0.15}), '#c0202a');
+  face2(c, cx, cy - 46, {r: 12, iris: '#ff7a1a', white: '#f0e8b0', angry: aim || th ? 1 : 0.5, brows: false, look: th ? [-0.6, 0] : [0.2, 0.3]});
+  bigMouth(c, cx, cy - 22, th ? 40 : 34, th ? 32 : 20, {top: 5, bottom: 4, toothCol: '#d8d0b0', seed: 14});
+  const shx = cx - 92; shape(c, lumpy(shx, cy + 20, 34, 48, {seed: 2, wob: 0.03}), '#d0aa50', {inner: c2 => { c2.fillStyle = '#b3101c'; smoothPath(c2, lumpy(shx - 6, cy - 6, 14, 10, {seed: 5, wob: 0.3})); c2.fill(); }}); circle(c, shx, cy + 20, 10, '#8a6a1a');
+  tube(c, [[cx + 60, cy - 6], [sx + (th ? 120 : 10), sy + (th ? 0 : 50)], [sx + (th ? 110 : 0), sy + (th ? 0 : 56)]], 15, 12, SK); shape(c, lumpy(sx + (th ? 110 : 0), sy + (th ? 0 : 56), 13, 11, {seed: 6}), SK);
+  if (th) spear();
+  fly(c, 60 + (p.i % 2) * 8, 40); fly(c, 236, 60 - (p.i % 2) * 6);
+};
+
+BOSS2.piero = (c, p) => { // Piero della Francesca: a red robed blob, the red cap, a face cracked like a fresco, the palette and the dripping brush
+  const {st, bob} = wp(p), atk = p.mode === 'atk', cx = 150, cy = 172 + bob, SK = '#ece0cc', RED = '#9a1c1e';
+  legs2(c, cx, cy + 56, st, '#5a1012', '#3a2418', 30, 13);
+  shape(c, lumpy(cx, cy, 78, 84, {seed: 51, wob: 0.04, n: 18, flat: 0.12}), SK, {inner: c2 => { c2.fillStyle = RED; smoothPath(c2, lumpy(cx, cy + 70, 100, 80, {seed: 2, wob: 0.02})); c2.fill(); c2.strokeStyle = '#5a0c0e'; c2.lineWidth = 4; for (const x of [-40, 0, 40]) { c2.beginPath(); c2.moveTo(cx + x * 0.5, cy + 10); c2.quadraticCurveTo(cx + x, cy + 50, cx + x * 1.3, cy + 100); c2.stroke(); } c2.fillStyle = '#c9a24a'; c2.fillRect(cx - 90, cy + 36, 180, 7);
+    c2.strokeStyle = '#a89880'; c2.lineWidth = 2.5; c2.beginPath(); c2.moveTo(cx - 60, cy - 70); c2.lineTo(cx - 48, cy - 54); c2.lineTo(cx - 54, cy - 40); c2.moveTo(cx + 56, cy - 60); c2.lineTo(cx + 44, cy - 46); c2.stroke(); }}); // the fresco cracks
+  shape(c, lumpy(cx, cy - 84, 70, 30, {seed: 6, wob: 0.08, flat: 0.4}), '#c0202a'); tube(c, [[cx - 70, cy - 70], [cx, cy - 64], [cx + 70, cy - 70]], 10, 10, '#a01820'); tube(c, [[cx + 70, cy - 74], [cx + 90, cy - 40], [cx + 84, cy - 6]], 10, 7, '#a01820');
+  face2(c, cx, cy - 38, {r: 13, angry: atk ? 1 : 0.3, look: [0.2, 0.3]});
+  c.save(); c.fillStyle = '#a8101a'; c.fillRect(cx - 32, cy - 26, 4, 18); c.restore();
+  bigMouth(c, cx, cy - 10, atk ? 40 : 30, atk ? 34 : 18, {top: 5, bottom: 3, seed: 16, tongue: !atk});
+  tube(c, [[cx - 64, cy], [cx - 96, cy + 24], [cx - 108, cy + 32]], 15, 12, RED);
+  shape(c, lumpy(cx - 112, cy + 40, 36, 22, {seed: 3, rot: -0.3}), '#c9965a', {inner: c2 => { for (const [x, y, col] of [[-124, 34, '#c0101a'], [-110, 28, '#2b5aa8'], [-98, 38, '#e8b64a'], [-116, 50, '#f0f0e0']]) { c2.fillStyle = col; c2.beginPath(); c2.arc(cx + x, cy + y, 6, 0, 7); c2.fill(); } }});
+  const by = atk ? cy - 100 - (p.i % 2) * 10 : cy - 20, bx = atk ? cx + 104 : cx + 108; // the brush: in hand, or raised to paint
+  tube(c, [[cx + 64, cy], [cx + 100, atk ? cy - 40 : cy + 10], [bx, by + 40]], 15, 12, RED);
+  tube(c, [[bx - 2, by + 60], [bx + 4, by - 20]], 4, 3, '#6b4a2a'); shape(c, lumpy(bx + 5, by - 26, 8, 13, {seed: 2}), '#c0101a'); if (!atk) drool(c, bx + 5, by - 16, 14, '#c0101a');
+  shape(c, lumpy(bx, by + 40, 13, 11, {seed: 5}), SK);
+  if (atk) for (const [x, y, col] of [[cx - 60, cy - 120, '#c0101a'], [cx + 30, cy - 140, '#2b5aa8'], [cx - 10, cy - 116, '#e8b64a']]) circle(c, x, y, 7, col, 2.5);
+};
+
+BOSS2.suzuki = (c, p) => { // the green Suzuki: a little car with a face, headlights for eyes, the grille a mouth of teeth, dents and rust
+  const m = p.mode, rev = m === 'rev', ch = m === 'charge', stun = m === 'stun', cx = 150, j = rev ? (p.i % 2 ? -4 : 4) : 0, bob = (p.i % 2 ? -5 : 0) + (ch ? 8 : 0), G = '#3a8a4a';
+  if (rev || ch) for (let k = 0; k < 3; k++) puff(c, 30 - k * 14 + j, 214 - k * 22 - (p.i % 2) * 6, 14 + k * 5, '#a8a8b0', k + (p.i || 0)); // exhaust
+  for (const x of [cx - 86, cx + 86]) { shape(c, lumpy(x + j, 232, 30, 28, {seed: x}), '#1e1e22', {light: false}); circle(c, x + j, 232, 12, '#8a8e96'); }
+  c.save(); c.translate(j, bob); if (ch) { c.translate(cx, 200); c.rotate(-0.05); c.translate(-cx, -200); }
+  shape(c, lumpy(cx, 116, 100, 64, {seed: 3, wob: 0.03, flat: 0.6}), G); shape(c, lumpy(cx, 118, 76, 44, {seed: 2, wob: 0.02, flat: 0.8}), '#a8d0e0', {line: 4, inner: c2 => { c2.strokeStyle = '#f4faff'; c2.lineWidth = 3; c2.beginPath(); c2.moveTo(cx, 84); c2.lineTo(cx - 12, 108); c2.lineTo(cx + 6, 120); c2.moveTo(cx - 12, 108); c2.lineTo(cx - 40, 100); c2.stroke(); }}); // roof and cracked windscreen
+  shape(c, lumpy(cx, 186, 132, 52, {seed: 7, wob: 0.03, n: 20, flat: 0.3}), G, {inner: c2 => { for (const [x, y, r] of [[cx - 110, 170, 10], [cx + 100, 210, 11], [cx + 20, 224, 8]]) { c2.fillStyle = '#9a5a2a'; smoothPath(c2, lumpy(x, y, r, r * 0.8, {seed: x, wob: 0.3})); c2.fill(); } }});
+  const ey = 170; if (stun) face2(c, cx, ey, {r: 20, sp: 86, spiral: true, t: p.i, brows: false});
+  else { eye(c, cx - 86, ey + 2, 20, {white: '#fff0a0', pupil: 0.5, look: ch ? [0.4, 0.2] : [0.2, 0.3]}); eye(c, cx + 86, ey, 24, {white: '#fff0a0', pupil: 0.45, veins: true, look: ch ? [0.4, 0.2] : [0.2, 0.3]}); }
+  const a = ch || rev ? 1 : 0.3; stroke(c, [[cx - 110, ey - 26 - a * 2], [cx - 86, ey - 24], [cx - 62, ey - 16 + a * 6]], 7); stroke(c, [[cx + 60, ey - 18 + a * 6], [cx + 86, ey - 30], [cx + 114, ey - 32 - a * 2]], 7); // brows: dents in the bonnet
+  const mh = ch ? 44 : rev ? 36 : stun ? 22 : 28; mouth(c, [[cx - 54, 186], [cx + 54, 186], [cx + 50, 186 + mh], [cx - 50, 186 + mh]], {top: 7, bottom: 6, toothCol: '#c8ccd2', long: 0.36, inside: '#141414', tongue: stun});
+  shape(c, rectPts(cx - 136, 226, cx + 120, 240, 8), '#6a6e76', {line: 4}); // the bumper
+  c.restore();
+  if (stun) { stars(c, cx, 40, p.i * 0.66); puff(c, cx + 40, 62 - (p.i % 2) * 10, 18, '#8a8a92', 3); }
+  if (ch) sweat(c, [[cx + 130, 120]]);
+};
+
+BOSS2.erika = (c, p) => { // Erika: a barmaid blob in a black top, a towering orange bun, a laughing mouth, a beer mug, the glass to throw
+  const {st, bob} = wp(p), atk = p.mode === 'atk', cx = 150, cy = 180 + bob, SK = '#f2c8a8', HAIR = '#f07a1a';
+  legs2(c, cx, cy + 48, st, '#2a2a30', '#1a1a20', 28, 12);
+  shape(c, lumpy(cx, cy - 116, 46, 40, {seed: 3, wob: 0.14, n: 14}), HAIR, {inner: c2 => { c2.strokeStyle = '#c05a10'; c2.lineWidth = 3; for (let k = 0; k < 4; k++) { c2.beginPath(); c2.arc(cx - 10 + k * 8, cy - 116, 12 + k * 6, 3.6, 5.6); c2.stroke(); } }}); // the bun
+  for (const s of [-1, 1]) shape(c, lumpy(cx + s * 70, cy - 36, 18, 36, {seed: 5 + s, wob: 0.12}), HAIR);
+  shape(c, lumpy(cx, cy, 72, 80, {seed: 61, wob: 0.04, n: 18, flat: 0.12}), SK, {inner: c2 => { c2.fillStyle = HAIR; smoothPath(c2, lumpy(cx, cy - 84, 76, 30, {seed: 4, wob: 0.1})); c2.fill(); c2.fillStyle = '#26262c'; c2.fillRect(cx - 80, cy + 18, 160, 90); c2.fillStyle = '#f2ece0'; c2.fillRect(cx - 44, cy + 34, 88, 70); c2.fillStyle = '#d8b040'; smoothPath(c2, lumpy(cx + 18, cy + 64, 10, 8, {seed: 2, wob: 0.3})); c2.fill(); }});
+  face2(c, cx, cy - 36, {r: 13, iris: '#3a7a3a', angry: atk ? 0.8 : 0, look: [0.2, 0.2]});
+  for (const s of [-1, 1]) { c.save(); c.beginPath(); c.ellipse(cx + s * 50, cy - 14, 10, 6, 0, 0, 7); c.fillStyle = 'rgba(240,110,100,.7)'; c.fill(); c.restore(); }
+  bigMouth(c, cx, cy - 10, atk ? 36 : 30, atk ? 30 : 22, {top: 5, bottom: 3, seed: 18, tongue: true, inside: '#5a0c18'});
+  tube(c, [[cx - 62, cy], [cx - 86, cy + 26], [cx - 82, cy + 44]], 14, 11, SK); // the mug, foaming
+  shape(c, rectPts(cx - 112, cy + 24, cx - 72, cy + 74, 3), '#e8a83a', {line: 4, inner: c2 => { c2.fillStyle = '#fff0c0'; c2.fillRect(cx - 112, cy + 24, 40, 10); }}); stroke(c, [[cx - 112, cy + 36], [cx - 126, cy + 44], [cx - 112, cy + 60]], 6); puff(c, cx - 92, cy + 20, 20, '#fffaf0', 4);
+  shape(c, lumpy(cx - 82, cy + 46, 12, 10, {seed: 4}), SK);
+  const gx = atk ? cx + 70 + (p.i % 2) * 20 : cx + 92, gy = atk ? cy - 110 + (p.i % 2) * 10 : cy + 30; // the glass: at her side, then up to throw
+  tube(c, [[cx + 62, cy], [atk ? cx + 92 : cx + 98, atk ? cy - 50 : cy + 20], [gx, gy + 12]], 14, 11, SK);
+  shape(c, rectPts(gx - 14, gy - 24, gx + 14, gy + 10, 3), '#cfe8f0', {line: 4, inner: c2 => { c2.fillStyle = '#e8a83a'; c2.fillRect(gx - 14, gy - 6, 28, 16); }}); shape(c, lumpy(gx, gy + 12, 12, 10, {seed: 6}), SK);
+};
+
+BOSS2.arcangelo = (c, p) => { // Arcangelo 2: a huge drunk belly, bald and greenish, a red nose, sleepy eyes, a bottle; he pukes and jumps
+  const {st, bob} = wp(p), m = p.mode, pk = m === 'atk', jp = m === 'jump', cx = 150 + (m === 'walk' ? Math.sin((p.i || 0) * 1.6) * 6 : 0), SK = '#c8d0a8';
+  const sy = jp ? 1.1 : 1, cy = 168 + bob - (jp ? 20 : 0), rx = 96 / sy, ry = 88 * sy;
+  if (jp) for (const s of [-1, 1]) { tube(c, [[cx + s * 40, cy + 60], [cx + s * 46, 250]], 18, 14, '#3a4a6a'); shape(c, lumpy(cx + s * 50, 256, 22, 10, {seed: 2, flat: 0.4}), '#3a2a20'); }
+  else legs2(c, cx, cy + 60, st, '#3a4a6a', '#3a2a20', 40, 16);
+  const arms = jp ? [[[cx - 80, cy - 20], [cx - 110, cy - 70], [cx - 104, cy - 110]], [[cx + 80, cy - 20], [cx + 110, cy - 70], [cx + 104, cy - 110]]] : [[[cx - 84, cy - 10], [cx - 110, cy + 24 + st * 5], [cx - 104, cy + 50]], [[cx + 84, cy - 10], [cx + 112, cy + 20 - st * 5], [cx + 108, cy + 44]]];
+  tube(c, arms[0], 18, 14, SK); shape(c, lumpy(arms[0][2][0], arms[0][2][1], 15, 13, {seed: 2}), SK);
+  shape(c, lumpy(cx, cy, rx, ry, {seed: 71, wob: 0.04, n: 20, flat: 0.12}), SK, {inner: c2 => { c2.fillStyle = tone(SK, 0.18); smoothPath(c2, lumpy(cx, cy + 40, rx * 0.8, ry * 0.5, {seed: 3})); c2.fill(); c2.fillStyle = '#e8e4d8'; c2.fillRect(cx - 120, cy + 80, 240, 30); c2.fillStyle = '#3a4a6a'; c2.fillRect(cx - 120, cy + 74, 240, 10); }}); // the vest rolled up, the trousers
+  stroke(c, [[cx - 6, cy + 46], [cx, cy + 52], [cx + 6, cy + 46]], 4); // belly button
+  for (let i = 0; i < 30; i++) { c.fillStyle = '#6a7058'; c.fillRect(cx - 40 + (i * 37) % 80, cy - 34 + (i * 23) % 26, 3, 3); }
+  const ey = cy - ry * 0.55; if (jp) face2(c, cx, ey, {r: 13, look: [0, -0.4], angry: 0}); else { for (const [x, r] of [[cx - 30, 13], [cx + 30, 16]]) { eye(c, x, ey, r, {pupil: 0.6, white: '#f0e8c0', look: [0.1, 0.5]}); c.save(); c.beginPath(); c.ellipse(x, ey - r * 0.4, r + 2, r * 0.75, 0, Math.PI, 0); c.fillStyle = SK; c.fill(); c.lineWidth = 4; c.strokeStyle = OUT; c.stroke(); c.restore(); } } // heavy drunk lids
+  circle(c, cx + 2, ey + 22, 12, '#d8504a', 3.5);
+  bigMouth(c, cx, ey + 38, pk ? 40 : 30, pk ? 40 : 16, {top: 4, bottom: 3, seed: 21, tongue: !pk});
+  if (pk) { const L = [[cx, ey + 60], [cx + 10, ey + 100], [cx + 4, 240]]; tube(c, L, 18, 26, '#9ac04a', {inner: c2 => { c2.fillStyle = '#c8e070'; for (let k = 0; k < 6; k++) { c2.beginPath(); c2.arc(cx - 10 + (k * 17) % 30, ey + 80 + k * 26, 5, 0, 7); c2.fill(); } }}); shape(c, lumpy(cx + 6, 250, 50, 14, {seed: 4, wob: 0.2}), '#9ac04a'); }
+  else drool(c, cx + 22, ey + 50, 14 + (p.i % 2) * 6);
+  tube(c, arms[1], 18, 14, SK); const bx = arms[1][2][0], by = arms[1][2][1]; // the bottle in his fist
+  shape(c, rectPts(bx - 10, by - 50, bx + 10, by + 10, 3), '#3a7a3a', {line: 4}); shape(c, rectPts(bx - 4, by - 70, bx + 4, by - 50, 2), '#3a7a3a', {line: 3.5, light: false}); shape(c, lumpy(bx, by, 15, 13, {seed: 3}), SK);
+  if (m === 'walk') { fly(c, 50, 60 + (p.i % 2) * 6); }
+};
+
+BOSS2.mattarellone = (c, p) => { const m = p.mode, i = p.i || 0; if (m === 'walk') return BUI(c, {...FRAMES.walk[i % 4], blood: false}); if (m === 'atk') return BUI(c, FRAMES.charge[0]); if (m === 'charge') return BUI(c, FRAMES.charge[1 + i % 2]); return BUI(c, FRAMES.stun[i % 2]); };
+const BOSS_MODES = {mattarellone: {walk: 4, atk: 1, charge: 2, stun: 2}, balestriere: {walk: 4, atk: 2}, retopi: {walk: 4, atk: 2, charge: 2, stun: 2}, fantasma: {walk: 4, atk: 2}, capohippie: {walk: 4, atk: 2, spiral: 2},
+  sbandierone: {walk: 4, atk: 2, spin: 4}, fattucchiera: {walk: 4, atk: 2, tp: 2}, mostro: {walk: 2, hop: 1, air: 1, fall: 1}, raviolissimo: {walk: 4, atk: 2}, torchio: {walk: 2, atk: 2}, biscia: {walk: 2, atk: 2},
+  guardiano: {walk: 4, aim: 2, thrust: 2}, piero: {walk: 4, atk: 2}, suzuki: {walk: 2, rev: 2, charge: 2, stun: 2}, erika: {walk: 4, atk: 2}, arcangelo: {walk: 4, atk: 2, jump: 2}};
+
+function pixelate(fn, B = 5) {
+  const S = 300, big = document.createElement('canvas'); big.width = big.height = S; fn(big.getContext('2d'));
+  const src = big.getContext('2d').getImageData(0, 0, S, S).data, N = Math.floor(S / B), g = [];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const bins = new Map(); let solid = 0;
+    for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) { const k = ((j * B + y) * S + i * B + x) * 4; if (src[k + 3] < 128) continue; solid++;
+      const q = (src[k] >> 5) << 6 | (src[k + 1] >> 5) << 3 | src[k + 2] >> 5, b = bins.get(q) || [0, 0, 0, 0, 0]; b[0] += src[k]; b[1] += src[k + 1]; b[2] += src[k + 2]; b[3]++; b[4] += src[k + 3]; bins.set(q, b); }
+    if (solid < B * B * 0.45) { g.push(null); continue; }
+    let best = null, dark = null; for (const b of bins.values()) { if (!best || b[3] > best[3]) best = b; const l = (b[0] + b[1] + b[2]) / b[3] / 3; if (l < 50 && (!dark || b[3] > dark[3])) dark = b; }
+    if (dark && dark[3] >= B * B * 0.3) best = dark; g.push([best[0] / best[3], best[1] / best[3], best[2] / best[3], best[4] / best[3]]);
+  }
+  const cv = document.createElement('canvas'); cv.width = cv.height = N + 2; const x = cv.getContext('2d'), img = x.createImageData(N + 2, N + 2), a = img.data, at = (i, j) => i >= 0 && j >= 0 && i < N && j < N ? g[j * N + i] : null;
+  for (let j = -1; j <= N; j++) for (let i = -1; i <= N; i++) { const c = at(i, j), o = ((j + 1) * (N + 2) + i + 1) * 4;
+    if (!c) { const nb = at(i - 1, j) || at(i + 1, j) || at(i, j - 1) || at(i, j + 1); if (nb && nb[3] > 200) { a[o] = 33; a[o + 1] = 19; a[o + 2] = 19; a[o + 3] = 255; } continue; }
+    a[o] = c[0]; a[o + 1] = c[1]; a[o + 2] = c[2]; a[o + 3] = c[3]; }
+  x.putImageData(img, 0, 0); return cv;
+}
+const MIRROR = {balestriere: true, guardiano: true}; // drawn aiming left: turned so they face right like the others
+const ST = {charge: 'charge', stun: 'stun', spiral: 'spiral', spin: 'spin', tp: 'tp', hop: 'hop', air: 'air', fall: 'fall', aim: 'aim', thrust: 'thrust', rev: 'rev', jump: 'jump', stream: 'atk', gone: 'atk', back: 'atk', persp: 'atk', puke: 'atk'};
+const art = t => t === 'raviolomedio' ? 'raviolissimo' : t;
+function frame(type, mode, i) { // one pose in pixels, cut at the feet so it stands on its shadow
+  const a = art(type), B = type === 'biscia' || type === 'raviolomedio' ? 8 : 5;
+  const cv = pixelate(c => { if (MIRROR[a]) { c.translate(300, 0); c.scale(-1, 1); } BOSS2[a](c, {mode, i, small: type === 'raviolomedio'}); }, B);
+  const h = Math.min(cv.height, Math.ceil(272 / B) + 2), [out, x] = mkc(cv.width, h); x.drawImage(cv, 0, 0); return out;
+}
+function pose(e, t) { // which animation and which frame of it, from the boss's state
+  const M = BOSS_MODES[art(e.type)];
+  if (e._pcd !== undefined && (e.cd || 0) > e._pcd + 5 && M.atk) e._atk = 16; // it just shot
+  e._pcd = e.cd || 0; if (e._atk > 0) e._atk--;
+  let m = ST[e.st]; if (m && !M[m]) m = M.atk ? 'atk' : null;
+  if (!m && e._atk > 0) m = 'atk';
+  if (!m) m = 'walk';
+  const moving = Math.hypot(e.vx || 0, e.vy || 0) > 0.25, n = M[m];
+  return [m, Math.floor(t / (m === 'walk' ? (moving ? 8 : 16) : 6)) % n];
+}
+const all = t => Object.entries(BOSS_MODES[art(t)]).flatMap(([m, n]) => Array.from({length: n}, (_, i) => [m, i]));
+function get(type, m, i) { // the frame if it's ready; the missing ones are made one per screen frame, so the fight never stalls
+  const key = 'ba' + type + m + i; if (SPR.has(key)) return key;
+  const k0 = 'ba' + type + 'walk0'; if (!SPR.has(k0)) { spr(k0, () => frame(type, 'walk', 0)); return k0; }
+  const miss = all(type).find(([a, b]) => !SPR.has('ba' + type + a + b)); if (miss) spr('ba' + type + miss[0] + miss[1], () => frame(type, miss[0], miss[1]));
+  return SPR.has(key) ? key : k0;
+}
+return {has: t => !!BOSS2[art(t)], frame, pose, get};
+})();
 /* ================= profile, unlocks, achievements, collection and the cloud ================= */
 // Filled in by build.sh for the GitHub copy; empty here, so the artifact keeps everything on the device
 const FIREBASE = {projectId: 'biturgiasotterranea', apiKey: 'AIzaSyD9KcmjPkkVnEBc2wnghVJAifY5GIEqOkU'};
@@ -5927,11 +6403,19 @@ const COLLECTION = [...Object.keys(ACTIVES).map(id => ({key: 'a_' + id, id, act:
 /* ---------- achievements ---------- */
 const BOSS_NAMES = {balestriere: ['il Balestriere', 'Balestriere'], mattarellone: ['Giovanni Buitoni', 'Giovanni Buitoni'], capohippie: ['Ermanno', 'Ermanno'],
   mostro: ['il Mostro della Diga', 'Mostro della Diga'], piero: ['Piero della Francesca', 'maestro Piero'], ...NEW_BOSS_NAMES};
+const BOSS_ACH = {
+  balestriere: 'Freccia spezzata', mattarellone: 'Stabilimento chiuso', retopi: 'Derattizzazione', fantasma: 'Spirito in pace',
+  capohippie: 'Fine del trip', sbandierone: 'Bandiera ammainata', fattucchiera: 'Incantesimo spezzato', mostro: 'Acqua passata',
+  raviolissimo: 'Licenziato in tronco', torchio: 'Fuori produzione', biscia: 'Biscia nel sacco', guardiano: 'Risorto e ricaduto',
+  piero: 'L\'ultima pennellata', suzuki: 'Rottamazione', erika: 'Il conto, grazie', arcangelo: 'Sbronza finale',
+};
 const ACH = [
   {id: 'primo', name: 'Primo sangue', desc: 'Uccidi il tuo primo nemico.', icon: 'meat', test: P => P.stats.kills >= 1},
   {id: 'cento', name: 'Disinfestazione', desc: 'Uccidi 100 nemici in totale.', icon: 'fly', test: P => P.stats.kills >= 100},
   {id: 'mille', name: 'Sterminatore', desc: 'Uccidi 1000 nemici in totale.', icon: 'crossbow', test: P => P.stats.kills >= 1000},
-  ...Object.entries(BOSS_NAMES).map(([b, [n, short]]) => ({id: 'b_' + b, name: 'Addio, ' + short, desc: 'Sconfiggi ' + n + '.', icon: 'medal', test: P => (P.stats.bosses[b] || 0) >= 1})),
+  // one for each boss you can still meet, each with its own title
+  ...Object.entries(BOSS_NAMES).filter(([b]) => FLOORS.some(f => f.bosses.includes(b) || (f.bosses2 || []).includes(b)))
+    .map(([b, [n]]) => ({id: 'b_' + b, name: BOSS_ACH[b] || 'Addio, ' + BOSS_NAMES[b][1], desc: 'Sconfiggi ' + n + '.', icon: 'medal', test: P => (P.stats.bosses[b] || 0) >= 1})),
   {id: 'piano1', name: 'Primo scalino', desc: 'Scendi al secondo piano.', icon: 'keys', test: P => P.stats.bestDepth >= 2},
   {id: 'vittoria', name: 'Liberata!', desc: 'Vinci una partita.', icon: 'trophy', test: P => P.stats.wins >= 1},
   {id: 'iniziali', name: 'Gli amici di sempre', desc: 'Vinci con cinque personaggi diversi.', icon: 'heart', test: P => winners(P) >= 5},
