@@ -11,7 +11,7 @@
 <title>Biturgia Sotterranea</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Barlow+Condensed:wght@500;600;700&family=Pixelify+Sans:wght@500;600;700&display=swap">
 <style>
 /* Layout: one full-screen canvas (the room, framed like a cellar), with menu sheets laid over it */
 :root{
@@ -240,6 +240,32 @@ html.playing #audioBtns{display:none}
 @keyframes turn{0%,25%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
 html.portrait-play #rotate{display:flex}
 @media (prefers-reduced-motion: reduce){#rotate .ph{animation:none;transform:rotate(-90deg)}.big:active{transform:none}}
+
+/* ---------- the menus in pixels: square frames with notched corners, like the game's sprites ---------- */
+:root{--pixel:"Pixelify Sans","Barlow Condensed",monospace;--px-edge:#0e0907}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+canvas.pw{display:block;image-rendering:pixelated;margin:0 auto;max-width:100%;object-fit:contain}
+.sheet.wall{background-size:cover,cover;background-position:center;image-rendering:pixelated}
+.title{text-shadow:none}
+.big{border-radius:0;padding:9px 24px;margin:4px;line-height:0;
+  box-shadow:4px 0 0 var(--px-edge),-4px 0 0 var(--px-edge),0 4px 0 var(--px-edge),0 -4px 0 var(--px-edge),inset 0 4px 0 #e0484e,inset 0 -6px 0 #6a0a10,inset 4px 0 0 #c82a30,inset -4px 0 0 #8a1016}
+.big:hover{background:#c41a22}
+.big:active{transform:translateY(2px);box-shadow:4px 0 0 var(--px-edge),-4px 0 0 var(--px-edge),0 4px 0 var(--px-edge),0 -4px 0 var(--px-edge),inset 0 6px 0 #6a0a10}
+.big:disabled{box-shadow:4px 0 0 var(--px-edge),-4px 0 0 var(--px-edge),0 4px 0 var(--px-edge),0 -4px 0 var(--px-edge),inset 0 -4px 0 #2e2420;filter:grayscale(1) brightness(.7)}
+.ghost,.menu .ghost,#tCont,.arrow,#audioBtns button,.modeBtn{font-family:var(--pixel);font-weight:600;border:0!important;border-radius:0!important;margin:3px;background:#2a1f1a;
+  box-shadow:3px 0 0 var(--px-edge),-3px 0 0 var(--px-edge),0 3px 0 var(--px-edge),0 -3px 0 var(--px-edge),inset 0 3px 0 #4e3c30,inset 0 -3px 0 #160f0c}
+.ghost:hover,.menu .ghost:hover,#tCont:hover,.arrow:hover,#audioBtns button:hover{background:#3e2c22}
+.ghost:active,.arrow:active{box-shadow:3px 0 0 var(--px-edge),-3px 0 0 var(--px-edge),0 3px 0 var(--px-edge),0 -3px 0 var(--px-edge),inset 0 3px 0 #160f0c}
+.arrow{width:46px;height:46px}
+.modeBtn[aria-checked="true"]{background:#3a2c1c;box-shadow:3px 0 0 var(--gold),-3px 0 0 var(--gold),0 3px 0 var(--gold),0 -3px 0 var(--gold),inset 0 3px 0 #5a4430,inset 0 -3px 0 #160f0c}
+.modeBtn.hard[aria-checked="true"]{background:#3a1210;box-shadow:3px 0 0 #ff4a3a,-3px 0 0 #ff4a3a,0 3px 0 #ff4a3a,0 -3px 0 #ff4a3a,inset 0 3px 0 #6a2420,inset 0 -3px 0 #1a0606}
+.modeBtn b{line-height:0}.modeBtn b canvas.pw{margin:0}
+.modeBtn span{font-family:var(--pixel);font-weight:500}
+.seed input,#userIn{border:0;border-radius:0;font-family:var(--pixel);box-shadow:3px 0 0 var(--px-edge),-3px 0 0 var(--px-edge),0 3px 0 var(--px-edge),0 -3px 0 var(--px-edge),inset 0 3px 0 #0a0605}
+.title small,.ver,.who,.link{font-family:var(--pixel)}
+#selName{line-height:0}#selName canvas.pw{margin:0}
+#select h2,.sheet h2.hd,.sheet h2{line-height:0}
+@media (max-width:600px){#select h2{margin-top:34px}}
 </style>
 
 <canvas id="game" aria-label="Stanza della cantina"></canvas>
@@ -432,7 +458,7 @@ html.portrait-play #rotate{display:flex}
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v2.3';
+const VERSION = 'v2.4';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -1176,7 +1202,7 @@ function roomCleared() {
   room.cleared = true;
   perkHook(p, 'clear');
   Snd.door(true);
-  for (const dir of Object.keys(room.doors)) { const dp = DOOR_POS[dir]; for (let k = 0; k < 5; k++) G.fx.push({kind: 'smoke', x: dp.x + rr(-14, 14), y: dp.y + rr(-4, 4), vx: rr(-0.3, 0.3), vy: rr(-0.3, 0.1), life: 40, max: 40, size: rr(5, 9), dust: true}); } // dust as the doors slide open
+  for (const [dir, link] of Object.entries(room.doors)) { if (link.hidden || link.kind === 'secret') continue; const dp = DOOR_POS[dir]; for (let k = 0; k < 5; k++) G.fx.push({kind: 'smoke', x: dp.x + rr(-14, 14), y: dp.y + rr(-4, 4), vx: rr(-0.3, 0.3), vy: rr(-0.3, 0.1), life: 40, max: 40, size: rr(5, 9), dust: true}); } // dust as the doors slide open; a secret passage is a hole in the wall (or not found yet), it has no door to open
   const a = p.active, A = ACTIVES[a.id];
   if (a.charge < A.charge) a.charge = Math.min(A.charge, a.charge + (p.flags.ninevolt ? 2 : 1));
   if (room.type === 'boss') {
@@ -2167,20 +2193,14 @@ function drawRoom(c, room, live, ox = 0, oy = 0, pickups = true) { // on the low
 function drawPickup(c, pk, live) {
   const bob = Math.sin((G.tick + pk.x) * 0.08) * 2;
   const x = pk.x, y = pk.y;
-  if (pk.kind === 'trapdoor') {
-    c.fillStyle = '#0a0706'; rrect(c, x - 22, y - 16, 44, 32, 4); c.fill();
-    c.strokeStyle = '#6b4a2a'; c.lineWidth = 4; c.stroke();
-    c.strokeStyle = 'rgba(232,182,74,.25)'; c.lineWidth = 1; for (let i = -14; i <= 14; i += 7) { c.beginPath(); c.moveTo(x + i, y - 12); c.lineTo(x + i, y + 12); c.stroke(); }
-    return;
-  }
+  if (pk.kind === 'trapdoor') { drawTrapdoor(c, x, y); return; }
   if (pk.kind === 'trofeo') { drawIcon(c, 'trophy', '#e8b64a', x, y - 10 + bob, 34); return; }
-  ell(c, x, y + 8, 9, 3, 'rgba(0,0,0,.35)');
+  if (!pk.static && !pk.ped && pk.kind !== 'luce') ell(c, x, y + 8, 9, 3, 'rgba(0,0,0,.35)');
   if (pk.ped) {
-    c.fillStyle = '#6e6258'; rrect(c, x - 16, y - 2, 32, 16, 3); c.fill();
-    c.fillStyle = '#857769'; c.fillRect(x - 18, y - 4, 36, 6);
     const beam = c.createLinearGradient(0, y - 120, 0, y);
     beam.addColorStop(0, 'rgba(255,240,190,0)'); beam.addColorStop(1, 'rgba(255,240,190,.16)');
     c.fillStyle = beam; c.beginPath(); c.moveTo(x - 10, y - 120); c.lineTo(x + 10, y - 120); c.lineTo(x + 22, y); c.lineTo(x - 22, y); c.fill();
+    drawPedestal(c, x, y);
     if (live && G.tick % 9 === 0) G.fx.push({kind: 'spark', x: x + rr(-14, 14), y: y - rr(10, 40), vx: 0, vy: -0.4, life: 40, col: '#fff2c0', size: 2});
     const g = c.createRadialGradient(x, y - 26 + bob, 2, x, y - 26 + bob, 30); g.addColorStop(0, 'rgba(255,240,190,.35)'); g.addColorStop(1, 'rgba(255,240,190,0)');
     c.fillStyle = g; c.beginPath(); c.arc(x, y - 26 + bob, 30, 0, 7); c.fill();
@@ -8016,6 +8036,105 @@ const MORE_TRINKETS = [
   ['t_lucchetto', 'Lucchetto', 'Chiavi dalle stanze', 'Pulendo una stanza a volte trovi una chiave.', 'key,#c9a24a', {clear: p => { if (rnd() < 0.08) dropPickup('key', p.x + 20, p.y - 20); }}],
 ];
 for (const [id, name, sub, info, icon, perk] of MORE_TRINKETS) { const t = {id, name, sub, icon: id, col: '#f4f4f4', info}; TRINKETS.push(t); TRINKET[id] = t; PERK[id] = perk; BOSSART.iconFrom(id, icon); }
+/* ================= the things you touch, in pixels: beggar, slot, blood machine, trapdoor, light, pedestal, spore ================= */
+// same recipe as the heroes: flat colours, a light and a dark side, a one-pixel dark outline; a few frames each
+const BEG_SKIN = ['#d9b08a', '#b08560', '#ecc9a4'], CLOAK = ['#6b5a4a', '#4e4034', '#86725e'];
+function beggarSpr(f) { // a hunched beggar on a tatty rug: big head under a hood, sad eyes, stubble, the tin held out
+  return spr('beggar' + f, () => { const [cv, x] = mkc(26, 30);
+    PR(x, 1, 26, 24, 3, '#7a3a2a'); for (let k = 2; k < 25; k += 4) PR(x, k, 27, 2, 1, '#c9952a'); PR(x, 1, 26, 24, 1, '#9a4a36'); // the rug
+    PE(x, 12, 21, 9, 6.5, CLOAK[0], CLOAK[1], CLOAK[2]);                  // the body, folded up
+    PR(x, 5, 19, 3, 3, '#8a6a3a'); PR(x, 5, 19, 3, 1, '#a8844a'); PR(x, 16, 23, 3, 2, '#5a6a4a');   // patches
+    PE(x, 6, 25, 4, 2.5, CLOAK[1]); PE(x, 18, 25, 4, 2.5, CLOAK[1]);       // the knees
+    PE(x, 12, 10, 10, 9.5, '#5a4a3c', '#43372c', '#6e5c4a');              // the hood
+    PE(x, 12, 11.5, 7.5, 7.5, BEG_SKIN[0], BEG_SKIN[1], BEG_SKIN[2]);      // the face
+    PR(x, 7, 9, 3, 1, '#3a2a1e'); PR(x, 14, 9, 3, 1, '#3a2a1e'); PR(x, 7, 8, 1, 1, '#3a2a1e'); PR(x, 16, 8, 1, 1, '#3a2a1e'); // sad brows, drooping outwards
+    PR(x, 8, 11, 2, 2, '#1a1418'); PR(x, 14, 11, 2, 2, '#1a1418'); PR(x, 8, 11, 1, 1, '#f4f0e6'); PR(x, 14, 11, 1, 1, '#f4f0e6'); // eyes
+    PR(x, 9, 13, 1, 1, BEG_SKIN[1]); PR(x, 15, 13, 1, 1, BEG_SKIN[1]);     // bags under them
+    PE(x, 12, 16, 5, 2.6, '#8a7a6a', '#6a5c50');                           // the beard
+    for (const [bx, by] of [[9, 15], [12, 17], [15, 15], [10, 17], [14, 17]]) PR(x, bx, by, 1, 1, '#5a4c40');
+    PR(x, 11, 15, 3, 1, '#4a2a22');                                        // a glum mouth
+    const up = f % 2;                                                      // the tin, shaken now and then
+    PR(x, 15, 20, 4, 3, CLOAK[0]); PR(x, 15, 22, 4, 1, CLOAK[1]); PE(x, 19, 21, 2, 1.6, BEG_SKIN[0]); // arm and hand
+    PR(x, 18, 15 - up, 6, 6, '#9aa0a8'); PR(x, 18, 15 - up, 6, 1, '#d8dce2'); PR(x, 18, 16 - up, 1, 5, '#c9cdd2'); PR(x, 23, 16 - up, 1, 5, '#6a6e76');
+    PR(x, 19, 14 - up, 4, 1, '#3a3a3e'); if (up) PR(x, 20, 12, 2, 1, '#e8b64a');
+    return pixOutline(cv); }); }
+const REEL = { // tiny 3×3 symbols on the reels
+  0: [[0, 0, '#25d366'], [1, 0, '#25d366'], [0, 1, '#d2202a'], [2, 1, '#d2202a'], [0, 2, '#d2202a'], [2, 2, '#d2202a']], // cherries
+  1: [[0, 0, '#d2202a'], [1, 0, '#d2202a'], [2, 0, '#d2202a'], [2, 1, '#d2202a'], [1, 2, '#d2202a']],                       // a seven
+  2: [[0, 1, '#2a2a2e'], [1, 1, '#2a2a2e'], [2, 1, '#2a2a2e'], [0, 0, '#8a8f96'], [2, 2, '#8a8f96']],                       // a bar
+  3: [[1, 0, '#e8b64a'], [0, 1, '#e8b64a'], [1, 1, '#fff0a0'], [2, 1, '#e8b64a'], [1, 2, '#e8b64a']],                       // a coin
+};
+function slotSpr(f, spin) { // a red cabinet with a gold marquee of bulbs, three reels, the lever on the side
+  return spr('slot' + f + spin, () => { const [cv, x] = mkc(26, 36);
+    PR(x, 1, 32, 20, 3, '#5a1010'); PR(x, 1, 32, 20, 1, '#7a1a1a');        // the plinth
+    PR(x, 2, 9, 18, 23, '#9b1c1c'); PR(x, 2, 9, 2, 23, '#c03030'); PR(x, 18, 9, 2, 23, '#6a1010');
+    PR(x, 2, 2, 18, 8, '#c9952a'); PR(x, 3, 1, 16, 1, '#c9952a'); PR(x, 2, 2, 18, 1, '#e8b64a'); PR(x, 2, 9, 18, 1, '#8a5a10');
+    PR(x, 5, 4, 12, 4, '#3a1010'); for (const k of [6, 10, 14]) { PR(x, k, 5, 2, 1, '#e8b64a'); PR(x, k + 1, 6, 1, 1, '#e8b64a'); } // 777
+    for (let k = 0; k < 6; k++) PR(x, 3 + k * 3, 2, 1, 1, (k + f) % 2 ? '#fff6c0' : '#a8781a'); // the bulbs chase round
+    PR(x, 4, 11, 14, 9, '#2a1a1a'); PR(x, 4, 11, 14, 1, '#e8b64a'); PR(x, 4, 19, 14, 1, '#8a5a10');
+    for (let i = 0; i < 3; i++) { PR(x, 5 + i * 4, 12, 3, 7, '#f4f0e6'); PR(x, 5 + i * 4, 18, 3, 1, '#c9c0b0');
+      const sym = spin ? (f * 3 + i * 2) % 4 : [1, 1, 3][i], off = spin ? (f + i) % 3 - 1 : 0;
+      for (const [sx, sy, col] of REEL[sym]) if (14 + sy + off >= 12 && 14 + sy + off <= 18) PR(x, 5 + i * 4 + sx, 14 + sy + off, 1, 1, col); }
+    PR(x, 4, 15, 1, 1, '#d2202a'); PR(x, 17, 15, 1, 1, '#d2202a');        // the pay line
+    PR(x, 9, 22, 4, 1, '#1a0a0a'); PR(x, 9, 21, 4, 1, '#c9cdd2');          // the coin slot
+    PR(x, 5, 24, 3, 2, '#25d366'); PR(x, 5, 24, 3, 1, '#7af0a0'); PR(x, 14, 24, 3, 2, '#e8b64a'); PR(x, 14, 24, 3, 1, '#fff0a0'); // buttons
+    PR(x, 4, 28, 14, 3, '#3a3a3e'); PR(x, 5, 29, 12, 1, '#1c1c21'); PR(x, 7, 28, 2, 1, '#e8b64a'); PR(x, 12, 29, 2, 1, '#c9952a'); // the tray
+    const down = spin && f % 4 < 2;                                        // the lever
+    PR(x, 20, 18, 3, 3, '#5a5f66'); PR(x, 21, down ? 16 : 9, 1, down ? 4 : 10, '#c9cdd2'); PE(x, 21.5, down ? 15 : 8, 2.4, 2.4, '#e9302a', '#9b111e', '#ff9a8a');
+    return pixOutline(cv); }); }
+function bloodSpr(f) { // a steel cabinet with a glass dome of blood, a red heart, the drip tube with its needle
+  return spr('blood' + f, () => { const [cv, x] = mkc(24, 36);
+    PR(x, 2, 32, 18, 3, '#2e3138'); PR(x, 2, 32, 18, 1, '#46494f');
+    PR(x, 3, 14, 16, 18, '#6a6e76'); PR(x, 3, 14, 2, 18, '#8a8f96'); PR(x, 17, 14, 2, 18, '#4a4e56'); PR(x, 3, 14, 16, 1, '#a8adb4');
+    PR(x, 4, 12, 14, 2, '#3a3a3e');                                        // the collar
+    PE(x, 11, 7, 7, 6.5, '#d8e8ee');                                       // the glass dome…
+    for (let y = 0; y < 14; y++) for (let i = 0; i < 16; i++) { const dx = (i + 0.5 - 11) / 6, dy = (y + 0.5 - 7) / 5.5; if (dx * dx + dy * dy <= 1 && y >= 6 + (f % 2) - (i % 3 === f % 3 ? 1 : 0)) PR(x, i, y, 1, 1, y > 9 ? '#7a0a14' : '#b3121b'); } // …half full, sloshing
+    PR(x, 7, 3, 2, 1, '#ffffff'); PR(x, 6, 4, 1, 2, '#ffffff');            // a shine on the glass
+    if (f % 2) PR(x, 13, 5, 1, 1, '#ff6a6a');                              // a bubble
+    for (const [hx, hy, w] of [[7, 18, 3], [12, 18, 3], [7, 19, 8], [8, 20, 6], [9, 21, 4], [10, 22, 2]]) PR(x, hx, hy, w, 1, '#d2202a'); // the heart
+    PR(x, 8, 18, 1, 1, '#ff8a8a');
+    PR(x, 7, 26, 8, 3, '#1c1c21'); PR(x, 8, 27, 2, 1, '#e8b64a'); PR(x, 12, 27, 1, 1, '#c9952a'); // where the coins come out
+    PR(x, 19, 16, 2, 1, '#9b111e'); PR(x, 21, 16, 1, 10, '#9b111e'); PR(x, 20, 26, 3, 1, '#c9cdd2'); PR(x, 21, 27, 1, 3, '#e8e8e8'); // the tube and the needle
+    return pixOutline(cv); }); }
+function trapdoorSpr() { // a square hole in the floor, a rim of planks with nails, a ladder going down into the dark
+  return spr('trapdoor', () => { const [cv, x] = mkc(32, 24);
+    PR(x, 0, 0, 32, 24, '#5a3a20'); PR(x, 0, 0, 32, 1, '#8a5a30'); PR(x, 0, 23, 32, 1, '#3a2414');
+    for (const k of [8, 16, 24]) PR(x, k, 0, 1, 3, '#3a2414'); for (const k of [6, 18]) PR(x, 0, k, 3, 1, '#3a2414'); for (const k of [6, 18]) PR(x, 29, k, 3, 1, '#3a2414');
+    for (const [nx, ny] of [[1, 1], [30, 1], [1, 22], [30, 22]]) PR(x, nx, ny, 1, 1, '#c9cdd2');
+    for (let y = 3; y < 21; y++) PR(x, 3, y, 26, 1, shade('#2a1a10', -Math.min(1, (y - 3) / 10)));   // the dark, deeper as it goes
+    PR(x, 3, 3, 26, 1, '#1a0e08');
+    for (const lx of [11, 20]) PR(x, lx, 3, 1, 12, '#6b4a2a');              // the ladder
+    for (let k = 0; k < 4; k++) PR(x, 11, 5 + k * 3, 10, 1, shade('#7a5434', -k * 0.25));
+    return pixOutline(cv); }); }
+function luceSpr(f) { // a column of light from above, dithered, specks rising through it
+  return spr('luce' + f, () => { const [cv, x] = mkc(30, 100);
+    for (let y = 0; y < 92; y++) { const a = y / 92, w = 9 + Math.round(a * 3);
+      for (let i = 15 - w; i < 15 + w; i++) { const edge = Math.abs(i + 0.5 - 15) / w; if (edge > 0.7 && (i + y) % 2) continue; if (a < 0.35 && (i + y * 3) % 4 > a * 10) continue;
+        PR(x, i, y, 1, 1, edge < 0.35 ? '#fffbe6' : '#fff0b8'); } }
+    PE(x, 15, 93, 14, 5, '#fff6d0'); PE(x, 15, 93, 9, 3, '#ffffff');      // the pool on the floor
+    for (let k = 0; k < 5; k++) { const sy = (k * 23 + f * 7) % 88, sx = 8 + (k * 11) % 14; PR(x, sx, sy, 1, 1, '#ffffff'); }
+    return cv; }); }
+function pedestalSpr() { // a block of carved stone with a moulded top
+  return spr('pedestal', () => { const [cv, x] = mkc(26, 16);
+    PR(x, 0, 0, 26, 4, '#9a8c7c'); PR(x, 0, 0, 26, 1, '#b8aa98'); PR(x, 0, 3, 26, 1, '#6e6258');
+    PR(x, 3, 4, 20, 9, '#7a6c60'); PR(x, 3, 4, 2, 9, '#8e8072'); PR(x, 21, 4, 2, 9, '#5a5048');
+    PR(x, 6, 7, 14, 1, '#5a5048'); PR(x, 12, 4, 1, 3, '#5a5048'); PR(x, 9, 8, 1, 4, '#5a5048'); PR(x, 16, 8, 1, 4, '#5a5048');
+    PR(x, 1, 13, 24, 3, '#8a7c6c'); PR(x, 1, 13, 24, 1, '#a8998a');
+    return pixOutline(cv); }); }
+function sporaSpr(f) { // a puffball: three cream lobes with green freckles
+  return spr('spora' + f, () => { const [cv, x] = mkc(16, 14);
+    PE(x, 5, 8, 4, 4, '#e8f0d0', '#c0cca0', '#ffffff'); PE(x, 11, 8, 4, 4, '#e8f0d0', '#c0cca0', '#ffffff'); PE(x, 8, 5 - f, 4.5, 4.5, '#eef4dc', '#c0cca0', '#ffffff');
+    for (const [sx, sy] of [[7, 4 - f], [10, 6 - f], [4, 8], [12, 9], [8, 10]]) PR(x, sx, sy, 1, 1, '#6aa04a');
+    return pixOutline(cv); }); }
+
+function drawTrapdoor(c, x, y) { if (isPix(c)) blit(c, trapdoorSpr(), x, y, 0.5, 0.5); else { c.fillStyle = '#0a0706'; c.fillRect(x - 22, y - 16, 44, 32); } }
+function drawPedestal(c, x, y) { pixShadow(c, x, y + 12, 18); blit(c, pedestalSpr(), x, y + 14, 0.5, 1); }
+EXTRA_DRAW.beggar = (c, x, y, pk) => { pixShadow(c, pk.x, pk.y + 8, 14); blit(c, beggarSpr((G.tick + pk.x) % 90 < 12 ? (G.tick >> 2) % 2 : 0), pk.x, pk.y + 10, 0.5, 1);
+  if (pk.got) label(pk.x, pk.y - 32, pk.got + '/' + (pk.need || 6), 11, '#e8b64a'); };
+EXTRA_DRAW.slot = (c, x, y, pk) => { const sp = pk.spin > 0; if (sp) pk.spin--; pixShadow(c, pk.x, pk.y + 8, 15); blit(c, slotSpr(sp ? (G.tick >> 1) % 4 : (G.tick >> 4) % 2, sp), pk.x + 1, pk.y + 10, 0.5, 1); };
+EXTRA_DRAW.blood = (c, x, y, pk) => { pixShadow(c, pk.x, pk.y + 8, 14); blit(c, bloodSpr((G.tick >> 4) % 3), pk.x + 1, pk.y + 10, 0.5, 1); };
+EXTRA_DRAW.luce = (c, x, y, pk) => { c.save(); c.globalAlpha = 0.85 + Math.sin(G.tick * 0.05) * 0.1; blit(c, luceSpr((G.tick >> 3) % 8), pk.x, pk.y + 12, 0.5, 1); c.restore(); };
+EXTRA_DRAW.spora = (c, x, y) => blit(c, sporaSpr((G.tick >> 4) % 2), x, y + 6, 0.5, 1);
 /* ================= profile, unlocks, achievements, collection and the cloud ================= */
 // Filled in by build.sh for the GitHub copy; empty here, so the artifact keeps everything on the device
 const FIREBASE = {projectId: 'biturgiasotterranea', apiKey: 'AIzaSyD9KcmjPkkVnEBc2wnghVJAifY5GIEqOkU'};
@@ -8613,7 +8732,7 @@ function selectChar(i) {
 }
 function fillCard(i) {
   const ch = CHARS[i], locked = !isUnlocked(ch.id);
-  $('selName').textContent = ch.name;
+  setPixText($('selName'), ch.name, 18, 'ink', 56);
   $('selCard').classList.toggle('locked', locked);
   $('selLock').hidden = !locked;
   if (locked) $('selLock').textContent = 'Bloccato. ' + UNLOCKS[ch.id].cond;
@@ -8808,10 +8927,10 @@ function showNote(won) {
   const mins = Math.floor(run.frames / 3600), secs = Math.floor(run.frames / 60) % 60;
   const time = mins + ':' + String(secs).padStart(2, '0');
   if (won) {
-    $('nTitle').textContent = 'Vittoria!';
+    setPixText($('nTitle'), 'Vittoria!');
     $('nText').textContent = `${ENDINGS[ch.id]} (${time}, ${run.kills} nemici sconfitti${run.hard ? ', modalità difficile' : ''}${run.challenge ? ', sfida «' + CHAL[run.challenge].name + '» completata' : ''}.)`;
   } else {
-    $('nTitle').textContent = 'Il testamento di ' + ch.name;
+    setPixText($('nTitle'), 'Il testamento di ' + ch.name);
     $('nText').textContent = `Ucciso da ${run.killer || 'qualcosa nel buio'} al piano ${run.depth}, ${floorName(run.depth)}. Lascio tutte le mie cose a ${pick(friends).name}.`;
   }
   const names = p.items.map(id => ITEM[id].name);
@@ -9163,7 +9282,7 @@ function introDraw(c, w, h, t) {
   if (t < INTRO_START) { introStudio(c, w, h, t); return; }
   const u = t - INTRO_START;
   if (u < JOURNEY) {
-    onStage(c, w, h, cc => journey(cc, u));
+    journey(c, w, h, u);
     const dark = Math.max(1 - smooth(u / 0.8), u > 8.2 ? 1 : 0); // fades in from black, ends in the dark of the sewer
     if (dark > 0) { c.fillStyle = `rgba(7,5,4,${dark})`; c.fillRect(0, 0, w, h); }
     return;
@@ -9171,152 +9290,344 @@ function introDraw(c, w, h, t) {
   introTitle(c, w, h, u - JOURNEY);
 }
 function onStage(c, w, h, fn) { const s = Math.max(w / STAGE_W, h / STAGE_H); c.save(); c.translate((w - STAGE_W * s) / 2, (h - STAGE_H * s) / 2); c.scale(s, s); fn(c); c.restore(); }
-function zoomAt(c, cx, cy, z, fn) { // keeps the stage covered: never shows past its edges
-  cx = clamp(cx, STAGE_W / 2 / z, STAGE_W - STAGE_W / 2 / z); cy = clamp(cy, STAGE_H / 2 / z, STAGE_H - STAGE_H / 2 / z);
-  c.save(); c.translate(STAGE_W / 2, STAGE_H / 2); c.scale(z, z); c.translate(-cx, -cy); fn(); c.restore(); }
-const FACADES = ['#6a5240', '#5a4636', '#7a6048', '#5e4a38'];
 // townsfolk, drawn like the heroes but in ordinary clothes
 const NPC_SKIN = ['#f0c9a8', '#e3b48e', '#d8a27c', '#c98e66'], NPC_STYLE = ['short', 'long', 'curly', 'slick', 'short'];
 const NPC_COL = ['#2b5aa8', '#7a1a2e', '#3e8a3a', '#d9a556', '#4a4a52', '#8a3ad5', '#c9cdd2', '#b3121b'];
 const npc = n => ({id: 'npc' + n, skin: NPC_SKIN[n % 4], shirt: NPC_COL[(n * 3) % 8], pants: ['#1c1c21', '#2e3140', '#3b4a6b'][n % 3], hair: ['#2a1d14', '#4a2c1a', '#c9a26b', '#8a8f96'][(n * 5) % 4], style: NPC_STYLE[n % 5], size: 0.92 + (n % 3) * 0.06});
-function walker(c, n, x, feet, sc, dir, t, moving = true) { drawChar(c, npc(n), x, feet - 13.5 * sc, {scale: sc, face: dir > 0 ? 'e' : dir < 0 ? 'w' : 's', walk: moving ? t * 9 + n : 0, shadow: true}); }
-function car(c, x, y, col, dir, sc = 1) { // a small Italian hatchback, lights on
-  c.save(); c.translate(x, y); c.scale(dir * sc, sc);
-  const g = c.createLinearGradient(30, 0, 120, 0); g.addColorStop(0, 'rgba(255,240,180,.35)'); g.addColorStop(1, 'rgba(255,240,180,0)');
-  c.fillStyle = g; c.beginPath(); c.moveTo(30, -6); c.lineTo(120, -20); c.lineTo(120, 12); c.closePath(); c.fill();
-  ell(c, 0, 9, 34, 4, 'rgba(0,0,0,.4)');
-  c.fillStyle = col; rrect(c, -32, -10, 64, 16, 4); c.fill(); rrect(c, -20, -22, 36, 14, [6, 8, 0, 0]); c.fill();
-  c.fillStyle = 'rgba(160,200,230,.55)'; c.fillRect(-16, -19, 13, 9); c.fillRect(0, -19, 13, 9);
-  c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(-32, -2, 64, 2);
-  circ(c, -19, 6, 6, '#141417'); circ(c, 19, 6, 6, '#141417'); circ(c, -19, 6, 2.4, '#8a8f96'); circ(c, 19, 6, 2.4, '#8a8f96');
-  circ(c, 30, -5, 2.6, '#fff6c8'); c.fillStyle = '#d2202a'; c.fillRect(-33, -7, 3, 5);
-  c.restore();
+/* ---------- the opening is painted in pixels: every scene on a 480×270 canvas, one stage unit to a pixel, then blown up sharp ---------- */
+// still drawn as a function of time, so the camera can be scrubbed; the particles come from hash(), not from state
+const SIG = {cv: null, c: null};
+function sigCanvas() { if (!SIG.cv) [SIG.cv, SIG.c] = mkc(STAGE_W, STAGE_H); const c = SIG.c; c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.imageSmoothingEnabled = false; return c; }
+function sigShow(c, w, h, cx = STAGE_W / 2, cy = STAGE_H / 2, z = 1) { // the camera: a centre and a zoom on the painted stage, always covering the screen
+  const s = Math.max(w / STAGE_W, h / STAGE_H) * z, vw = w / s, vh = h / s;
+  cx = clamp(cx, vw / 2, STAGE_W - vw / 2); cy = clamp(cy, vh / 2, STAGE_H - vh / 2);
+  c.save(); c.imageSmoothingEnabled = false; c.drawImage(SIG.cv, cx - vw / 2, cy - vh / 2, vw, vh, 0, 0, w, h); c.restore();
 }
-function streetLamp(c, x, base) { // a cast-iron lamp standing on the pavement
-  c.fillStyle = '#16120f'; c.fillRect(x - 2, base - 92, 4, 92); c.fillRect(x - 5, base - 6, 10, 6); c.fillRect(x - 12, base - 94, 16, 3);
-  const g = c.createRadialGradient(x - 8, base - 86, 2, x - 8, base - 70, 62); g.addColorStop(0, 'rgba(255,210,120,.5)'); g.addColorStop(1, 'rgba(255,210,120,0)'); c.fillStyle = g; c.fillRect(x - 70, base - 130, 124, 140);
-  c.fillStyle = '#16120f'; c.beginPath(); c.moveTo(x - 14, base - 91); c.lineTo(x - 2, base - 91); c.lineTo(x - 4, base - 83); c.lineTo(x - 12, base - 83); c.fill(); circ(c, x - 8, base - 82, 3, '#ffe0a0');
+const P1 = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const dz = (x, y, f) => BAYER[(y & 3) * 4 + (x & 3)] < f * 16; // ordered dither: true where the second colour shows through
+const RGBC = new Map(), rgbOf = col => { let v = RGBC.get(col); if (!v) { const n = parseInt(col.slice(1), 16); v = [n >> 16, n >> 8 & 255, n & 255]; RGBC.set(col, v); } return v; };
+function ramp(stops, k) { // a colour along [[0, '#hex'], …, [1, '#hex']]
+  for (let i = 1; i < stops.length; i++) if (k <= stops[i][0] || i === stops.length - 1) { const [k0, a] = stops[i - 1], [k1, b] = stops[i], f = clamp((k - k0) / (k1 - k0), 0, 1), A = rgbOf(a), B = rgbOf(b); return [0, 1, 2].map(j => Math.round(A[j] + (B[j] - A[j]) * f)); }
 }
-function clouds(c, t) { c.fillStyle = 'rgba(120,110,150,.18)'; for (let i = 0; i < 5; i++) { const x = ((hash(i, 8) * 600 + t * (4 + i)) % 640) - 80, y = 20 + hash(i, 9) * 50; ell(c, x, y, 50, 9); ell(c, x + 30, y - 5, 30, 8); } }
-function facade(c, x, y, wd, ht, seed, base = y + ht) { // a Sansepolcro house at night: stone, shutters, balconies, a few lit windows
-  c.fillStyle = FACADES[seed % 4]; c.fillRect(x, y, wd, ht);
-  c.fillStyle = 'rgba(0,0,0,.08)'; for (let yy = y + 8; yy < y + ht; yy += 8) c.fillRect(x, yy, wd, 1);
-  c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(x, y, wd, 4); c.fillRect(x + wd - 3, y, 3, ht); c.fillStyle = shade(FACADES[seed % 4], -0.35); c.fillRect(x - 3, y - 6, wd + 6, 7);
-  const cols = Math.max(2, Math.floor(wd / 36));
-  for (let r = 0; r < 3; r++) for (let k = 0; k < cols; k++) {
-    const wx = x + 12 + k * (wd - 24) / cols, wy = y + 14 + r * 36, lit = hash(seed * 7 + k, r) > 0.5;
-    c.fillStyle = lit ? 'rgba(255,196,110,.9)' : '#1c140f'; c.fillRect(wx, wy, 12, 20);
-    if (lit) { c.fillStyle = 'rgba(120,60,20,.5)'; c.fillRect(wx + 5, wy, 2, 20); }
-    c.fillStyle = '#3a4a2a'; c.fillRect(wx - 5, wy, 4, 20); c.fillRect(wx + 13, wy, 4, 20);
-    if (r === 1 && hash(seed, k) > 0.6) { c.fillStyle = '#1a1414'; c.fillRect(wx - 6, wy + 20, 24, 2); for (let b = 0; b < 6; b++) c.fillRect(wx - 5 + b * 4, wy + 14, 1, 6); circ(c, wx - 2, wy + 13, 2.5, '#3e8a3a'); circ(c, wx + 14, wy + 13, 2.5, '#d2202a'); }
+function paint(w, h, fn) { // a sprite pixel by pixel: fn gives '#hex', [r, g, b] or [r, g, b, a], or nothing
+  const [cv, x] = mkc(w, h), d = x.createImageData(w, h), a = d.data;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const col = fn(i, j); if (!col) continue; const v = typeof col === 'string' ? rgbOf(col) : col, k = (j * w + i) * 4; a[k] = v[0]; a[k + 1] = v[1]; a[k + 2] = v[2]; a[k + 3] = v[3] ?? 255; }
+  x.putImageData(d, 0, 0); return [cv, x];
+}
+// a 5×7 pixel alphabet for the signs
+const FONT5 = {A: '.###.#...##...#######...##...##...#', B: '####.#...##...#####.#...##...#####.', C: '.###.#...##....#....#....#...#.###.', D: '####.#...##...##...##...##...#####.', E: '######....#....####.#....#....#####', F: '######....#....####.#....#....#....',
+  G: '.###.#...##....#.####...##...#.####', H: '#...##...##...########...##...##...#', I: '.###...#....#....#....#....#...###.', L: '#....#....#....#....#....#....#####', M: '#...###.###.#.##.#.##...##...##...#', N: '#...###..##.#.##..###...##...##...#',
+  O: '.###.#...##...##...##...##...#.###.', P: '####.#...##...#####.#....#....#....', R: '####.#...##...#####.#.#..#..#.#...#', S: '.#####....#.....###.....#....#####.', T: '#####..#....#....#....#....#....#..', U: '#...##...##...##...##...##...#.###.',
+  V: '#...##...##...##...##...#.#.#...#..', Z: '#####....#...#...#...#...#....#####', '.': '......................#....#......', ' ': ''};
+function ptext(c, str, x, y, col, k = 1, shadow) { // left-aligned at x; returns the width
+  let cx = x;
+  for (const ch of str.toUpperCase().replace('À', 'A')) { const g = FONT5[ch] || ''; for (let i = 0; i < g.length; i++) if (g[i] === '#') { if (shadow) P1(c, cx + (i % 5) * k + k, y + Math.floor(i / 5) * k + k, k, k, shadow); P1(c, cx + (i % 5) * k, y + Math.floor(i / 5) * k, k, k, col); } cx += 6 * k; }
+  return cx - x - k;
+}
+const ptextW = (str, k = 1) => str.length * 6 * k - k;
+
+/* the night: a dithered sky, stars that twinkle, a moon with its halo, clouds lit from above */
+const NIGHT = [[0, '#080a1e'], [0.45, '#18183a'], [0.8, '#3a2448'], [1, '#5a3048']];
+const skySpr = (key, stops, h = 214) => spr('sky' + key, () => paint(STAGE_W, h, (i, j) => { const f = j / h * 12, lo = Math.floor(f); return ramp(stops, (dz(i, j, f - lo) ? lo + 1 : lo) / 12); })[0]);
+function stars(c, t, n, maxY) {
+  for (let i = 0; i < n; i++) {
+    const x = Math.floor(hash(i, 31) * STAGE_W), y = Math.floor(hash(i, 32) * maxY), tw = Math.sin(t * (1.5 + hash(i, 33) * 3) + i * 2.1), b = hash(i, 34);
+    if (tw < -0.7) continue;
+    P1(c, x, y, 1, 1, b > 0.8 ? '#fff6d8' : b > 0.45 ? '#b8b8e8' : '#6a6898');
+    if (b > 0.92 && tw > 0.3) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) P1(c, x + dx, y + dy, 1, 1, '#6a6898');
   }
-  const shop = seed % 3; // the ground floor: a bar with an awning, a chemist's, or a doorway
-  if (shop === 0) { c.fillStyle = 'rgba(255,200,120,.85)'; c.fillRect(x + 10, base - 30, wd - 20, 26); c.fillStyle = '#2a1a10'; c.fillRect(x + wd / 2 - 1, base - 30, 2, 26); for (let k = 0; k < 8; k++) { c.fillStyle = k % 2 ? '#efe3cf' : '#b3121b'; c.fillRect(x + 6 + k * (wd - 12) / 8, base - 40, (wd - 12) / 8, 9); } c.fillStyle = '#efe3cf'; c.font = `800 9px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText('BAR', x + wd / 2, base - 44); }
-  else if (shop === 1) { c.fillStyle = '#2a1a10'; c.fillRect(x + 14, base - 28, wd - 28, 28); c.fillStyle = 'rgba(200,240,200,.5)'; c.fillRect(x + 18, base - 24, wd - 36, 20); c.fillStyle = Math.sin(G.tick * 0.05) > -0.5 ? '#25d366' : '#1a8a46'; c.fillRect(x + wd - 20, base - 52, 4, 12); c.fillRect(x + wd - 24, base - 48, 12, 4); }
-  else { c.fillStyle = '#2a1a10'; c.fillRect(x + wd / 2 - 9, base - 28, 18, 28); c.beginPath(); c.arc(x + wd / 2, base - 28, 9, Math.PI, 0); c.fill(); circ(c, x + wd / 2 + 5, base - 14, 1, '#e8b64a'); }
+  const s = (t * 0.37) % 4; // now and then a shooting star
+  if (s < 0.5) { const x0 = 60 + hash(Math.floor(t * 0.37), 5) * 300, y0 = 8 + hash(Math.floor(t * 0.37), 6) * 30, k = s / 0.5; for (let j = 0; j < 10; j++) P1(c, x0 + k * 90 - j * 2, y0 + k * 30 - j * 0.66, 1, 1, j < 2 ? '#ffffff' : j < 5 ? '#c8c8f0' : '#5a5888'); }
 }
-function pavement(c, top, off, road = '#34303a') { // sidewalk with a kerb, then the cobbled road
-  c.fillStyle = '#6a6460'; c.fillRect(0, top, STAGE_W, 9); c.fillStyle = '#4a4440'; c.fillRect(0, top + 9, STAGE_W, 3);
-  c.fillStyle = 'rgba(0,0,0,.2)'; for (let x = -(off % 22); x < STAGE_W; x += 22) c.fillRect(x, top, 1, 9);
-  c.fillStyle = road; c.fillRect(0, top + 12, STAGE_W, STAGE_H - top - 12);
-  c.fillStyle = 'rgba(0,0,0,.2)'; for (let r = 0; r < 6; r++) { const yy = top + 16 + r * r * 2.5 + r * 4, sz = 8 + r * 4; for (let x = -((off * 1.15) % sz) - sz; x < STAGE_W; x += sz) c.fillRect(x, yy, sz - 2, 1 + r * 0.5); }
+const glowSpr = (r, col) => spr('glow' + r + col, () => paint(r * 2, r * 2, (i, j) => { const d = Math.hypot(i + 0.5 - r, j + 0.5 - r) / r; if (d >= 1) return; const f = (1 - d) * (1 - d) * 4, lo = Math.floor(f), v = (dz(i, j, f - lo) ? lo + 1 : lo) / 4; if (!v) return; const [R, G2, B] = rgbOf(col); return [R, G2, B, Math.round(v * 120)]; })[0]);
+function glow(c, x, y, r, col, a = 1) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = a; c.drawImage(glowSpr(r, col), Math.round(x - r), Math.round(y - r)); c.restore(); }
+const moonSpr = r => spr('moon' + r, () => paint(r * 2 + 2, r * 2 + 2, (i, j) => { const dx = i + 0.5 - r - 1, dy = j + 0.5 - r - 1, d = Math.hypot(dx, dy) / r; if (d > 1) return;
+  for (const [cx, cy, cr] of [[-0.3, -0.2, 0.25], [0.35, 0.3, 0.18], [0.1, -0.5, 0.12], [-0.2, 0.45, 0.14]]) if (Math.hypot(dx / r - cx, dy / r - cy) < cr) return dx + dy > 0 ? '#c8bc9e' : '#d8ceb0';
+  return d > 0.86 && dx + dy > 0 ? '#d8ceb0' : d < 0.5 && dx + dy < -r * 0.3 ? '#fffbea' : '#f4ead2'; })[0]);
+function moon(c, x, y, r) { glow(c, x, y, r * 4, '#4a4a78', 0.9); c.drawImage(moonSpr(r), Math.round(x - r - 1), Math.round(y - r - 1)); }
+const cloudSpr = k => spr('cloud' + k, () => { const parts = [0, 1, 2, 3, 4].map(n => [14 + n * 15 + hash(k, n) * 8, 14 - hash(k, n + 9) * 6, 12 + hash(k, n + 3) * 8, 5 + hash(k, n + 5) * 3]);
+  return paint(100, 26, (i, j) => { let inside = 0; for (const [cx, cy, rx, ry] of parts) inside = Math.max(inside, 1 - Math.hypot((i - cx) / rx, (j - cy) / ry)); if (inside <= 0) return; if (inside < 0.25 && !dz(i, j, inside * 4)) return;
+    return j < 9 && inside < 0.5 ? '#5a5478' : j > 15 ? '#221e38' : '#38324f'; })[0]; });
+function clouds(c, t, n = 5, maxY = 60) { for (let i = 0; i < n; i++) { const x = ((hash(i, 8) * 620 + t * (4 + i * 1.5)) % 620) - 110, y = 6 + hash(i, 9) * maxY; c.drawImage(cloudSpr(i % 4), Math.round(x), Math.round(y)); } }
+const skylineSpr = () => spr('skyline', () => { const top = []; for (let i = 0; i < STAGE_W; i++) { const b = Math.floor(i / 30), hgt = 30 + hash(b, 41) * 26 - (i % 30 < 3 ? 2 : 0); top.push(hgt); }
+  const towers = [[70, 70, 8], [262, 88, 10], [400, 64, 7]];        // the cathedral's bell tower and two more, far off
+  return paint(STAGE_W, 90, (i, j) => { const y = 90 - j; let solid = y < top[i]; for (const [tx, th, tw] of towers) if (i >= tx && i < tx + tw && y < th) solid = true; if (!solid) return;
+    const lit = hash(i >> 2, j >> 2) > 0.94 && j > 40 && (i & 3) < 2 && (j & 3) < 2; return lit ? '#c89a5a' : '#1c1428'; })[0]; });
+
+/* a Sansepolcro house at night: peeling plaster with stone underneath, a tiled roof, shutters, balconies with flowers, a shop at street level */
+const FACADES = ['#7a5e48', '#6a5240', '#8a6a50', '#6e5644'];
+const chimneyOf = (seed, wd) => hash(seed, 22) > 0.35 ? 10 + Math.floor(hash(seed, 21) * (wd - 30)) : -1;
+const facadeSpr = (seed, wd, ht) => spr('fac' + seed + '_' + wd + '_' + ht, () => {
+  const base = FACADES[seed % 4], dark = shade(base, -0.3), light = shade(base, 0.12), ox = 3, oy = 14, bandY = ht - 36;
+  const [cv, x] = paint(wd + 6, ht + oy, (i, j) => { const fx = i - ox, fy = j - oy; if (fx < 0 || fx >= wd || fy < 0) return;
+    const n = hash(fx * 7 + seed * 131, fy * 13 + seed);
+    if (fy >= bandY) { const row = Math.floor((fy - bandY) / 7), bx = (fx + (row % 2) * 6) % 12, by = (fy - bandY) % 7; if (by === 0 || bx === 0) return shade(base, -0.38); return by === 1 || bx === 1 ? shade(base, 0.05) : by === 6 || bx === 11 ? shade(base, -0.22) : shade(base, -0.1 + (n - 0.5) * 0.06); } // rusticated stone at street level
+    if (hash(Math.floor(fx / 16) + seed * 5, Math.floor(fy / 12) + 3) > 0.84) { const by = fy % 5, bx = (fx + (Math.floor(fy / 5) % 2) * 5) % 10; return by === 0 || bx === 0 ? dark : n > 0.7 ? '#9a5a40' : '#8a4a34'; } // the brick showing where the plaster fell off
+    return n < 0.12 ? shade(base, -0.08) : n > 0.93 ? light : fx > wd - 4 ? shade(base, -0.15) : base; });
+  // the roof: a dark eave, curved tiles in rows, a gutter
+  PR(x, 0, oy - 2, wd + 6, 3, '#2a1a14'); for (let i = 0; i < wd + 6; i++) { const t2 = i % 4; PR(x, i, oy - 8, 1, 6, t2 === 0 ? '#5a2a1e' : t2 === 3 ? '#7a3a28' : '#9a4a30'); if (t2 === 1) PR(x, i, oy - 8, 1, 1, '#c06a48'); }
+  PR(x, 0, oy - 9, wd + 6, 1, '#4a2018'); PR(x, 0, oy + 1, wd + 6, 1, '#1a100c');
+  PR(x, ox, oy + 2, wd, 2, shade(base, -0.25));                            // the shadow of the eave
+  const ch = chimneyOf(seed, wd); if (ch >= 0) { PR(x, ox + ch, 0, 7, oy - 8, '#6a3a2a'); PR(x, ox + ch, 0, 7, 1, '#8a5a40'); PR(x, ox + ch - 1, 0, 9, 2, '#4a2a1e'); PR(x, ox + ch + 5, 2, 2, oy - 10, '#4a2a1e'); }
+  PR(x, ox + wd - 2, oy + 2, 1, ht - 2, '#3a3a40'); for (let y = oy + 8; y < oy + ht; y += 18) PR(x, ox + wd - 3, y, 3, 1, '#2a2a30'); // the drainpipe
+  PR(x, ox, oy + bandY - 2, wd, 2, light); PR(x, ox, oy + bandY, wd, 1, dark); // the string course
+  const cols = Math.max(2, Math.floor(wd / 36)), rows = Math.min(3, Math.floor((bandY - 10) / 36));
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
+    const wx = ox + 12 + Math.round(k * (wd - 24) / cols) + Math.round((wd - 24) / cols / 2) - 6, wy = oy + 12 + r * 36, lit = hash(seed * 7 + k, r) > 0.5, closed = !lit && hash(seed * 3 + k, r + 7) > 0.55;
+    PR(x, wx - 2, wy - 2, 16, 23, light); PR(x, wx - 3, wy + 20, 18, 2, shade(base, 0.2)); PR(x, wx - 3, wy + 22, 18, 1, dark); // stone surround and sill
+    if (lit) { for (let y = 0; y < 18; y++) PR(x, wx, wy + y, 12, 1, y < 6 ? '#ffe0a0' : y < 12 ? '#ffc870' : '#f0a050'); PR(x, wx, wy, 2, 18, '#c0603a'); PR(x, wx + 10, wy, 2, 18, '#c0603a'); PR(x, wx + 2, wy, 2, 4, '#c0603a'); PR(x, wx + 8, wy, 2, 4, '#c0603a'); }
+    else { PR(x, wx, wy, 12, 18, '#1a1214'); PR(x, wx + 2, wy + 2, 1, 3, '#3a3448'); }
+    PR(x, wx + 5, wy, 2, 18, lit ? '#6a3a1a' : '#2a1e1e'); PR(x, wx, wy + 8, 12, 1, lit ? '#6a3a1a' : '#2a1e1e'); // the frame
+    const sh = (sx, w2) => { PR(x, sx, wy, w2, 18, '#3e5a2c'); for (let y = 1; y < 18; y += 2) PR(x, sx, wy + y, w2, 1, '#2c4420'); PR(x, sx, wy, 1, 18, '#56723c'); };
+    if (closed) { sh(wx, 6); sh(wx + 6, 6); } else { sh(wx - 5, 4); sh(wx + 13, 4); }
+    if (r === 1 && hash(seed, k) > 0.55) { // a balcony: a slab, an iron railing, pots of geraniums
+      PR(x, wx - 6, wy + 19, 24, 3, '#9a8a78'); PR(x, wx - 6, wy + 21, 24, 1, '#4a3a30'); PR(x, wx - 6, wy + 11, 24, 1, '#1a1414');
+      for (let b = 0; b < 24; b += 3) PR(x, wx - 6 + b, wy + 11, 1, 8, '#1a1414');
+      for (const [px, fc] of [[wx - 4, '#e0303a'], [wx + 4, '#f070a0'], [wx + 12, '#f4f0f0']]) if (hash(px, seed) > 0.25) { PR(x, px, wy + 15, 4, 4, '#b0603a'); PR(x, px - 1, wy + 12, 6, 3, '#3a7a2a'); PR(x, px, wy + 11, 1, 1, fc); PR(x, px + 2, wy + 10, 2, 2, fc); PR(x, px + 4, wy + 12, 1, 1, fc); }
+    }
+  }
+  const shop = seed % 3, bx = ox, by = oy + ht; // the ground floor
+  if (shop === 0) { // a bar: a lit window with bottles on the shelves, a striped awning, the sign
+    PR(x, bx + 10, by - 30, wd - 20, 26, '#2a1810'); for (let y = 0; y < 22; y++) PR(x, bx + 12, by - 28 + y, wd - 24, 1, y < 8 ? '#ffe2a8' : '#f4b868');
+    for (let k = 0; k < (wd - 28) / 3; k++) { PR(x, bx + 14 + k * 3, by - 26 + (k % 2), 2, 5, ['#3a8a3a', '#8a2a1a', '#c8a040', '#4a6ab0'][k % 4]); PR(x, bx + 14 + k * 3, by - 26, 1, 1, '#ffffff'); }
+    PR(x, bx + 12, by - 20, wd - 24, 1, '#7a4a28'); PR(x, bx + wd / 2 - 1, by - 30, 2, 26, '#2a1810');
+    for (let k = 0; k < wd - 8; k++) { const st = Math.floor(k / 5) % 2; PR(x, bx + 4 + k, by - 42, 1, 8, st ? '#f4ece0' : '#c0202a'); PR(x, bx + 4 + k, by - 34 + (k % 5 === 2 ? 1 : 0), 1, 2, st ? '#d8d0c4' : '#901820'); }
+    PR(x, bx + 4, by - 42, wd - 8, 1, '#ffffff'); PR(x, bx + wd / 2 - 11, by - 52, 22, 9, '#2a1810'); ptext(x, 'BAR', bx + wd / 2 - 8, by - 51, '#ffd070');
+  } else if (shop === 1) { // the chemist's: a pale green window, a door
+    PR(x, bx + 12, by - 30, wd - 24, 30, '#2a1a10'); PR(x, bx + 15, by - 27, wd - 30, 22, '#9ad0b0'); PR(x, bx + 15, by - 27, wd - 30, 3, '#c8f0d8');
+    for (let k = 0; k < 4; k++) PR(x, bx + 18 + k * 6, by - 18, 3, 4, ['#ffffff', '#e0e0f0', '#f0d0d0', '#d0e8f0'][k]); PR(x, bx + wd - 30, by - 27, 9, 27, '#3a2a1a');
+  } else { // an arched doorway: wooden planks, studs, a knocker
+    const dx = bx + Math.floor(wd / 2) - 10; PR(x, dx - 3, by - 34, 26, 34, light); PE(x, dx + 10, by - 30, 13, 9, light);
+    PR(x, dx, by - 30, 20, 30, '#5a3418'); PE(x, dx + 10, by - 30, 10, 7, '#5a3418'); for (let k = 0; k < 20; k += 4) PR(x, dx + k, by - 36, 1, 36, '#3a2010');
+    for (const [sx, sy] of [[3, -24], [16, -24], [3, -10], [16, -10]]) PR(x, dx + sx, by + sy, 1, 1, '#c8a040'); PE(x, dx + 10, by - 16, 1.6, 1.6, '#c8a040'); PR(x, dx - 3, by - 37, 26, 1, dark);
+  }
+  return pixOutline(cv, [26, 16, 18]);
+});
+function facadeAt(c, x, top, wd, ht, seed) { c.drawImage(facadeSpr(seed, wd, ht), Math.round(x) - 3, Math.round(top) - 14); }
+function chimneySmoke(c, x, top, wd, seed, t) { // grey puffs rising from the chimney, growing and fading
+  const ch = chimneyOf(seed, wd); if (ch < 0) return;
+  for (let k = 0; k < 7; k++) { const a = ((t * 0.5 + k / 7 + hash(seed, k)) % 1), px = x + ch + 3 + a * 26 + Math.sin(a * 6 + k) * 2, py = top - 14 - a * 40, r = 1.5 + a * 5;
+    if (!dz(k, Math.floor(a * 9), 1 - a)) continue; c.globalAlpha = 0.7 * (1 - a); PE(c, px, py, r, r * 0.8, a < 0.3 ? '#b8b0c0' : '#8a8498'); c.globalAlpha = 1; }
 }
-function journey(c, u) {
+
+/* the street furniture: cast-iron lamps, little Italian cars, the cobbles */
+const lampSpr = () => spr('lamp', () => { const [cv, x] = mkc(22, 100);
+  PR(x, 6, 92, 9, 6, '#1c1a1e'); PR(x, 7, 90, 7, 2, '#2a282e'); PR(x, 5, 97, 11, 2, '#141216'); // the base
+  PR(x, 9, 14, 3, 76, '#1c1a1e'); PR(x, 9, 14, 1, 76, '#3a3842'); for (const y of [40, 64]) PR(x, 8, y, 5, 2, '#2a282e'); // the post with its collars
+  PR(x, 2, 10, 10, 2, '#1c1a1e'); PR(x, 2, 12, 1, 2, '#1c1a1e'); PR(x, 11, 8, 2, 6, '#1c1a1e');  // the arm
+  PR(x, 0, 14, 6, 1, '#1c1a1e'); PR(x, 0, 15, 6, 8, '#ffe8a0'); PR(x, 1, 16, 4, 6, '#fff8d8'); PR(x, 0, 15, 1, 8, '#1c1a1e'); PR(x, 5, 15, 1, 8, '#1c1a1e'); PR(x, 0, 23, 6, 1, '#1c1a1e'); PR(x, 1, 24, 4, 1, '#1c1a1e'); // the lantern
+  return cv; });
+function lampPx(c, x, base, t, i = 0) { // the lamp's light pools on the ground; moths go round it
+  glow(c, x - 7, base - 81, 44, '#7a5a28'); glow(c, x - 7, base - 81, 16, '#c8a050');
+  c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.7; PE(c, x - 6, base + 2, 30, 6, '#4a3818'); PE(c, x - 6, base + 2, 16, 3, '#5a4420'); c.restore();
+  c.drawImage(lampSpr(), Math.round(x - 11), Math.round(base - 98));
+  for (let k = 0; k < 3; k++) { const a = t * (3 + k) + k * 2 + i; P1(c, x - 7 + Math.cos(a) * (6 + k * 3), base - 81 + Math.sin(a * 1.3) * (4 + k * 2), 1, 1, '#fff0c0'); }
+}
+const carSpr = (col, f) => spr('car' + col + f, () => { const [cv, x] = mkc(58, 26), d = shade(col, -0.35), l = shade(col, 0.3);
+  PR(x, 2, 10, 54, 10, col); PR(x, 2, 10, 54, 1, l); PR(x, 2, 18, 54, 2, d); PR(x, 1, 12, 1, 6, col);               // the body
+  PR(x, 12, 2, 30, 9, col); PR(x, 13, 1, 26, 1, l); PR(x, 42, 4, 3, 7, col);                                       // the cabin
+  PR(x, 14, 3, 12, 7, '#7aa0c0'); PR(x, 28, 3, 12, 7, '#7aa0c0'); PR(x, 15, 4, 2, 5, '#c8e0f0'); PR(x, 29, 4, 3, 1, '#c8e0f0'); PR(x, 40, 4, 3, 6, '#5a7a98'); // windows with a glint
+  PR(x, 27, 2, 1, 16, d); PR(x, 12, 11, 1, 7, d); PR(x, 22, 13, 3, 1, '#c8cdd2');                                  // the door
+  PR(x, 0, 17, 6, 2, '#a8adb4'); PR(x, 52, 17, 6, 2, '#a8adb4');                                                   // bumpers
+  PR(x, 54, 12, 3, 3, '#fff6c8'); PR(x, 1, 12, 2, 3, '#e0202a');                                                   // lights
+  for (const wx of [13, 45]) { PE(x, wx, 20, 5, 5, '#141418'); PE(x, wx, 20, 2.5, 2.5, '#8a8f96'); PR(x, wx + (f ? -1 : 0), 18 + (f ? 1 : 0), 1, 1, '#d8dce2'); PR(x, wx + (f ? 1 : 0), 21 - (f ? 1 : 0), 1, 1, '#4a4e56'); }
+  return pixOutline(cv); });
+function carPx(c, x, y, col, dir, t) { // y is where the wheels touch the road
+  const sp = carSpr(col, Math.floor(t * 12) % 2), fx = dir > 0 ? 1 : -1;
+  c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.5; for (let k = 0; k < 40; k++) { const h2 = 2 + k * 0.4; for (let j = -h2; j < h2; j++) if (dz(k, Math.round(j), 1 - k / 40)) P1(c, x + fx * (28 + k), y - 10 + j, 1, 1, '#a08a50'); } c.restore(); // the headlight beam
+  PE(c, x, y + 1, 26, 2.5, '#0a0808');
+  c.save(); c.translate(Math.round(x), Math.round(y - 25)); c.scale(fx, 1); c.drawImage(sp, -29, 0); c.restore();
+  for (let k = 0; k < 4; k++) { const a = (t * 1.6 + k / 4) % 1; c.globalAlpha = 0.5 * (1 - a); PE(c, x - fx * (30 + a * 14), y - 4 - a * 6, 1 + a * 3, 1 + a * 2, '#8a8494'); c.globalAlpha = 1; } // exhaust
+}
+const ROAD_LEN = 480 + 720; // long enough for the whole glide along the street, so the cobbles never jump back
+const roadSpr = () => spr('road', () => paint(ROAD_LEN, 70, (i, j) => { // pavement slabs, the kerb, then the sampietrini in widening rows
+  const n = hash(i, j);
+  if (j < 9) { if (i % 24 === 0 || j === 0) return '#4a4440'; return j === 1 ? '#8a847c' : n > 0.9 ? '#5e5852' : '#6e6862'; }
+  if (j < 12) return j === 9 ? '#9a948c' : j === 10 ? '#5a5450' : '#2a2628';
+  const rows = [12, 16, 21, 27, 34, 42, 51, 61, 70], sz = [4, 6, 6, 8, 8, 12, 12, 16]; let r = 0; while (j >= rows[r + 1]) r++;
+  const w2 = sz[r], hgt = rows[r + 1] - rows[r], ci = Math.floor((i + (r % 2) * w2 / 2) / w2), bx = (i + (r % 2) * w2 / 2) % w2, by = j - rows[r], m = hash(ci, r);
+  if (bx === 0 || by === 0) return '#1e1a1e'; if (by === 1 || bx === 1) return m > 0.8 ? '#6a6670' : '#5a5660'; if (by === hgt - 1 || bx === w2 - 1) return '#2e2a30';
+  return m > 0.85 ? '#4a4652' : m < 0.2 ? '#36323a' : '#403c46'; })[0]);
+function roadPx(c, top, off) { c.drawImage(roadSpr(), -Math.round(clamp(off, 0, ROAD_LEN - STAGE_W)), top); }
+function walkerPx(c, n, x, feet, dir, t, moving = true) {
+  const sp = heroSpr(npc(n), dir > 0 ? 'e' : dir < 0 ? 'w' : 's', moving ? [0, 1, 0, 2][Math.floor(t * 7 + n * 1.3) & 3] : 0);
+  PE(c, x, feet, 8, 2, 'rgba(0,0,0,.45)'); c.drawImage(sp, Math.round(x - 13), Math.round(feet - 31));
+}
+function leaves(c, t, n, y0, y1) { for (let i = 0; i < n; i++) { const a = (t * (0.12 + hash(i, 51) * 0.1) + hash(i, 52)) % 1, x = STAGE_W + 20 - a * (STAGE_W + 60), y = y0 + hash(i, 53) * (y1 - y0) + Math.sin(t * 3 + i) * 5, f = Math.floor(t * 8 + i) % 2;
+  P1(c, x, y, f ? 2 : 1, f ? 1 : 2, ['#c8782a', '#a85a20', '#d8a040'][i % 3]); } }
+function motes(c, t, n, x0, y0, w2, h2, col = '#ffe8a0') { for (let i = 0; i < n; i++) { const x = x0 + ((hash(i, 61) * w2 + Math.sin(t * 0.7 + i) * 8) % w2), y = y0 + ((hash(i, 62) * h2 - t * (3 + hash(i, 63) * 5)) % h2 + h2) % h2; if (Math.sin(t * 4 + i * 3) > 0.2) P1(c, x, y, 1, 1, col); } }
+
+/* Porta Fiorentina: the city wall with its gate, seen from outside */
+const ARCH = {x: 240, y: 140, r: 50};
+const inArch = (i, j, pad = 0) => j < 214 && ((j >= ARCH.y && Math.abs(i - ARCH.x) < ARCH.r + pad) || Math.hypot(i - ARCH.x, j - ARCH.y) < ARCH.r + pad);
+const wallSpr = () => spr('wall', () => {
+  const [cv, x] = paint(STAGE_W, 214, (i, j) => {
+    if (j < 40) return; if (j < 54 && (i % 36) >= 22) return;               // the merlons
+    if (inArch(i, j)) { return inArch(i, j, -5) ? null : (i < ARCH.x ? '#3a2a20' : '#2a1e18'); } // the hole, with the thickness of the wall inside
+    if (inArch(i, j, 9)) { const a = Math.atan2(j - ARCH.y, i - ARCH.x), seg = Math.floor((a + Math.PI) / (Math.PI / 13)), edge = Math.abs(((a + Math.PI) / (Math.PI / 13)) % 1 - 0.5) > 0.44; // the voussoirs fan out
+      if (j >= ARCH.y) { const by = (j - ARCH.y) % 10; return by === 0 ? '#5a4030' : hash(i > ARCH.x ? 1 : 0, Math.floor((j - ARCH.y) / 10)) > 0.5 ? '#b08e6a' : '#a07e5c'; }
+      return edge ? '#5a4030' : hash(seg, 3) > 0.5 ? '#b89670' : '#a8865e'; }
+    const row = Math.floor((j - 40) / 10), by = (j - 40) % 10, wb = 18 + Math.floor(hash(row, 7) * 10), bx = (i + row * 11) % wb, blk = Math.floor((i + row * 11) / wb), m = hash(blk, row), n = hash(i, j);
+    if (by === 0 || bx === 0) return '#3e2c22';
+    let col = m > 0.7 ? '#8a6a50' : m < 0.25 ? '#6a4e3c' : '#7a5c46';
+    if (by === 1) col = shade(col, 0.15); else if (by === 9 || bx === wb - 1) col = shade(col, -0.2); else if (n > 0.92) col = shade(col, -0.12); else if (n < 0.05) col = shade(col, 0.1);
+    if (j > 196 && dz(i, j, (j - 196) / 18) && n > 0.3) col = n > 0.7 ? '#4a5a2a' : '#3a4a22';   // moss at the foot of the wall
+    if (j < 54 && (i % 36) === 0) col = shade(col, 0.15); if (j < 54 && (i % 36) === 21) col = shade(col, -0.25);
+    return col; });
+  for (const [ix, iy, len] of [[40, 54, 60], [58, 54, 34], [420, 54, 70], [438, 54, 40], [456, 54, 22]]) for (let k = 0; k < len; k++) { // ivy hanging down
+    const xx = ix + Math.round(Math.sin(k * 0.3 + ix) * 3); PR(x, xx, iy + k, 1, 1, '#1e3a1a'); if (k % 3 === 0) { PR(x, xx - 2, iy + k, 2, 2, k % 2 ? '#3a6a2a' : '#2e5a22'); PR(x, xx + 1, iy + k + 1, 2, 2, '#4a7a32'); } }
+  PR(x, 172, 60, 136, 17, '#5a4434'); PR(x, 174, 62, 132, 13, '#c8b898'); PR(x, 174, 62, 132, 1, '#e8dcc0'); PR(x, 174, 74, 132, 1, '#8a7a60'); // the inscription
+  ptext(x, 'PORTA FIORENTINA', 240 - ptextW('PORTA FIORENTINA') / 2, 65, '#3a2418');
+  PR(x, 36, 118, 82, 30, '#3a2418'); PR(x, 38, 120, 78, 26, '#e8dcc0'); PR(x, 38, 120, 78, 1, '#ffffff'); PR(x, 38, 132, 78, 1, '#b3121b'); // the town sign
+  ptext(x, 'SANSEPOLCRO', 77 - ptextW('SANSEPOLCRO') / 2, 123, '#2a1a10'); ptext(x, 'DI PIERO', 77 - ptextW('DI PIERO') / 2, 136, '#7a1a18');
+  PE(x, 240, 50, 7, 8, '#b3121b', '#7a0a10', '#e04a4a'); PR(x, 239, 44, 2, 12, '#e8dcc0'); PR(x, 236, 48, 8, 2, '#e8dcc0'); // a shield with a cross over the gate
+  return cv; });
+function torch(c, x, y, t, i) { // an iron lantern on a bracket, the flame flickering
+  PR(c, x - 1, y - 2, 8, 2, '#1c1a1e'); PR(c, x - 4, y, 7, 10, '#1c1a1e'); PR(c, x - 3, y + 1, 5, 8, '#ffb040');
+  const f = Math.floor(t * 10 + i) % 3; PR(c, x - 2, y + 3 - f % 2, 3, 6, '#ffe080'); PR(c, x - 1, y + 2 + f, 1, 3, '#fff8d8');
+  glow(c, x - 1, y + 5, 30 + f, '#6a4018', 0.9);
+  for (let k = 0; k < 4; k++) { const a = (t * 0.8 + k / 4 + i) % 1; P1(c, x - 1 + Math.sin(t * 5 + k) * 3, y - 2 - a * 22, 1, 1, a < 0.5 ? '#ffd060' : '#a85a20'); } // sparks drifting up
+}
+function gatePx(c, u) {
+  c.drawImage(skySpr('night', NIGHT), 0, 0); stars(c, u, 70, 120); moon(c, 418, 22, 9); clouds(c, u, 4, 20);
+  c.drawImage(skylineSpr(), 0, 124);                                          // through the arch: the town beyond…
+  facadeAt(c, 186, 112, 56, 92, 1); facadeAt(c, 246, 104, 70, 100, 3); P1(c, 180, 204, 120, 10, '#2a2628'); P1(c, 180, 204, 120, 1, '#6e6862');
+  walkerPx(c, 4, 222 + u * 6, 203, 1, u); lampPx(c, 262, 203, u, 3);
+  c.drawImage(wallSpr(), 0, 0);                                               // …then the wall in front
+  torch(c, 172, 128, u, 0); torch(c, 314, 128, u, 1);
+  roadPx(c, 205, 0);
+  lampPx(c, 120, 214, u); lampPx(c, 380, 214, u, 1);
+  carPx(c, 420, 240, '#2b5aa8', -1, 0); carPx(c, -80 + u * 150, 258, '#d2202a', 1, u);
+  walkerPx(c, 1, 60 + u * 18, 222, 1, u); walkerPx(c, 2, 330 - u * 14, 222, -1, u);
+  leaves(c, u, 8, 150, 260); motes(c, u, 14, 150, 110, 180, 60);
+}
+/* Via XX Settembre: the camera glides along the houses */
+function streetPx(c, k, t) {
+  c.drawImage(skySpr('night', NIGHT), 0, 0); stars(c, t, 70, 70); clouds(c, t, 5, 30);
+  const off = k * 700;
+  c.drawImage(skylineSpr(), -Math.round(off * 0.3 % STAGE_W), 40); c.drawImage(skylineSpr(), STAGE_W - Math.round(off * 0.3 % STAGE_W), 40);
+  for (let i = 0; i < 7; i++) { const seed = i + Math.floor(off / 110), x = i * 110 - off % 110 - 110, top = 46 + hash(seed, 1) * 16; facadeAt(c, x, top, 108, 205 - top, seed); chimneySmoke(c, x, top, 108, seed, t); }
+  roadPx(c, 205, off);
+  for (let i = 0; i < 5; i++) lampPx(c, i * 160 - (off % 160) + 70, 214, t, i);
+  for (let n = 0; n < 9; n++) { const wx = n * 130 + 40 + (n % 2 ? 1 : -1) * t * 16; walkerPx(c, n + 3, wx - off, 222, n % 2 ? 1 : -1, t); }
+  carPx(c, 620 - t * 180 - off * 0.2, 244, '#e8b64a', -1, t); carPx(c, -200 + t * 140, 262, '#3e8a3a', 1, t);
+  const cx2 = ((t * 22) % 560) - 40; drawCat(c, cx2, 54 + hash(Math.floor((cx2 + off) / 110), 1) * 16 + 0, t); // a cat walking along the roofs
+  leaves(c, t, 10, 170, 268);
+}
+function drawCat(c, x, roof, t) { const f = Math.floor(t * 8) % 2, y = Math.round(roof - 18); P1(c, x, y + 2, 8, 3, '#0e0a0c'); P1(c, x + 7, y, 3, 3, '#0e0a0c'); P1(c, x + 7, y - 1, 1, 1, '#0e0a0c'); P1(c, x + 9, y - 1, 1, 1, '#0e0a0c'); P1(c, x + 8, y + 1, 1, 1, '#d8e060');
+  P1(c, x - 3, y + (f ? 0 : 1), 3, 1, '#0e0a0c'); P1(c, x - 3, y - 2 + f, 1, 2, '#0e0a0c'); for (const lx of f ? [1, 6] : [2, 5]) P1(c, x + lx, y + 5, 1, 2, '#0e0a0c'); }
+/* Piazza Torre di Berta: the tower, the evening crowd, pigeons, and the manhole that opens */
+const towerSpr = () => spr('tower', () => { const [cv, x] = paint(96, 196, (i, j) => { const tx = i - 8; if (tx < 0 || tx >= 80 || j < 14) { if (j >= 4 && j < 14 && tx >= -4 && tx < 84 && ((tx + 4) % 18) < 12) return (tx + 4) % 18 === 0 ? '#9a7a5c' : (tx + 4) % 18 === 11 ? '#4a362a' : '#6a5040'; return; }
+  const row = Math.floor(j / 6), by = j % 6, bx = (tx + (row % 2) * 7) % 14, m = hash(Math.floor((tx + (row % 2) * 7) / 14), row), n = hash(i, j);
+  if (by === 0 || bx === 0) return '#3e2c22'; let col = m > 0.7 ? '#8a6a50' : m < 0.3 ? '#6e523e' : '#7a5e48'; if (tx > 66) col = shade(col, -0.3); else if (tx < 4) col = shade(col, 0.1);
+  if (by === 1) col = shade(col, 0.1); if (n > 0.95) col = shade(col, -0.15); return col; });
+  PR(x, 4, 13, 88, 2, '#4a362a');
+  for (const [wy, wh] of [[84, 16], [120, 16]]) { PR(x, 45, wy, 6, wh, '#1a1214'); PE(x, 48, wy, 3, 3, '#1a1214'); }  // arrow slits
+  PR(x, 32, 54, 32, 24, '#1a1214'); PE(x, 48, 54, 16, 10, '#1a1214'); PR(x, 30, 76, 36, 3, '#9a8a70');                // the belfry
+  PR(x, 38, 182, 20, 14, '#3a2010'); PE(x, 48, 182, 10, 7, '#3a2010'); for (let k = 0; k < 20; k += 4) PR(x, 38 + k, 176, 1, 20, '#2a1608'); PR(x, 36, 172, 24, 1, '#9a7a5c'); // the door
+  PE(x, 48, 34, 12, 12, '#2a1e18'); PE(x, 48, 34, 10.5, 10.5, '#e8dcb8', '#c8bc98', '#fffbe8');                      // the clock face
+  for (let h2 = 0; h2 < 12; h2++) { const a = h2 / 12 * Math.PI * 2; PR(x, Math.round(48 + Math.cos(a) * 8.5), Math.round(34 + Math.sin(a) * 8.5), 1, 1, '#3a2a20'); }
+  return pixOutline(cv, [26, 16, 18]); });
+const pigeonSpr = f => spr('pigeon' + f, () => { const [cv, x] = mkc(10, 8);
+  if (f < 2) { PE(x, 4, 5, 3.5, 2.2, '#8d96a3', '#6a7280'); PE(x, f ? 8 : 7, f ? 5 : 3, 1.8, 1.8, '#7a8494'); PR(x, f ? 9 : 8, f ? 5 : 3, 1, 1, '#e0a040'); PR(x, 7, f ? 4 : 2, 1, 1, '#ff8040'); PR(x, 5, 4, 1, 1, '#5a9a8a'); PR(x, 3, 7, 1, 1, '#d06060'); PR(x, 5, 7, 1, 1, '#d06060'); }
+  else { PE(x, 5, 4, 3, 1.6, '#8d96a3'); PR(x, f === 2 ? 1 : 2, f === 2 ? 0 : 5, 3, 3, '#a8b0bc'); PR(x, f === 2 ? 6 : 6, f === 2 ? 0 : 5, 3, 3, '#a8b0bc'); PR(x, 8, 3, 2, 2, '#7a8494'); }
+  return pixOutline(cv); });
+const vespaSpr = () => spr('vespa', () => { const [cv, x] = mkc(32, 22); PE(x, 7, 16, 4, 4, '#141418'); PE(x, 25, 16, 4, 4, '#141418'); PE(x, 7, 16, 1.5, 1.5, '#8a8f96'); PE(x, 25, 16, 1.5, 1.5, '#8a8f96');
+  PE(x, 9, 11, 8, 5, '#9fd3ff', '#6aa8d8', '#d8f0ff'); PR(x, 14, 12, 10, 3, '#9fd3ff'); PR(x, 22, 4, 4, 11, '#9fd3ff'); PR(x, 21, 2, 7, 2, '#3a3a3e'); PR(x, 26, 5, 2, 2, '#fff6c8'); PR(x, 3, 6, 10, 2, '#5a3a20'); return pixOutline(cv); });
+const batSpr = f => spr('bat' + f, () => { const [cv, x] = mkc(9, 5); PR(x, 4, 1, 1, 3, '#0a080c'); if (f) { PR(x, 0, 0, 4, 1, '#0a080c'); PR(x, 5, 0, 4, 1, '#0a080c'); PR(x, 1, 1, 3, 1, '#0a080c'); PR(x, 5, 1, 3, 1, '#0a080c'); } else { PR(x, 1, 2, 3, 1, '#0a080c'); PR(x, 5, 2, 3, 1, '#0a080c'); PR(x, 0, 3, 2, 1, '#0a080c'); PR(x, 7, 3, 2, 1, '#0a080c'); } return cv; });
+const piazzaBg = () => spr('piazzaBg', () => { const [cv, x] = mkc(STAGE_W, STAGE_H);
+  x.drawImage(skySpr('piazza', [[0, '#080a1e'], [0.5, '#1a1a40'], [1, '#3a2a50']]), 0, 0); x.drawImage(skylineSpr(), 0, 126);
+  x.drawImage(facadeSpr(0, 140, 110), -33, 90); x.drawImage(facadeSpr(4, 140, 118), 367, 82);
+  x.drawImage(paint(STAGE_W, 56, (i, j) => { const rows = [0, 6, 13, 21, 30, 40, 51, 56]; let r = 0; while (j >= rows[r + 1]) r++; const w2 = 14 + r * 6, bx = (i + r * 9) % w2, by = j - rows[r], m = hash(Math.floor((i + r * 9) / w2), r);
+    if (by === 0 || bx === 0) return '#2e2a2c'; if (by === 1) return '#7a7470'; return m > 0.8 ? '#6a6460' : m < 0.2 ? '#4e4a48' : '#5a5652'; })[0], 0, 214);
+  x.drawImage(towerSpr(), 192, 20);
+  return cv; });
+function piazzaPx(c, v, t) {
+  c.drawImage(piazzaBg(), 0, 0);
+  stars(c, t, 50, 80); moon(c, 400, 46, 13); clouds(c, t, 4, 30);
+  for (let k = 0; k < 3; k++) { const a = (t * 0.18 + k / 3) % 1; c.drawImage(batSpr(Math.floor(t * 12 + k) % 2), Math.round(480 - a * 560), Math.round(36 + k * 14 + Math.sin(t * 3 + k) * 6)); } // bats across the moon
+  const hand = (len, a, col) => { for (let r = 1; r <= len; r++) P1(c, 240 + Math.cos(a) * r, 54 + Math.sin(a) * r, 1, 1, col); }; hand(5, -Math.PI / 2 + t * 0.2, '#2a1a10'); hand(7, -Math.PI / 2 + t * 2.4, '#2a1a10'); // the clock keeps time
+  const sw = Math.sin(t * 2.2) * 2; P1(c, 236 + sw, 80, 9, 7, '#c8952a'); P1(c, 237 + sw, 80, 7, 1, '#f0c050'); P1(c, 239 + sw, 87, 3, 2, '#8a5a10'); // the bell
+  lampPx(c, 150, 222, t); lampPx(c, 330, 222, t, 2);
+  // the bar's table under a red umbrella, a bench, the Vespa, people out for the evening
+  for (let r = 0; r < 7; r++) for (let k = -4 - r * 3; k <= 4 + r * 3; k++) P1(c, 80 + k, 186 + r, 1, 1, r === 6 ? (Math.floor((k + 30) / 4) % 2 ? '#c8c0b4' : '#901820') : Math.floor((k + 30) / 4) % 2 ? '#f4ece0' : '#c0202a'); // the umbrella P1(c, 79, 196, 2, 26, '#3a2a20'); P1(c, 66, 210, 28, 3, '#6a4a30'); P1(c, 68, 213, 2, 9, '#3a2a20'); P1(c, 90, 213, 2, 9, '#3a2a20');
+  walkerPx(c, 11, 58, 232, 1, t, false); walkerPx(c, 12, 102, 232, -1, t, false);
+  P1(c, 392, 222, 46, 4, '#7a5030'); P1(c, 392, 222, 46, 1, '#a07040'); P1(c, 394, 226, 3, 8, '#3a2a20'); P1(c, 433, 226, 3, 8, '#3a2a20'); walkerPx(c, 13, 415, 232, 0, t, false);
+  c.drawImage(vespaSpr(), 344, 222);
+  walkerPx(c, 14, 170 + Math.sin(t) * 4, 248, 1, t, false); walkerPx(c, 15, 196, 248, -1, t, false); walkerPx(c, 16, 470 - t * 10, 258, -1, t);
+  const open = smooth((v - 1.9) / 0.4), fly = clamp((v - 1.9) / 1.2, 0, 1); // the pigeons take off when the lid scrapes
+  for (let k = 0; k < 4; k++) { const f = fly > 0 ? 2 + (Math.floor(t * 14 + k) % 2) : Math.floor(t * 3 + k * 1.7) % 2; c.drawImage(pigeonSpr(f), Math.round(116 + k * 14 - fly * (60 + k * 30)), Math.round(254 - fly * (120 + k * 20))); }
+  PE(c, 240, 240, 27, 8.5, '#050303');                                        // the manhole
+  if (open > 0) { glow(c, 240, 240, 34, '#7a3010', open); for (let k = 0; k < 12; k++) { const a = (t * 0.9 + k / 12) % 1; P1(c, 240 + (hash(k, 71) - 0.5) * 40 + Math.sin(t * 6 + k) * 2, 238 - a * 50 * open, 1, 1, a < 0.4 ? '#fff0a0' : a < 0.7 ? '#ffa040' : '#a03a10'); } }
+  else for (let k = 0; k < 8; k++) { const a = (t * 0.4 + k / 8) % 1; c.globalAlpha = 0.4 * (1 - a); PE(c, 240 + (hash(k, 72) - 0.5) * 30 + Math.sin(a * 5 + k) * 3, 238 - a * 30, 2 + a * 4, 1.5 + a * 2, '#a8a0b0'); c.globalAlpha = 1; } // steam through the holes
+  c.save(); c.translate(Math.round(open * 54), 0); PE(c, 240, 240, 27, 8.5, '#4a4a50', '#2e2e34', '#6a6a72'); PE(c, 240, 240, 22, 6.5, '#3a3a40'); for (let k = -2; k <= 2; k++) P1(c, 240 + k * 8, 235, 1, 11, '#5a5f66'); for (let k = -1; k <= 1; k++) P1(c, 226, 240 + k * 3, 28, 1, '#2a2a30'); c.restore();
+  motes(c, t, 12, 120, 160, 240, 60);
+}
+function journey(c, w, h, u) {
+  const C = sigCanvas();
   if (u < 2.6) { // Porta Fiorentina: a moment to read the gate, then in through the arch
     if (once('wind')) Snd.noise(2.5, 0.05, 500, 0.6);
-    zoomAt(c, 240, 150, 1 + Math.pow(smooth((u - 0.7) / 1.9), 2) * 2.2, () => gate(c, u));
-    if (u > 2.1) { c.fillStyle = `rgba(7,5,4,${smooth((u - 2.1) / 0.5)})`; c.fillRect(0, 0, STAGE_W, STAGE_H); }
+    gatePx(C, u); sigShow(c, w, h, 240, 165, 1 + Math.pow(smooth((u - 0.7) / 1.9), 2) * 2.4);
+    if (u > 2.1) { c.fillStyle = `rgba(7,5,4,${smooth((u - 2.1) / 0.5)})`; c.fillRect(0, 0, w, h); }
     return;
   }
-  if (u < 5.6) { street(c, (u - 2.6) / 3, u); if (u < 2.9) { c.fillStyle = `rgba(7,5,4,${1 - (u - 2.6) / 0.3})`; c.fillRect(0, 0, STAGE_W, STAGE_H); } return; }
-  piazza(c, u - 5.6, u);
-}
-function gate(c, u) {
-  skyNight(c); clouds(c, u);
-  c.save(); c.beginPath(); c.moveTo(180, 205); c.lineTo(180, 120); c.arc(240, 120, 60, Math.PI, 0); c.lineTo(300, 205); c.closePath(); c.clip();
-  facade(c, 150, 104, 82, 101, 1); facade(c, 252, 96, 92, 109, 3); c.fillStyle = '#34303a'; c.fillRect(150, 200, 200, 10);
-  walker(c, 4, 232 + u * 6, 203, 0.55, 1, u); c.restore();
-  // the city wall with the gate and its crenellations
-  c.fillStyle = '#7a5a44';
-  c.beginPath(); c.moveTo(0, 40); c.lineTo(480, 40); c.lineTo(480, 210); c.lineTo(300, 210); c.lineTo(300, 120); c.arc(240, 120, 60, 0, Math.PI, true); c.lineTo(180, 210); c.lineTo(0, 210); c.closePath(); c.fill();
-  c.fillStyle = 'rgba(0,0,0,.16)'; for (let y = 44; y < 210; y += 12) for (let x = (y / 12 % 2) * 12; x < 480; x += 24) { if (x > 172 && x < 300 && y > 56) continue; c.fillRect(x, y, 22, 10); }
-  c.fillStyle = '#6a4a38'; for (let x = 0; x < 480; x += 36) c.fillRect(x, 26, 22, 16);
-  c.strokeStyle = '#a07a5a'; c.lineWidth = 7; c.beginPath(); c.arc(240, 120, 64, Math.PI, 0); c.stroke(); c.fillStyle = '#a07a5a'; c.fillRect(234, 52, 12, 10);
-  c.fillStyle = '#efe3cf'; c.font = `800 13px ${DISPLAY_FONT}`; c.textAlign = 'center'; c.fillText('PORTA FIORENTINA', 240, 76);
-  c.fillStyle = '#3a2a20'; c.fillRect(60, 120, 30, 34); c.fillStyle = '#efe3cf'; c.font = `700 6px ${BODY_FONT}`; c.fillText('SANSEPOLCRO', 75, 134); c.fillText('Città di Piero', 75, 143);
-  pavement(c, 205, 0);
-  streetLamp(c, 120, 214); streetLamp(c, 380, 214);
-  car(c, 410, 238, '#2b5aa8', -1, 0.9); // parked
-  car(c, -80 + u * 150, 252, '#d2202a', 1); // one driving past
-  walker(c, 1, 60 + u * 18, 214, 0.75, 1, u); walker(c, 2, 330 - u * 14, 214, 0.75, -1, u);
-}
-function street(c, k, t) { // Via XX Settembre, the camera gliding along it
-  skyNight(c); clouds(c, t);
-  const off = k * 700;
-  c.fillStyle = '#1e141a'; for (let i = 0; i < 12; i++) { const x = i * 70 - (off * 0.3) % 70 - 70; c.fillRect(x, 50 + hash(i, 3) * 20, 72, 160); c.fillRect(x + 20, 40 + hash(i, 3) * 20, 8, 12); }
-  for (let i = 0; i < 9; i++) { const seed = i + Math.floor(off / 110), x = i * 110 - off % 110 - 110; facade(c, x, 46 + hash(seed, 1) * 16, 108, 159 - hash(seed, 1) * 16, seed, 205); }
-  pavement(c, 205, off);
-  for (let i = 0; i < 5; i++) streetLamp(c, i * 160 - (off % 160) + 70, 214);
-  // people strolling on the pavement, cars on the road
-  for (let n = 0; n < 9; n++) { const wx = n * 130 + 40 + (n % 2 ? 1 : -1) * t * 16; walker(c, n + 3, wx - off, 214, 0.75, n % 2 ? 1 : -1, t); }
-  car(c, 620 - t * 180 - off * 0.2, 236, '#e8b64a', -1);
-  car(c, -200 + t * 140, 254, '#3e8a3a', 1);
-  if (once('car')) Snd.tone(80, 1.6, 'sawtooth', 0.025, 120);
-}
-function piazza(c, v, t) { // Piazza Torre di Berta: the tower, people out for the evening, then down the manhole
-  const z = v < 1.3 ? 1 + v * 0.04 : 1.05 + Math.pow(smooth((v - 1.3) / 1.9), 2) * 9;
-  zoomAt(c, 240, v < 1.3 ? 150 : lerp(150, 238, smooth((v - 1.3) / 1.2)), z, () => {
-    skyNight(c, '#0e1430', '#2a2448'); clouds(c, t); circ(c, 400, 46, 14, '#f4ead6');
-    facade(c, -30, 104, 140, 110, 0, 214); facade(c, 370, 96, 140, 118, 4, 214);
-    // the tower of Berta, as it stood before 1944
-    c.fillStyle = '#6a5240'; c.fillRect(200, 34, 80, 180); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(268, 34, 12, 180);
-    c.fillStyle = 'rgba(0,0,0,.1)'; for (let yy = 40; yy < 214; yy += 9) c.fillRect(200, yy, 68, 1);
-    c.fillStyle = '#5a4636'; for (let k = 0; k < 5; k++) c.fillRect(196 + k * 18, 24, 12, 12);
-    circ(c, 240, 52, 9, '#e8d8a8'); c.strokeStyle = '#2a1d14'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(240, 52); c.lineTo(240, 46); c.moveTo(240, 52); c.lineTo(245, 54); c.stroke();
-    c.fillStyle = '#1c140f'; for (let k = 0; k < 3; k++) c.fillRect(236, 76 + k * 38, 8, 20); c.fillRect(230, 190, 20, 24);
-    c.fillStyle = '#5a5250'; c.fillRect(0, 214, STAGE_W, STAGE_H - 214); c.fillStyle = 'rgba(0,0,0,.16)'; for (let r = 0; r < 6; r++) for (let x = (r % 2) * 10; x < STAGE_W; x += 20) c.fillRect(x, 218 + r * 9, 18, 1);
-    streetLamp(c, 150, 222); streetLamp(c, 330, 222);
-    // a bar's tables, a bench, a Vespa, people chatting, pigeons
-    c.fillStyle = '#b3121b'; c.beginPath(); c.moveTo(40, 196); c.lineTo(80, 186); c.lineTo(120, 196); c.fill(); c.fillStyle = '#3a2a20'; c.fillRect(79, 196, 2, 26); c.fillRect(66, 212, 28, 3);
-    walker(c, 11, 62, 230, 0.7, 1, t, false); walker(c, 12, 98, 230, 0.7, -1, t, false);
-    c.fillStyle = '#5a3a1e'; c.fillRect(392, 222, 46, 4); c.fillRect(394, 226, 3, 8); c.fillRect(433, 226, 3, 8); walker(c, 13, 415, 230, 0.7, 0, t, false);
-    drawIcon(c, 'moto', '#9fd3ff', 360, 236, 30);
-    walker(c, 14, 170 + Math.sin(t) * 4, 246, 0.8, 1, t, false); walker(c, 15, 196, 246, 0.8, -1, t, false);
-    walker(c, 16, 470 - t * 10, 254, 0.8, -1, t);
-    for (let k = 0; k < 4; k++) drawIcon(c, 'bird', '#8d96a3', 120 + k * 14, 258 - Math.abs(Math.sin(t * 5 + k)) * 2, 12);
-    // the manhole: its lid slides away
-    const open = smooth((v - 1.9) / 0.4);
-    ell(c, 240, 238, 26, 8, '#050303');
-    c.save(); c.translate(open * 50, 0); ell(c, 240, 238, 26, 8, '#3a3a3e'); c.strokeStyle = '#5a5f66'; c.lineWidth = 1; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(240 + k * 8, 231); c.lineTo(240 + k * 8, 245); c.stroke(); } c.restore();
-  });
+  if (u < 5.6) { streetPx(C, (u - 2.6) / 3, u); sigShow(c, w, h); if (once('car')) Snd.tone(80, 1.6, 'sawtooth', 0.025, 120); if (u < 2.9) { c.fillStyle = `rgba(7,5,4,${1 - (u - 2.6) / 0.3})`; c.fillRect(0, 0, w, h); } return; }
+  const v = u - 5.6; piazzaPx(C, v, u);
+  sigShow(c, w, h, 240, v < 1.3 ? 150 : lerp(150, 240, smooth((v - 1.3) / 1.2)), v < 1.3 ? 1 + v * 0.04 : 1.05 + Math.pow(smooth((v - 1.3) / 1.9), 2) * 9);
   if (v > 1.9 && once('lid')) { Snd.tone(320, 0.25, 'square', 0.06, 180); Snd.noise(0.3, 0.12, 3000, 2); }
   if (v > 2.4 && once('fall')) Snd.noise(1.2, 0.1, 2000, 0.8, 0, 200);
 }
-function introTitle(c, w, h, t) { // the title bursts out of the dark, like an explosion
-  const slam = ease(t / 0.35), sh = t < 0.7 ? (0.7 - t) * 12 : 0, a = smooth((3.2 - t) / 0.7);
+
+/* the title bursts out of the rock: a pixel title with depth, debris and sparks flying, embers rising */
+const caveSpr = () => spr('cave', () => paint(STAGE_W, STAGE_H, (i, j) => { // the brick vault of a cellar, lit from the middle
+  const row = Math.floor(j / 12), by = j % 12, bx = (i + (row % 2) * 13) % 26, m = hash(Math.floor((i + (row % 2) * 13) / 26), row), n = hash(i, j);
+  const d = Math.hypot((i - 240) / 1.7, j - 115) / 230, f = clamp(1 - d, 0, 1) * 4.2, lo = Math.floor(f), lv = dz(i, j, f - lo) ? lo + 1 : lo;
+  const pal = [['#0a0605', '#120a08', '#1e120c', '#2e1a10', '#40220e', '#52301a'], ['#140c08', '#22140c', '#341e12', '#4a2a16', '#603820', '#784a2a']];
+  if (by === 0 || bx === 0) return pal[0][Math.max(0, lv - 1)];
+  let k = lv + (m > 0.75 ? 1 : 0) - (by === 11 || bx === 25 ? 1 : 0) - (n > 0.93 ? 1 : 0); return pal[1][clamp(k, 0, 5)]; })[0]);
+let TITLE_KEY = '';
+const titleSpr = () => { const key = 'title' + (document.fonts ? document.fonts.status : ''); if (key !== TITLE_KEY) { SPR.delete('titlePix'); TITLE_KEY = key; }
+  return spr('titlePix', () => { const W2 = 300, H2 = 112, [m, mx] = mkc(W2, H2); mx.fillStyle = '#fff'; mx.textAlign = 'center'; mx.font = `800 46px ${DISPLAY_FONT}`; mx.fillText('Biturgia', W2 / 2, 44); mx.fillText('Sotterranea', W2 / 2, 92);
+    const md = mx.getImageData(0, 0, W2, H2).data, on = (i, j) => i >= 0 && j >= 0 && i < W2 && j < H2 && md[(j * W2 + i) * 4 + 3] > 110;
+    return paint(W2, H2 + 6, (i, j) => { if (on(i, j)) { const top = !on(i, j - 1), y = j < 56 ? j / 56 : (j - 50) / 50; return top ? '#ffffff' : y < 0.45 ? '#fff4dc' : y < 0.75 ? '#efe0c0' : '#d8c098'; }
+      for (let k = 1; k <= 5; k++) if (on(i, j - k)) return k < 3 ? '#b3121b' : '#6a0a10';                          // the red depth below the letters
+      if (on(i - 1, j) || on(i + 1, j) || on(i, j + 1) || on(i, j - 6) || on(i - 1, j - 3) || on(i + 1, j - 3)) return '#140606'; })[0]; }); };
+function introTitle(c, w, h, t) {
+  const C = sigCanvas(), slam = ease(t / 0.35), a = smooth((3.2 - t) / 0.7);
   if (once('boom')) { Snd.boom(); Snd.tone(146.83, 1.8, 'sawtooth', 0.1, 73); }
-  c.globalAlpha = a;
-  c.fillStyle = '#130d0b'; c.fillRect(0, 0, w, h);
-  const g = c.createRadialGradient(w / 2, h * 0.45, 10, w / 2, h * 0.45, Math.max(w, h) * 0.6); g.addColorStop(0, 'rgba(255,160,60,.35)'); g.addColorStop(1, 'rgba(232,182,74,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
-  for (let i = 0; i < 40; i++) { // debris and sparks flying out
-    const ang = hash(i, 1) * 6.28, sp = 0.3 + hash(i, 2), d = ease(t / 1.6) * sp * Math.max(w, h) * 0.6;
-    c.globalAlpha = a * Math.max(0, 1 - t / 1.8); circ(c, w / 2 + Math.cos(ang) * d, h * 0.45 + Math.sin(ang) * d * 0.7, 2 + hash(i, 3) * 4, i % 3 ? '#ffb02a' : '#5a4636');
+  C.drawImage(caveSpr(), 0, 0);
+  glow(C, 240, 120, 150, '#3a1806', 0.8 + Math.sin(t * 7) * 0.1); glow(C, 240, 120, 70, '#6a2a08', clamp(1.4 - t, 0.3, 1));
+  for (let i = 0; i < 26; i++) { // smoke rolling out
+    const ang = hash(i, 11) * 6.28, d = ease(t / 2.2) * (40 + hash(i, 12) * 140), r = 6 + ease(t / 2) * (8 + hash(i, 13) * 12), al = Math.max(0, 0.8 - t / 2.4);
+    if (al <= 0) break; C.globalAlpha = al * 0.6; PE(C, 240 + Math.cos(ang) * d, 120 + Math.sin(ang) * d * 0.6, r, r * 0.7, i % 2 ? '#3a2a24' : '#4a3a30'); }
+  C.globalAlpha = 1;
+  for (let i = 0; i < 70; i++) { // chunks of rock and sparks thrown out, falling back under gravity
+    const ang = hash(i, 1) * 6.28, sp = 0.4 + hash(i, 2), tt = Math.min(t, 1.8), px = 240 + Math.cos(ang) * sp * 260 * ease(tt / 1.4), py = 120 + Math.sin(ang) * sp * 150 * ease(tt / 1.4) + tt * tt * 40;
+    if (t > 1.8 + hash(i, 4)) continue;
+    if (i % 3) { const col = t < 0.5 ? '#fff8d0' : t < 1 ? '#ffc040' : '#c05a18'; P1(C, px, py, 1, 1, col); P1(C, px - Math.cos(ang) * 2, py - Math.sin(ang) * 2, 1, 1, '#a04010'); }
+    else { const s = 2 + Math.floor(hash(i, 3) * 3); P1(C, px, py, s, s, '#5a4232'); P1(C, px, py, s, 1, '#8a6a50'); P1(C, px + s - 1, py, 1, s, '#3a2a20'); }
   }
-  c.globalAlpha = a;
-  c.save(); c.translate(w / 2 + rr(-sh, sh), h * 0.45 + rr(-sh, sh)); const sc = 1 + (1 - slam) * 1.4; c.scale(sc, sc);
-  c.textAlign = 'center'; const fs = Math.min(w * 0.12, h * 0.17);
-  c.font = `800 ${Math.round(fs)}px ${DISPLAY_FONT}`;
-  c.fillStyle = '#b3121b'; c.fillText('Biturgia', fs * 0.04, -fs * 0.42 + fs * 0.05); c.fillText('Sotterranea', fs * 0.04, fs * 0.5 + fs * 0.05);
-  c.fillStyle = '#efe3cf'; c.fillText('Biturgia', 0, -fs * 0.42); c.fillText('Sotterranea', 0, fs * 0.5);
-  c.restore();
-  c.globalAlpha = a * smooth((t - 0.6) / 0.6); c.textAlign = 'center'; c.fillStyle = '#e8b64a'; c.font = `600 ${Math.round(Math.min(w, h) * 0.035)}px ${BODY_FONT}`;
-  c.fillText('LE CANTINE DI SANSEPOLCRO', w / 2, h * 0.45 + Math.min(w * 0.12, h * 0.17) * 1.1);
-  c.globalAlpha = 1;
+  for (let i = 0; i < 40; i++) { const a2 = (t * (0.15 + hash(i, 21) * 0.2) + hash(i, 22)) % 1, x = hash(i, 23) * 480 + Math.sin(t * 2 + i) * 6, y = 280 - a2 * 300; if (a2 > 0.85) continue; P1(C, x, y, 1, 1, a2 < 0.4 ? '#ffb040' : '#a04a18'); } // embers rising
+  for (let i = 0; i < 20; i++) { const y = ((t * (40 + hash(i, 25) * 40) + hash(i, 26) * 270) % 300) - 20; P1(C, hash(i, 27) * 480, y, 1, 2, '#5a4a3a'); }                          // grit falling from the roof
+  const T2 = titleSpr(), sc = 1 + (1 - slam) * 1.6, tw = Math.round(T2.width * sc), th = Math.round(T2.height * sc), sh = t < 0.7 ? Math.round((0.7 - t) * 8) : 0;
+  C.drawImage(T2, Math.round(240 - tw / 2 + rr(-sh, sh)), Math.round(108 - th / 2 + rr(-sh, sh)), tw, th);
+  const sub = 'LE CANTINE DI SANSEPOLCRO', sa = smooth((t - 0.6) / 0.6);
+  if (sa > 0) { C.globalAlpha = sa; ptext(C, sub, 240 - ptextW(sub, 2) / 2, 176, '#e8b64a', 2, '#2a1406'); C.globalAlpha = 1; }
+  if (h > w) { // a phone held upright: the cellar wall fills the screen, the whole title fits across it
+    const s0 = h / STAGE_H; c.save(); c.imageSmoothingEnabled = false; c.drawImage(caveSpr(), (w - STAGE_W * s0) / 2, 0, STAGE_W * s0, h); const s1 = w / 330; const y0 = Math.round(h * 0.42 - 80 * s1), y1 = Math.round(y0 + 160 * s1); c.drawImage(SIG.cv, 75, 40, 330, 160, 0, y0, w, y1 - y0); c.fillStyle = '#0a0605'; c.fillRect(0, y0 - 6, w, 6); c.fillRect(0, y1, w, 6); c.fillStyle = '#8a5a30'; c.fillRect(0, y0 - 8, w, 2); c.fillRect(0, y1 + 6, w, 2); c.restore(); // a lintel above and below the band
+  } else sigShow(c, w, h);
   if (t > 0.25 && t < 0.6) { c.fillStyle = `rgba(255,236,200,${(0.6 - t) * 1.4})`; c.fillRect(0, 0, w, h); } // one soft flash, no strobing
+  if (a < 1) { c.fillStyle = `rgba(7,5,4,${1 - a})`; c.fillRect(0, 0, w, h); }
 }
 function startIntro() {
   if (/nointro/.test(location.search) || location.hash.includes('feedback')) return;
   playFilm('intro', INTRO_LEN, introDraw, () => { Snd.init(); Music.play('menu'); }, true);
+  // paint the scenes' sprites ahead, a little at a time while the logo waits, so the film never stutters
+  const jobs = [() => gatePx(sigCanvas(), 0), () => caveSpr(), () => titleSpr(), () => piazzaPx(sigCanvas(), 0, 0)];
+  for (let k = 0; k <= 30; k++) jobs.push(() => streetPx(sigCanvas(), k / 30, 3 + k * 0.1));
+  const next = () => { const job = jobs.shift(); if (!job || !FILM.on) return; job(); setTimeout(next, 30); };
+  setTimeout(next, 300);
 }
 
 /* ================= endings: a short scene for every character, then the last will ================= */
@@ -9494,6 +9805,58 @@ const ENDING_SCENES = {
   },
 };
 startIntro();
+/* ================= the menus in pixels: titles and buttons lettered like the opening's title, on the cellar wall ================= */
+// the lettering is the display font drawn small, cut to hard pixels, then given a colour ramp, a depth and an outline, and blown up sharp
+const PIXW = {
+  title: {fill: ['#ffffff', '#fff4dc', '#efe0c0', '#d8c098'], depth: ['#b3121b', '#6a0a10'], out: '#140606'},
+  gold: {fill: ['#fff6c0', '#f8d470', '#e8b64a', '#b8862a'], depth: ['#7a3a10', '#3a1a06'], out: '#140806'},
+  ink: {fill: ['#4a2e1c', '#3a2416', '#2a1a10', '#2a1a10'], depth: ['#c0a47e', '#c0a47e'], out: null},
+};
+function pixWordSpr(text, px, style = 'title') {
+  const st = PIXW[style], fonts = document.fonts ? document.fonts.status : '';
+  return spr('pw' + style + px + fonts + text, () => {
+    const [m, mx] = mkc(8, 8); mx.font = `800 ${px}px ${DISPLAY_FONT}`;
+    const tw = Math.ceil(mx.measureText(text).width) + 4, th = Math.ceil(px * 1.25), dep = Math.max(1, Math.round(px / 9)), pad = 2;
+    m.width = tw; m.height = th; mx.font = `800 ${px}px ${DISPLAY_FONT}`; mx.fillStyle = '#fff'; mx.textBaseline = 'alphabetic'; mx.fillText(text, 2, Math.round(px * 0.95));
+    const md = mx.getImageData(0, 0, tw, th).data, on = (i, j) => i >= 0 && j >= 0 && i < tw && j < th && md[(j * tw + i) * 4 + 3] > 110;
+    let top = th, bot = 0; for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) if (on(i, j)) { top = Math.min(top, j); bot = Math.max(bot, j); }
+    return paint(tw + pad * 2, th + dep + pad * 2, (x, y) => { const i = x - pad, j = y - pad;
+      if (on(i, j)) { const k = (j - top) / Math.max(1, bot - top); return !on(i, j - 1) ? st.fill[0] : st.fill[k < 0.4 ? 1 : k < 0.75 ? 2 : 3]; }
+      for (let d = 1; d <= dep; d++) if (on(i, j - d)) return st.depth[d <= dep / 2 ? 0 : 1];
+      if (st.out && (on(i - 1, j) || on(i + 1, j) || on(i, j + 1) || on(i, j - dep - 1) || on(i - 1, j - dep) || on(i + 1, j - dep))) return st.out; })[0];
+  });
+}
+const PIXEL_TEXT = new Map(); // element → how to letter it, so it can be redone when the fonts arrive or the screen turns
+function pixCanvas(sp, k) { const cv = document.createElement('canvas'); cv.width = sp.width; cv.height = sp.height; cv.className = 'pw'; cv.setAttribute('aria-hidden', 'true'); cv.getContext('2d').drawImage(sp, 0, 0); cv.style.width = sp.width * k + 'px'; cv.style.height = sp.height * k + 'px'; return cv; }
+function setPixText(el, text, px = 18, style = 'gold', cssH = 44) {
+  if (!el) return;
+  PIXEL_TEXT.set(el, [text, px, style, cssH]);
+  const sp = pixWordSpr(text, px, style), k = Math.max(1, Math.round(cssH / sp.height));
+  const sr = document.createElement('span'); sr.className = 'sr'; sr.textContent = text;
+  el.replaceChildren(sr, pixCanvas(sp, Math.min(k, Math.max(1, Math.floor((innerWidth - 40) / sp.width)))));
+}
+function pixTitle() { // the big title on the first screen, the same sprite the opening ends on, with its subtitle in the sign alphabet
+  const h1 = document.querySelector('#title .title'); if (!h1) return;
+  const sp = titleSpr(), k = Math.max(1, Math.floor(Math.min((innerWidth - 24) / sp.width, innerHeight * 0.38 / sp.height)));
+  const sub = 'LE CANTINE DI SANSEPOLCRO', [sc, sx] = mkc(ptextW(sub) + 2, 9); ptext(sx, sub, 0, 0, '#e8b64a', 1, '#2a1406');
+  const sr = document.createElement('span'); sr.className = 'sr'; sr.textContent = 'Biturgia Sotterranea, le cantine di Sansepolcro';
+  const t = pixCanvas(sp, k), s2 = pixCanvas(sc, Math.max(1, Math.min(k + 1, Math.floor((innerWidth - 24) / sc.width)))); s2.style.marginTop = '10px';
+  h1.replaceChildren(sr, t, s2);
+}
+const PIX_ARROW = d => `<svg viewBox="0 0 8 11" width="24" height="33" shape-rendering="crispEdges" aria-hidden="true"><path fill="#140606" d="${d > 0 ? 'M1 0h2v1h1v1h1v1h1v1h1v3h-1v1h-1v1h-1v1h-1v1h-2z' : 'M7 0h-2v1h-1v1h-1v1h-1v1h-1v3h1v1h1v1h1v1h1v1h2z'}"/><path fill="#efe3cf" d="${d > 0 ? 'M2 1h1v1h1v1h1v1h1v3h-1v1h-1v1h-1v1h-1z' : 'M6 1h-1v1h-1v1h-1v1h-1v3h1v1h1v1h1v1h1z'}"/><path fill="#e8b64a" d="${d > 0 ? 'M2 6h1v1h1v1h-1v1h-1z' : 'M6 6h-1v1h-1v1h1v1h1z'}"/></svg>`;
+function pixMenus() {
+  pixTitle();
+  for (const h of document.querySelectorAll('.sheet h2')) setPixText(h, (PIXEL_TEXT.get(h) || [h.textContent])[0], 18, 'gold', 46);
+  for (const b of document.querySelectorAll('.big')) setPixText(b, (PIXEL_TEXT.get(b) || [b.textContent.trim()])[0], 15, 'title', 50);
+  const sn = $('selName'); if (sn && PIXEL_TEXT.has(sn)) setPixText(sn, PIXEL_TEXT.get(sn)[0], 18, 'ink', 56);
+  for (const b of document.querySelectorAll('.modeBtn b')) setPixText(b, (PIXEL_TEXT.get(b) || [b.textContent])[0], 14, b.closest('.hard') ? 'title' : 'gold', 40);
+  const L = $('carL'), R = $('carR'); if (L) L.innerHTML = PIX_ARROW(-1); if (R) R.innerHTML = PIX_ARROW(1);
+  const wall = 'url(' + caveSpr().toDataURL() + ')'; // the cellar wall from the opening behind the first screens, darkened so the words stand out
+  for (const id of ['title', 'select', 'login']) { const el = $(id); if (el) { el.style.backgroundImage = `radial-gradient(ellipse at 50% 38%, rgba(19,13,11,.35) 0%, rgba(19,13,11,.86) 75%), ${wall}`; el.classList.add('wall'); } }
+}
+pixMenus();
+if (document.fonts) document.fonts.ready.then(() => { SPR.delete('titlePix'); pixMenus(); });
+let pixResizeT = 0; window.addEventListener('resize', () => { clearTimeout(pixResizeT); pixResizeT = setTimeout(pixMenus, 150); });
 </script>
 
 </html>
