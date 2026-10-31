@@ -463,7 +463,7 @@ canvas.pw{display:block;image-rendering:pixelated;margin:0 auto;max-width:100%;o
 <div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 <script>
 'use strict';
-const VERSION = 'v2.5';
+const VERSION = 'v2.6';
 const $ = id => document.getElementById(id);
 // the last script errors ride along with a feedback, so bugs can be traced
 const ERRS = [];
@@ -769,7 +769,7 @@ const ITEMS = [
   {id: 'reliquia', name: 'Reliquia del Santo Sepolcro', sub: 'Volo e lacrime spettrali', icon: 'cross', col: '#f0d27a', pools: 'txa', fn: p => { p.flags.flight = true; p.flags.spectral = true; }},
   {id: 'ali', name: 'Ali di piccione', sub: 'Volo', icon: 'wings', col: '#c7ccd4', pools: 'tbx', fn: p => { p.flags.flight = true; p.speed += 0.1; }},
   {id: 'piccione', name: 'Piccione di piazza', sub: 'Ti gira intorno e ti protegge', icon: 'bird', col: '#8d96a3', pools: 'tsx', fn: p => { p.orbitals.push({kind: 'piccione', a: rnd() * 7}); }},
-  {id: 'gatto', name: 'Pistacchio', sub: 'Spara con te', icon: 'dog', col: '#d8b07a', pools: 'tsx', fn: p => { p.pets.push({kind: 'gatto', x: p.x, y: p.y, cd: 0}); }},
+  {id: 'gatto', name: 'Pistacchio', sub: 'Spara con te', icon: 'dog', col: '#d8b07a', pools: 'tsx', fn: p => { p.pets.push({kind: 'cane', x: p.x, y: p.y, cd: 0}); }}, // the item's id is 'gatto' for old saves, but Pistacchio is a dog
   {id: 'zanzara', name: 'Zanzara amica', sub: 'Ronza e punge', icon: 'fly', col: '#3a3a3a', pools: 'tsx', fn: p => { p.orbitals.push({kind: 'zanzara', a: rnd() * 7}); }},
   {id: 'rosario', name: 'Rosario della nonna', sub: 'Fede e lacrime in su', icon: 'rosary', col: '#d6c9b0', pools: 'tbsxa', fn: p => { p.soul += 4; p.delay -= 0.7; }},
   {id: 'portafoglio', name: 'Portafoglio smarrito', sub: '25 monete', icon: 'wallet', col: '#6b4a2a', pools: 'tx', fn: p => { p.coins = Math.min(99, p.coins + 25); }},
@@ -2655,7 +2655,7 @@ function drawLive(c) {
   for (const b of G.bombs) { const s = 1 + (b.t < 30 && b.t % 6 < 3 ? 0.15 : 0); c.save(); c.translate(b.x, b.y); c.scale(s, s); ell(c, 0, 9, 10, 3, 'rgba(0,0,0,.35)'); drawIcon(c, 'bomb', '#222', 0, 0, 26); if (b.t % 8 < 4) circ(c, 6, -11, 3, '#ffef9a'); c.restore(); }
   // y-sorted bodies
   const list = G.enemies.map(e => ({y: e.y, f: () => drawEnemy(c, e)}));
-  for (const pet of p.pets) list.push({y: pet.y, f: () => pet.kind === 'gatto' ? drawCatPet(c, pet) : outlined(c, pet.x, pet.y, 22, cc => pet.kind === 'angelo' ? drawIcon(cc, 'angel', '#f4f0e0', pet.x, pet.y - 8 + Math.sin(G.tick * 0.1) * 3, 24) : pet.kind === 'drone' ? drawIcon(cc, 'drone', '#e07a1e', pet.x, pet.y - 14 + Math.sin(G.tick * 0.15) * 2, 22) : drawIcon(cc, 'dog', '#d8b07a', pet.x, pet.y, 22))});
+  for (const pet of p.pets) list.push({y: pet.y, f: () => pet.kind === 'gatto' || pet.kind === 'cane' ? drawCatPet(c, pet) : outlined(c, pet.x, pet.y, 22, cc => pet.kind === 'angelo' ? drawIcon(cc, 'angel', '#f4f0e0', pet.x, pet.y - 8 + Math.sin(G.tick * 0.1) * 3, 24) : pet.kind === 'drone' ? drawIcon(cc, 'drone', '#e07a1e', pet.x, pet.y - 14 + Math.sin(G.tick * 0.15) * 2, 22) : drawIcon(cc, 'dog', '#d8b07a', pet.x, pet.y, 22))});
   if (!p.dead || G.deathT > 0) list.push({y: p.y, f: () => drawPlayer(c)});
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   for (const o of p.orbitals) outlined(c, o.x || p.x, o.y || p.y, 16, cc => drawIcon(cc, o.kind === 'piccione' ? 'bird' : 'fly', o.kind === 'piccione' ? '#8d96a3' : '#3a3a3a', o.x || p.x, o.y || p.y, 18));
@@ -2848,6 +2848,14 @@ function drawHUD(c) {
 }
 function drawMinimap(c, u) {
   const cw = 13 * u, chh = 9 * u, rooms = curse('perso') ? [G.room] : G.floor.rooms.filter(r => r.seen);
+  if (curse('perso')) { // the Curse of the Lost: only the room you're in, and a word saying why the map is gone
+    const bw = 64 * u, x0 = OX + RW * S - bw - 8 * u, y0 = OY + 6 * u;
+    c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(x0, y0 - 3 * u, bw, 34 * u);
+    c.fillStyle = '#efe3cf'; c.fillRect(x0 + bw / 2 - cw / 2 + 1, y0 + 1, cw - 2, chh - 2);
+    c.fillStyle = '#c89ae0'; c.font = `700 ${Math.round(8.5 * u)}px ${BODY_FONT}`; c.textAlign = 'center'; c.fillText('Mappa perduta', x0 + bw / 2, y0 + 17 * u);
+    c.fillStyle = '#a8988a'; c.font = `600 ${Math.round(7 * u)}px ${BODY_FONT}`; c.fillText('maledizione', x0 + bw / 2, y0 + 26 * u); c.textAlign = 'left';
+    return y0 + 34 * u;
+  }
   if (!rooms.length) return OY + 6 * u;
   const minx = Math.min(...G.floor.rooms.map(r => r.gx)), maxx = Math.max(...G.floor.rooms.map(r => r.gx));
   const miny = Math.min(...G.floor.rooms.map(r => r.gy));
@@ -4804,7 +4812,8 @@ function drawPixBoss(c, e, flip, t) { // the boss sprite: feet on its shadow, tu
   let key, build;
   if (BOSSART.has(e.type)) { const [m, i] = BOSSART.pose(e, t); key = BOSSART.get(e.type, m, i); build = () => SPR.get(key); } // drawn in Isaac's line, animated
   else { const frame = Math.floor(t / 14) % 2; key = 'boss' + e.type + frame; build = () => PIXBOSS[e.type](frame, e); }
-  const s = spr(key + (e.flash > 0 ? 'w' : ''), () => { const base = spr(key, build); return e.flash > 0 ? tinted(base, '#ffffff', 0.7) : base; });
+  const champ = e.bk && e.bk.champ ? CHAMP_BOSS[e.bk.champ].col : null; // a champion boss wears its colour
+  const s = spr(key + (champ || '') + (e.flash > 0 ? 'w' : ''), () => { let base = spr(key, build); if (champ) base = spr(key + champ, () => tinted(base, champ, 0.38)); return e.flash > 0 ? tinted(base, '#ffffff', 0.7) : base; });
   const foot = e.r * 0.85;
   if (isPix(c)) { const k = c === LIVE.c ? PXS : 1; c.save(); const m = c.getTransform(); c.setTransform(flip < 0 ? -1 : 1, 0, 0, 1, Math.round(m.e), Math.round(m.f + foot * m.d)); c.imageSmoothingEnabled = false; c.drawImage(s, -Math.round(s.width / 2) * k, -s.height * k, s.width * k, s.height * k);
     if (e.type === 'piede') { // like Mom's foot: the leg goes on up out of the room, it never hangs in the air
@@ -7407,6 +7416,84 @@ Object.assign(BOSS_MODES, Object.fromEntries([
   ...'sfoglina friggitrice trottolona'.split(' ').map(k => [k, {walk: 4, atk: 2, spin: 2}])]));
 for (const k of 'blatta muffa fiasco salame ragnone pecorino candela balestra armatura stendardo catapulta doccione cannoncino mattarello pentola uovo pulcino farina forchetta luccio granchio cormorano alga ranatoro trota patatina pita spiedino cetriolo maionese oliva stuzzicadenti shaker freccetta jukebox trottola robottino dado mattoncino palloncino medusa pinna materassino cloro pallanuoto specchio rossetto pettine profumo forbici ratto bidone copertone piccionezoppo busta ghiacciolo biscotto cucchiaino sciroppo coppetta'.split(' ')) BOSS_B[k] = 10; // the little ones: 30 pixels tall
 
+// ---------- the grotesque line: rot, wounds, bone showing, things crawling out ----------
+const lesion = (c, x, y, r, col = '#5a2a1a') => { shape(c, lumpy(x, y, r, r * 0.8, {seed: x + y, wob: 0.2}), col, {line: 3}); c.save(); c.fillStyle = '#e8d870'; c.globalAlpha = 0.85; c.beginPath(); c.ellipse(x - r * 0.25, y - r * 0.2, r * 0.35, r * 0.25, 0, 0, 7); c.fill(); c.restore(); };
+const maggot = (c, x, y, a, i) => { const w = Math.sin(i * 1.7 + x) * 4; tube(c, [[x, y], [x + Math.cos(a) * 9 + w, y + Math.sin(a) * 9], [x + Math.cos(a) * 18, y + Math.sin(a) * 18 + w]], 4.5, 3, '#f4ecd0'); };
+const ooze = (c, x, y, len, col = '#8aa83a') => { tube(c, [[x, y], [x + 1, y + len * 0.6], [x, y + len]], 4, 6, col); };
+const gash = (c, pts, col = '#6a0a14') => { shape(c, pts, col, {line: 3.5}); };
+const ribs = (c, cx, cy, n, w, h, col = '#ecdcc0') => { for (let k = 0; k < n; k++) { const y = cy + k * h; stroke(c, [[cx - w, y + 6], [cx, y - 4], [cx + w, y + 6]], 5, col); } };
+const socket = (c, x, y, r) => { shape(c, lumpy(x, y, r, r * 0.85, {seed: 3, wob: 0.15}), '#2a0408', {line: 3.5}); c.save(); c.fillStyle = '#9b111e'; c.beginPath(); c.ellipse(x, y + r * 0.3, r * 0.6, r * 0.35, 0, 0, 7); c.fill(); c.restore(); tube(c, [[x, y + r * 0.6], [x + 2, y + r * 1.6], [x, y + r * 2.2]], 3.5, 5, '#9b111e'); };
+const bloodTeeth = (c, cx, my, w, n, len) => { for (let k = 0; k < n; k++) { const x = cx - w + (k + 0.5) * (2 * w / n); shape(c, [[x - 7, my], [x + 7, my], [x + 1, my + len * (0.7 + (k % 2) * 0.4)]], '#f4ecd8', {line: 2.5}); if (k % 3 === 1) tube(c, [[x + 1, my + len * 0.8], [x + 2, my + len * 1.4]], 2.5, 4, '#b3121b'); } };
+BOSS2.reblatte = (c, p) => { // the King of the Cockroaches, gone rotten: a split shell crawling with maggots, one eye bulging and bloodshot, the crown rusted on
+  const {st, bob} = wp(p), atk = p.mode === 'atk', ch = p.mode === 'charge', cx = 150, cy = 182 + bob;
+  legsN(c, cx, cy + 14, 6, 84, '#2a1608', p.i * 1.6 + (ch ? 2 : 0));
+  shape(c, lumpy(cx, cy, 122, 74, {seed: 71, wob: 0.09, n: 22}), '#3e2a12', {inner: c2 => { c2.fillStyle = '#5a6a24'; for (const [x, y, r] of [[-70, -20, 26], [40, 30, 22], [80, -30, 16], [-20, 40, 18]]) { c2.beginPath(); c2.ellipse(cx + x, cy + y, r, r * 0.7, 0.4, 0, 7); c2.fill(); }
+    c2.fillStyle = '#1a0c06'; c2.fillRect(cx - 4, cy - 74, 8, 148); }});
+  gash(c, [[cx - 110, cy - 30], [cx - 60, cy - 40], [cx - 40, cy], [cx - 60, cy + 40], [cx - 110, cy + 30]], '#4a0a10'); // the shell split open on its side
+  ribs(c, cx - 78, cy - 22, 3, 24, 20, '#e8d8b0');
+  for (let k = 0; k < 3; k++) { const a = k * 2 + p.i * 0.5; tube(c, [[cx - 80 + k * 14, cy - 10 + k * 16], [cx - 96 + k * 14 + Math.sin(a) * 8, cy - 26 + k * 16], [cx - 112 + k * 14, cy - 18 + k * 16 + Math.cos(a) * 6]], 9, 7, '#f4ecd0'); } // big pale maggots wriggling out
+  for (const [x, y, r] of [[cx + 70, cy - 10, 14], [cx + 30, cy + 46, 10], [cx - 90, cy + 30, 12]]) lesion(c, x, y, r);
+  for (const x of [cx + 40, cx - 96]) ooze(c, x, cy + 60, 30 + (p.i % 2) * 8);
+  eye(c, cx + 14, cy - 28, 28, {veins: true, iris: '#5a0a0a', pupil: 0.35, look: [0.4, 0.3]}); socket(c, cx + 74, cy - 30, 18);
+  bigMouth(c, cx + 44, cy + 14, atk || ch ? 50 : 40, atk || ch ? 44 : 26, {top: 4, bottom: 3, seed: 71, tongue: false}); ooze(c, cx + 30, cy + 34, 34, '#a8b83a'); ooze(c, cx + 60, cy + 30, 24, '#a8b83a');
+  for (const s of [-1, 1]) tube(c, [[cx + s * 30, cy - 70], [cx + s * 74, cy - 126], [cx + s * 96 + (p.i % 2) * 8, cy - 112]], 4, 2, '#2a1608'); // one antenna broken off short
+  shape(c, [[cx - 54, cy - 72], [cx - 40, cy - 118], [cx - 20, cy - 92], [cx - 6, cy - 128], [cx + 12, cy - 94], [cx + 30, cy - 112], [cx + 46, cy - 70]], '#8a6a2a', {inner: c2 => { c2.fillStyle = '#5a7a4a'; c2.fillRect(cx - 50, cy - 90, 30, 14); c2.fillRect(cx + 10, cy - 100, 20, 18); }}); // the crown, rusted green
+  for (let k = 0; k < 4; k++) { const a = p.i * 0.8 + k * 1.6; fly(c, cx + Math.cos(a) * 120, cy - 60 + Math.sin(a * 1.3) * 50); }
+};
+BOSS2.gattone = (c, p) => { // the Stray Cat, horrible: starved to the bone, the ribs through a torn side, one eye gone, a jaw full of red-stained teeth
+  const m = p.mode, ch = m === 'charge', atk = m === 'atk', {st, bob} = wp(p), cx = 150, cy = 186 + bob - (ch ? 10 : 0), K = '#1e1a20';
+  for (const [x, s] of [[cx - 66, 1], [cx - 28, -1], [cx + 30, 1], [cx + 70, -1]]) { tube(c, [[x, cy + 14], [x + (ch ? s * 22 : st * s * 8), 250]], 12, 7, K); for (let k = -1; k <= 1; k++) tube(c, [[x + (ch ? s * 22 : st * s * 8) + k * 6, 250], [x + (ch ? s * 22 : st * s * 8) + k * 9 + 6, 262]], 2.5, 1.5, '#e8e0d0'); } // thin legs, the claws out
+  tube(c, [[cx - 80, cy - 6], [cx - 126, cy - 50], [cx - 118, cy - 104 - (p.i % 2) * 8]], 8, 3, K); for (let k = 0; k < 4; k++) circle(c, cx - 118 + k * 2, cy - 104 - k * 9 - (p.i % 2) * 8, 4, '#e8dcc0', 2); // the tail ends in bare vertebrae
+  shape(c, lumpy(cx - 12, cy, 96, 50, {seed: 7, wob: 0.12, n: 18}), K);
+  for (const [x, y, r] of [[cx - 70, cy - 10, 14], [cx + 10, cy + 20, 12], [cx - 30, cy - 34, 10]]) shape(c, lumpy(x, y, r, r * 0.7, {seed: x, wob: 0.2}), '#c88a8a', {line: 2.5}); // mange: pink bald patches
+  gash(c, [[cx - 50, cy - 26], [cx + 10, cy - 34], [cx + 24, cy + 6], [cx - 10, cy + 28], [cx - 60, cy + 16]], '#6a0a14'); ribs(c, cx - 18, cy - 20, 3, 30, 14);
+  for (const x of [cx - 40, cx + 6]) tube(c, [[x, cy + 26], [x + 2, cy + 46 + (p.i % 2) * 6], [x, cy + 56]], 3, 5, '#9b111e');
+  shape(c, lumpy(cx + 62, cy - 64, 64, 58, {seed: 5, wob: 0.07}), '#26222a');
+  shape(c, [[cx + 2, cy - 100], [cx + 22, cy - 160 - (atk ? 10 : 0)], [cx + 40, cy - 104]], '#26222a'); shape(c, [[cx + 84, cy - 104], [cx + 104, cy - 150], [cx + 110, cy - 130], [cx + 120, cy - 140], [cx + 118, cy - 100]], '#26222a'); // one ear bitten through
+  socket(c, cx + 36, cy - 74, 18);
+  c.save(); c.beginPath(); c.ellipse(cx + 92, cy - 74, 20, 16, 0, 0, 7); c.fillStyle = '#f5d020'; c.fill(); c.lineWidth = 3.5; c.strokeStyle = OUT; c.stroke(); c.beginPath(); c.ellipse(cx + 92, cy - 74, 3.5, 13, 0, 0, 7); c.fillStyle = OUT; c.fill(); c.strokeStyle = '#c0404a'; c.lineWidth = 1.5; for (let k = 0; k < 4; k++) { const a = k * 1.5; c.beginPath(); c.moveTo(cx + 92 + Math.cos(a) * 19, cy - 74 + Math.sin(a) * 15); c.lineTo(cx + 92 + Math.cos(a) * 11, cy - 74 + Math.sin(a) * 9); c.stroke(); } c.restore();
+  const open = atk || ch ? 46 : 26; shape(c, lumpy(cx + 62, cy - 30 + open / 2, 50, open / 2 + 6, {seed: 103}), '#3a0408', {line: 3.5}); // the jaw hanging open
+  for (const [x, len] of [[cx + 26, 30], [cx + 50, 22], [cx + 74, 22], [cx + 98, 30]]) { shape(c, [[x - 9, cy - 34], [x + 9, cy - 34], [x + 1, cy - 34 + len]], '#f4ecd8', {line: 3}); } for (const [x, len] of [[cx + 38, 20], [cx + 62, 16], [cx + 86, 20]]) shape(c, [[x - 8, cy - 28 + open], [x + 8, cy - 28 + open], [x, cy - 28 + open - len]], '#f4ecd8', {line: 3}); // long fangs, top and bottom
+  for (const x of [cx + 30, cx + 98]) tube(c, [[x, cy - 6], [x + 2, cy + 14 + (p.i % 2) * 6], [x, cy + 22]], 4, 6, '#b3121b'); // blood dripping from the fangs
+  for (const s of [-1, 1]) for (let k = 0; k < 2; k++) stroke(c, [[cx + 62 + s * 34, cy - 48 + k * 8], [cx + 62 + s * 74, cy - 56 + k * 14]], 2, '#a8a0b0');
+  for (let k = 0; k < 3; k++) { const a = p.i * 0.9 + k * 2.1; fly(c, cx + 20 + Math.cos(a) * 110, cy - 40 + Math.sin(a * 1.2) * 60); }
+};
+
+// the other bosses get the line by layers: their own drawing first, then rot, wounds, rust or tatters laid where the body is, below the face
+const GROT = {balestriere: 'gore', mattarellone: 'gore', retopi: 'rot', fantasma: 'ghost', capohippie: 'rot', sbandierone: 'gore', fattucchiera: 'rot', mostro: 'rot',
+  raviolissimo: 'gore', torchio: 'rust', biscia: 'rot', guardiano: 'ghost', suzuki: 'rust', erika: 'gore', arcangelo: 'rot', piero: 'gore', faruk: 'gore', jesus: 'rot',
+  mecha: 'rust', sindaco: 'gore', robottone: 'rust', piede: 'rot', guardianocamp: 'rot', cenciarelli: 'rot', botte: 'rust', carpa: 'rot', paperona: 'rot', muffamadre: 'rot',
+  cantiniere: 'gore', castellano: 'rust', dama: 'ghost', pentolona: 'rust', sfoglina: 'gore', luccione: 'rot', reginanutrie: 'rot', megapanino: 'rot', friggitrice: 'rust',
+  buttafuori: 'gore', jukeboss: 'rust', trottolona: 'rust', squalo: 'gore'};
+const GROT_DRIP = {rot: '#a8b83a', gore: '#9b111e', rust: '#2a2226', ghost: '#b8f0b0'};
+function grotesque(c, p, type, th) {
+  const W = 300, d = c.getImageData(0, 0, W, W).data, inside = (x, y) => x >= 0 && y >= 0 && x < W && y < W && d[((y | 0) * W + (x | 0)) * 4 + 3] > 200;
+  let top = W, bot = 0, left = W, right = 0; const pts = [], edge = [];
+  for (let y = 4; y < W - 4; y += 5) for (let x = 4; x < W - 4; x += 5) if (inside(x, y)) { top = Math.min(top, y); bot = Math.max(bot, y); left = Math.min(left, x); right = Math.max(right, x);
+    if (inside(x - 12, y) && inside(x + 12, y) && inside(x, y - 12) && inside(x, y + 12)) pts.push([x, y]); if (!inside(x, y + 8)) edge.push([x, y]); }
+  if (!pts.length) return;
+  let seed = [...type].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7) >>> 0; const rnd2 = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296;
+  const h = bot - top, w = right - left, mid = (left + right) / 2, pick2 = arr => arr[Math.floor(rnd2() * arr.length)], chosen = [];
+  const sides = pts.filter(([x, y]) => y > top + h * 0.4 && Math.abs(x - mid) > w * 0.2), low = pts.filter(([x, y]) => y > top + h * 0.62); // the flanks and the bottom: the face stays clear
+  for (let k = 0; k < 60 && chosen.length < 4; k++) { const q = pick2(sides.length > 3 ? sides : low.length ? low : pts); if (q && chosen.every(o => Math.hypot(o[0] - q[0], o[1] - q[1]) > 40)) chosen.push(q); }
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
+  c.save(); c.globalCompositeOperation = 'source-atop'; // grime soaked into the whole body, staying inside its outline
+  const GRIME = {rot: ['#3a4a10', '#5a6a20', '#2a2008'], gore: ['#5a0a10', '#8a1018', '#3a0408'], rust: ['#6a3010', '#9a5a20', '#3a2010'], ghost: ['#4a5a4a', '#6a7a6a', '#2a3a2a']}[th];
+  for (let k = 0; k < 14; k++) { const q = pick2(pts); c.globalAlpha = 0.18 + rnd2() * 0.22; c.fillStyle = GRIME[k % 3]; c.beginPath(); c.ellipse(q[0], q[1], 10 + rnd2() * 26, 6 + rnd2() * 16, rnd2() * 3, 0, 7); c.fill(); }
+  c.globalAlpha = 0.35; c.fillStyle = GRIME[2]; c.fillRect(0, top + h * 0.78, W, h); // the bottom darker, as if dragged through the muck
+  c.restore();
+  chosen.forEach(([x, y], k) => { const r = 11 + rnd2() * 7;
+    if (th === 'rot') { lesion(c, x, y, r, '#5a6a1a'); if (k === 0) maggot(c, x - 4, y - 2, -0.8 + rnd2() + p.i * 0.3, p.i); }
+    else if (th === 'gore') { if (k === 0 && h > 120) { gash(c, [[x - 26, y - 12], [x + 22, y - 16], [x + 30, y + 8], [x - 4, y + 18], [x - 30, y + 10]], '#6a0a14'); ribs(c, x, y - 6, 2, 20, 12); } else { gash(c, [[x - 14, y - 3], [x + 14, y - 6], [x + 12, y + 3], [x - 12, y + 5]], '#7a0a14'); for (let s = -1; s <= 1; s++) stroke(c, [[x + s * 8 - 4, y - 7], [x + s * 8 + 4, y + 7]], 2.5, OUT); } }
+    else if (th === 'rust') { shape(c, lumpy(x, y, r * 1.3, r, {seed: k + 3, wob: 0.25}), '#8a4a1a', {line: 2.5}); c.fillStyle = '#c87a3a'; c.beginPath(); c.arc(x - r * 0.3, y - r * 0.3, r * 0.3, 0, 7); c.fill();
+      stroke(c, [[x + r, y - r], [x + r * 1.6, y - r * 0.2], [x + r * 1.3, y + r * 0.6], [x + r * 2, y + r]], 3, OUT); }
+    else { shape(c, lumpy(x, y, r, r * 1.2, {seed: k + 5, wob: 0.3}), '#140c18', {line: 2.5}); } });
+  const drips = edge.filter(([x, y]) => y > top + h * 0.5).sort((a, b) => (a[0] * 7919 + seed) % 97 - (b[0] * 7919 + seed) % 97).slice(0, 3);
+  drips.forEach(([x, y], k) => { const len = 16 + ((k * 13 + p.i * 5) % 16); tube(c, [[x, y - 2], [x + 1, y + len * 0.6], [x, y + len]], 4, 6, GROT_DRIP[th]); });
+  if (th === 'rot' || th === 'gore') for (let k = 0; k < 3; k++) { const a = p.i * 0.8 + k * 2.1 + seed % 7; fly(c, (left + right) / 2 + Math.cos(a) * (right - left) * 0.6, top + 10 + Math.sin(a * 1.3) * 30); }
+  c.restore();
+}
+for (const [t, th] of Object.entries(GROT)) { const f0 = BOSS2[t]; if (f0) BOSS2[t] = (c, p) => { f0(c, p); grotesque(c, p, t, th); }; }
 const MIRROR = {balestriere: true, guardiano: true}; // drawn aiming left: turned so they face right like the others
 const ST = {charge: 'charge', stun: 'stun', spiral: 'spiral', spin: 'spin', tp: 'tp', hop: 'hop', air: 'air', fall: 'fall', aim: 'aim', thrust: 'thrust', rev: 'rev', jump: 'jump', lunge: 'charge', crouch: 'charge', slide: 'charge', pop: 'atk', beam: 'atk', stomp: 'walk', track: 'walk', stream: 'atk', gone: 'atk', back: 'atk', persp: 'atk', puke: 'atk'};
 const art = t => t === 'raviolomedio' ? 'raviolissimo' : t;
@@ -8164,7 +8251,7 @@ const MORE_ITEMS = [
   ['soccorso', 'Drone di soccorso', 'Un drone che spara con te', 'tb', p => { p.pets.push({kind: 'drone', x: p.x, y: p.y, cd: 0}); }, 'box,#d02a2a,#f4f4f4'],
   ['sciame', 'Sciame', 'Tre mosche, e voli', 'x', p => { for (let i = 0; i < 3; i++) p.orbitals.push({kind: 'zanzara', a: i * 2}); p.flags.flight = true; }, 'fly,#5a3a2a'],
   ['colombapace', 'Colomba della pace', 'Un piccione e un cuore anima', 'a', p => { p.orbitals.push({kind: 'piccione', a: 0}); p.soul += 2; capHearts(p); }, 'bird,#f4f4f4'],
-  ['bassotto', 'Bassotto', 'Un amico che morde', 'ts', p => { p.pets.push({kind: 'gatto', x: p.x, y: p.y, cd: 0}); }, 'meat,#8a5a2a'],
+  ['bassotto', 'Bassotto', 'Un amico che morde', 'ts', p => { p.pets.push({kind: 'cane', x: p.x, y: p.y, cd: 0}); }, 'meat,#8a5a2a'],
   ['anatra', 'Anatra di legno', 'Un\'anatra ti gira attorno', 'ts', p => { p.orbitals.push({kind: 'piccione', a: rnd() * 6}); }, 'bird,#c8904a'],
   // ---- hearts and protection
   ['cuorecioccolato', 'Cuore di cioccolato', 'Due cuori anima', 'tsa', p => { p.soul += 4; capHearts(p); }, 'heart,#6a3a1a,#8a5a3a'],
@@ -8406,9 +8493,15 @@ const catPetSpr = f => spr('catpet' + f, () => { const [cv, x] = mkc(18, 15);
   PR(x, 1, 3 + f, 1, 5, '#26222a'); PR(x, 2, 7, 2, 1, '#26222a'); // the tail up, swaying
   for (const lx of f ? [4, 11] : [5, 10]) PR(x, lx, 12, 2, 3, '#1a181e'); for (const lx of f ? [6, 9] : [3, 12]) PR(x, lx, 12, 2, 2, '#1a181e');
   return pixOutline(cv); });
+const dogPetSpr = f => spr('dogpet' + f, () => { const [cv, x] = mkc(20, 16); // Pistacchio and the dachshund: a sandy little dog, floppy ears, the tail wagging
+  PE(x, 9, 10, 6.5, 3.6, '#d8b07a', '#b08850', '#ecd0a0'); PE(x, 15, 6, 3.8, 3.4, '#d8b07a', '#b08850', '#ecd0a0'); PE(x, 18, 7, 2, 1.6, '#e8c890');
+  PR(x, 12, 4, 2, 5, '#8a5a2a'); PR(x, 19, 7, 1, 1, '#1a1418'); PR(x, 15, 5, 1, 1, '#1a1418'); PR(x, 17, 9, 2, 1, '#d06070');
+  PR(x, 1, 6 + f * 2, 1, 3, '#d8b07a'); PR(x, 2, 8, 1, 1, '#d8b07a'); // the tail, wagging
+  for (const lx of f ? [4, 12] : [5, 11]) PR(x, lx, 13, 2, 3, '#b08850'); for (const lx of f ? [6, 10] : [3, 13]) PR(x, lx, 13, 2, 2, '#a07840');
+  return pixOutline(cv); });
 function drawCatPet(c, pet) { const f = Math.floor(G.tick / 8) % 2, mv = Math.hypot((pet.x - (pet.lx ?? pet.x)), (pet.y - (pet.ly ?? pet.y))) > 0.2;
   if (Math.abs(pet.x - (pet.lx ?? pet.x)) > 0.2) pet.face = pet.x > pet.lx ? 1 : -1; pet.lx = pet.x; pet.ly = pet.y;
-  pixShadow(c, pet.x, pet.y + 9, 8); const s0 = catPetSpr(mv ? f : 0), s = (pet.face || 1) > 0 ? s0 : spr('catpetL' + (mv ? f : 0), () => { const [cv, x] = mkc(s0.width, s0.height); x.translate(s0.width, 0); x.scale(-1, 1); x.drawImage(s0, 0, 0); return cv; });
+  pixShadow(c, pet.x, pet.y + 9, 8); const dog = pet.kind === 'cane', s0 = (dog ? dogPetSpr : catPetSpr)(mv || dog ? f : 0), s = (pet.face || 1) > 0 ? s0 : spr((dog ? 'dogpetL' : 'catpetL') + (mv || dog ? f : 0), () => { const [cv, x] = mkc(s0.width, s0.height); x.translate(s0.width, 0); x.scale(-1, 1); x.drawImage(s0, 0, 0); return cv; });
   blit(c, s, pet.x, pet.y + 10, 0.5, 1); }
 /* ================= the big block: sixty enemies, fifteen bosses, six rooms, six beggars and machines, sixty trinkets, fifteen challenges ================= */
 // drawn in 19-bossart.js; here are their brains, where they live and what the new things do
@@ -9113,6 +9206,119 @@ const Cloud = {
     ['allrooms', 'Agente immobiliare', 'Entra in tutte e sei le stanze nuove.', 'keys', P => Object.keys(NEW_ROOMS).every(t => (S(P).roomsSeen || {})[t])]];
   for (const [id, name, desc, icon, test] of MISC) add(id, name, desc, icon, test);
 }
+/* ================= boss mechanics in Isaac's manner: wind-ups, phases, lasers, creep, rain, burrowing, splitting, champion bosses ================= */
+// a layer over every boss's own brain: it holds the attack back for a moment so you can read it, changes phase at two thirds
+// and one third of the health, and now and then takes over for a signature move. The room keeps the hazards (creep, rain, lasers).
+const TELE = 20; // frames of warning before an attack
+const BOSS_SIG = { // each boss: signature moves, their colour, how often, minions at each new phase
+  balestriere: {moves: ['rain'], col: '#c9a26b'}, mattarellone: {moves: ['pool'], col: '#d8c8a0'}, retopi: {moves: ['burrow'], col: '#8a7a6a', split: 'topo'},
+  fantasma: {moves: ['sweep'], col: '#cfd8e8'}, capohippie: {moves: ['pool', 'rain'], col: '#7ac04a'}, sbandierone: {moves: ['rain', 'laser4'], col: '#e8b64a'},
+  fattucchiera: {moves: ['laser', 'sweep'], col: '#b07ad6'}, mostro: {moves: ['burrow', 'pool'], col: '#5fa8c9'}, raviolissimo: {moves: ['pool'], col: '#d0402a', split: 'raviolino'},
+  torchio: {moves: ['laser4', 'rain'], col: '#d8a868'}, biscia: {moves: ['trail', 'rain'], col: '#6a9a3a', free: true}, guardiano: {moves: ['laser', 'rain'], col: '#f0d27a'},
+  suzuki: {moves: ['trail'], col: '#3a3a40'}, erika: {moves: ['rain'], col: '#e8a83a'}, arcangelo: {moves: ['laser', 'sweep'], col: '#fff2b0'},
+  piero: {moves: ['laser4', 'rain'], col: '#e8b64a'}, faruk: {moves: ['trail', 'rain'], col: '#d0402a'}, jesus: {moves: ['pool', 'rain'], col: '#5ab0e0'},
+  mecha: {moves: ['sweep', 'laser'], col: '#ffb040'}, sindaco: {moves: ['rain'], col: '#f4ead0', split: 'vigile'}, robottone: {moves: ['laser4', 'sweep'], col: '#ff4a4a'},
+  piede: {moves: ['rain'], col: '#8a7a6a', free: true}, guardianocamp: {moves: ['sweep'], col: '#fff2a0'}, cenciarelli: {moves: ['pool', 'rain'], col: '#f0a8c8'},
+  botte: {moves: ['trail', 'pool'], col: '#8a1a2a'}, gattone: {moves: ['trail'], col: '#7a0a14', split: 'gattonero'}, carpa: {moves: ['burrow', 'pool'], col: '#5ab0e0'},
+  paperona: {moves: ['rain'], col: '#f5d020'}, reblatte: {moves: ['burrow', 'trail'], col: '#8aa83a', split: 'blatta'}, muffamadre: {moves: ['pool', 'rain'], col: '#9ac070', split: 'muffa'},
+  cantiniere: {moves: ['pool', 'rain'], col: '#8a1a2a'}, castellano: {moves: ['rain', 'laser'], col: '#c8ccd2', split: 'armatura'}, dama: {moves: ['sweep', 'laser4'], col: '#a8b8f0'},
+  pentolona: {moves: ['pool', 'rain'], col: '#e8eef4', split: 'uovo'}, sfoglina: {moves: ['laser', 'trail'], col: '#e8c060'}, luccione: {moves: ['burrow'], col: '#5ab0e0'},
+  reginanutrie: {moves: ['burrow'], col: '#8a6a4a', split: 'nutria'}, megapanino: {moves: ['rain', 'pool'], col: '#d02a2a'}, friggitrice: {moves: ['pool', 'rain'], col: '#f8d070'},
+  buttafuori: {moves: ['rain', 'laser4'], col: '#c8ccd2'}, jukeboss: {moves: ['laser4', 'sweep'], col: '#ff5ad0', split: 'freccetta'}, trottolona: {moves: ['sweep', 'trail'], col: '#f5c400'},
+  squalo: {moves: ['burrow', 'pool'], col: '#5ab0e0'},
+};
+const CHAMP_BOSS = {rosso: {col: '#ff2a1a', move: 'pool', name: 'rosso'}, nero: {col: '#1a1020', move: 'rain', name: 'nero'}};
+const NO_CHAMP = new Set(['piero', 'piede', 'cenciarelli', 'guardianocamp']);
+const bfx = () => G.room ? (G.room.bfx = G.room.bfx || {creep: [], rain: [], beams: []}) : {creep: [], rain: [], beams: []};
+const bossBusy = e => e.st && e.st !== 'idle' || e.z > 0 || e.ghost;
+
+/* the moves */
+function startSig(e, m, col) {
+  const p = G.p, s = e.bk.sig = {m, t: 0, col};
+  if (m === 'laser' || m === 'laser4' || m === 'sweep') { s.a = Math.atan2(p.y - e.y, p.x - e.x); s.dirs = m === 'laser4' ? (e.bk.ph % 2 ? [0.785, 2.356, 3.927, 5.498] : [0, 1.571, 3.142, 4.712]) : [0]; Snd.tone(180, 0.7, 'sawtooth', 0.06, 900); }
+  if (m === 'burrow') { s.mx = e.x; s.my = e.y; Snd.noise(0.5, 0.12, 400); burst(e.x, e.y, '#6a4a2a', 18, 3); }
+  if (m === 'rain') { s.left = 6 + e.bk.ph * 3; Snd.tone(600, 0.5, 'sine', 0.05, 200); }
+  if (m === 'pool') { const n = 6 + e.bk.ph * 2; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; bfx().creep.push({x: e.x + Math.cos(a) * 56, y: e.y + Math.sin(a) * 40, r: 20, life: 420, col}); } bfx().creep.push({x: e.x, y: e.y, r: 26, life: 420, col}); ring(e, 8 + e.bk.ph * 2, 2.4, rnd(), col); Snd.noise(0.4, 0.1, 900); e.bk.sig = null; }
+  if (m === 'trail') { e.bk.trail = 200; e.bk.sig = null; }
+}
+function runSig(e, k) { // returns true while the move holds the boss
+  const s = e.bk.sig, p = G.p; s.t++;
+  e.vx *= 0.85; e.vy *= 0.85;
+  if (s.m === 'laser' || s.m === 'laser4' || s.m === 'sweep') {
+    if (s.t < 20 && s.m !== 'laser4') s.a = Math.atan2(p.y - e.y, p.x - e.x); // it aims, then locks
+    if (s.t % 6 === 0 && s.t < 40) e.flash = 3;
+    const warm = 44, fire = s.m === 'sweep' ? 70 : 34;
+    if (s.t === warm) { Snd.tone(90, 0.6, 'sawtooth', 0.12, 60); G.shake = 6; }
+    const on = s.t >= warm && s.t < warm + fire, a0 = s.a + (s.m === 'sweep' ? (s.t > warm ? (s.t - warm) / fire * 1.9 * (e.bk.ph % 2 ? -1 : 1) : 0) : 0);
+    bfx().beams = s.dirs.map(d => ({x: e.x, y: e.y - 8, a: a0 + d, on, col: s.col, w: on ? 14 : 2}));
+    if (on && p.inv <= 0) for (const b of bfx().beams) { const dx = p.x - b.x, dy = p.y - b.y, along = dx * Math.cos(b.a) + dy * Math.sin(b.a), off = Math.abs(-dx * Math.sin(b.a) + dy * Math.cos(b.a)); if (along > 0 && off < 12 + p.r * 0.5) { hurtPlayer(hit2(), EN[e.type].name); break; } }
+    e._atk = 10;
+    if (s.t >= warm + fire) { bfx().beams = []; e.bk.sig = null; e.cd = Math.max(e.cd, 40); }
+    return true;
+  }
+  if (s.m === 'burrow') { // under the floor: a mound follows you, then it bursts out where you stand
+    if (s.t === 12) { e.ghost = true; e.bk.hidden = true; }
+    if (e.bk.hidden) { const dx = p.x - s.mx, dy = p.y - s.my, d = Math.hypot(dx, dy) || 1; if (s.t < 80) { s.mx += dx / d * Math.min(d, 2.6 * k); s.my += dy / d * Math.min(d, 2.6 * k); } if (s.t % 8 === 0) burst(s.mx, s.my, '#6a4a2a', 3, 1.6); }
+    if (s.t === 100) { e.x = clamp(s.mx, T + e.r, RW - T - e.r); e.y = clamp(s.my, T + e.r, RH - T - e.r); e.ghost = false; e.bk.hidden = false; ring(e, 10 + e.bk.ph * 3, 2.6, rnd(), s.col); burst(e.x, e.y, '#6a4a2a', 22, 4); G.shake = 12; Snd.boom(); e._atk = 16; }
+    if (s.t >= 120) { e.bk.sig = null; e.cd = Math.max(e.cd, 30); }
+    return true;
+  }
+  if (s.m === 'rain') { // things fall from the ceiling where the shadows grow
+    if (s.t % 8 === 0 && s.left > 0) { s.left--; const tx = clamp(p.x + rr(-70, 70) + p.vx * 20, T + 16, RW - T - 16), ty = clamp(p.y + rr(-60, 60) + p.vy * 20, T + 16, RH - T - 16); bfx().rain.push({x: tx, y: ty, t: 0, max: 50, col: s.col}); }
+    e._atk = 8;
+    if (s.left <= 0 && s.t > 20) { e.bk.sig = null; e.cd = Math.max(e.cd, 30); }
+    return s.t < 30; // it stops only to call them, then goes on fighting
+  }
+  e.bk.sig = null; return false;
+}
+function bossLayer(e, k, orig, args) {
+  const S = BOSS_SIG[e.type] || {moves: ['rain'], col: EN[e.type].col || '#c0392b'};
+  if (!e.bk) { e.bk = {ph: 0, sigCd: 200 + ri(0, 120), tele: 0, armed: false};
+    if (!NO_CHAMP.has(e.type) && G.run.depth > 2 && rnd() < 0.15 + (G.run.hard ? 0.1 : 0)) { e.bk.champ = pick(Object.keys(CHAMP_BOSS)); e.max = Math.round(e.max * 1.25); e.hp = e.max; } }
+  const B = e.bk, col = B.champ ? CHAMP_BOSS[B.champ].col : S.col;
+  if (B.trail > 0) { B.trail--; if (B.trail % 9 === 0 && e.z <= 0 && !B.hidden) bfx().creep.push({x: e.x, y: e.y + e.r * 0.4, r: 16, life: 300, col}); }
+  const f = e.hp / e.max, ph = f < 0.34 ? 2 : f < 0.67 ? 1 : 0;
+  const free = S.free; // bosses always on the move (the snake, the foot): their moves never hold them, and they warn in their own way
+  if (ph > B.ph && !B.sig && (free || !bossBusy(e))) { B.ph = ph; if (!free) { B.roar = 46; e.ghost = true; } G.shake = 14; Snd.tone(80, 0.8, 'sawtooth', 0.12, 45); ring(e, 12, 2.2, rnd(), col); // a new phase: a roar, a shockwave, minions
+    if (S.split && count(S.split) < 4) for (let i = 0; i < ph + 1; i++) spawnEnemy(S.split, e.x + rr(-50, 50), e.y + rr(20, 50), 24); }
+  if (B.roar > 0) { B.roar--; e.vx *= 0.7; e.vy *= 0.7; e._atk = 10; if (B.roar % 6 === 0) e.flash = 3; if (B.roar === 0) e.ghost = false; return; }
+  if (B.sig) { if (runSig(e, k) && !free) return; }
+  B.sigCd -= 1 + B.ph * 0.6;
+  if (B.sigCd <= 0 && (free || !bossBusy(e) && (e.cd > 10 || B.sigCd < -120))) { const moves = [...S.moves, ...(B.champ ? [CHAMP_BOSS[B.champ].move] : [])]; startSig(e, moves[(B.n = (B.n || 0) + 1) % moves.length], col); B.sigCd = 360 + ri(0, 120); if (B.sig) return; }
+  // the wind-up: when the boss is ready to attack, it holds for a moment, blinking with its mouth open
+  if (!free && !bossBusy(e) && e.cd <= 1 && !B.armed) { if (B.tele <= 0) { B.tele = TELE; Snd.tone(260, 0.12, 'square', 0.035, 380); } B.tele--; e.cd = 2; e._atk = 12; if (B.tele % 6 === 0) e.flash = 2; if (B.tele <= 0) B.armed = true; e.vx *= 0.9; e.vy *= 0.9; return; }
+  if (B.armed && e.cd > 0 && e.cd <= 2) e.cd = 0; // the wind-up is over: now it strikes
+  orig.apply(null, args);
+  if (e.cd > 2) B.armed = false;
+}
+bossAI = (orig => function (e, dx, dy, d, k) { if (e.hp <= 0 || EN[e.type].part || e.type === 'raviolomedio') return orig.apply(null, arguments); bossLayer(e, k, orig, arguments); })(bossAI);
+
+/* the room's hazards: creep that burns, rain that lands, the beams */
+update = (orig => function () {
+  orig();
+  if (G.state !== 'play' || !G.room || !G.room.bfx) return;
+  const F = G.room.bfx, p = G.p, fly = flying(p);
+  F.creep = F.creep.filter(cr => --cr.life > 0);
+  if (!fly && p.inv <= 0) for (const cr of F.creep) if (Math.hypot((p.x - cr.x) / cr.r, (p.y - cr.y) / (cr.r * 0.62)) < 1) { hurtPlayer(1, 'una pozza velenosa'); break; }
+  for (const r of F.rain) { r.t++; if (r.t === r.max) { if (Math.hypot(p.x - r.x, p.y - r.y) < 24 && p.inv <= 0) hurtPlayer(hit2(), 'qualcosa caduto dall\'alto'); for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.78; enemyTear(r.x, r.y, Math.cos(a) * 2, Math.sin(a) * 2, r.col); } burst(r.x, r.y, r.col, 8, 2.4); Snd.noise(0.15, 0.08, 1200); } }
+  F.rain = F.rain.filter(r => r.t < r.max + 12);
+  if (!G.enemies.some(e => e.boss && e.hp > 0)) { F.beams = []; for (const e of G.enemies) if (e.bk) e.bk.sig = null; }
+})(update);
+const creepSpr = (col, r) => spr('creep' + col + r, () => { const R = Math.round(r * PIXK), [cv] = paint(R * 2, Math.round(R * 1.3), (i, j) => { const d = Math.hypot((i + 0.5 - R) / R, (j + 0.5 - R * 0.65) / (R * 0.65)); if (d >= 1) return; if (d > 0.82 && !dz(i, j, 0.5)) return; const [a, b, c2] = rgbOf(col); const k = d > 0.82 ? 0.6 : d < 0.4 && (i + j) % 7 === 0 ? 1.25 : 0.85; return [Math.min(255, a * k), Math.min(255, b * k), Math.min(255, c2 * k), 200]; }); return cv; });
+drawLive = (orig => function (c) {
+  const F = G.room && G.room.bfx;
+  if (F) { for (const cr of F.creep) { c.save(); c.globalAlpha = Math.min(1, cr.life / 60) * 0.85; blit(c, creepSpr(cr.col, cr.r), cr.x, cr.y, 0.5, 0.5); c.restore(); }
+    for (const r of F.rain) if (r.t < r.max) { const k = r.t / r.max; pixShadow(c, r.x, r.y, 4 + k * 10); c.save(); c.globalAlpha = 0.5 + k * 0.5; circ(c, r.x, r.y - (1 - k) * 220, 5, r.col); circ(c, r.x - 1.5, r.y - (1 - k) * 220 - 1.5, 2, '#ffffff'); c.restore(); } }
+  orig(c);
+  if (F) for (const b of F.beams) { const L = 900, x2 = b.x + Math.cos(b.a) * L, y2 = b.y + Math.sin(b.a) * L; c.save(); c.lineCap = 'butt';
+    if (b.on) { c.globalCompositeOperation = 'lighter'; for (const [w, a] of [[b.w * 1.8, 0.25], [b.w, 0.7], [b.w * 0.45, 1]]) { c.globalAlpha = a; c.strokeStyle = a === 1 ? '#ffffff' : b.col; c.lineWidth = w; c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(x2, y2); c.stroke(); } }
+    else { c.globalAlpha = 0.5 + Math.sin(G.tick * 0.8) * 0.3; c.strokeStyle = b.col; c.lineWidth = 2; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(x2, y2); c.stroke(); }
+    c.restore(); }
+})(drawLive);
+drawEnemy = (orig => function (c, e) {
+  if (e.bk && e.bk.hidden) { const s = e.bk.sig; if (s) { pixShadow(c, s.mx, s.my + 4, 14); for (let i = 0; i < 5; i++) circ(c, s.mx + Math.cos(i * 1.3 + G.tick * 0.2) * 9, s.my + Math.sin(i * 1.7) * 4, 3.5, i % 2 ? '#6a4a2a' : '#4a3020'); if (s.t > 80) { c.save(); c.globalAlpha = 0.6; c.strokeStyle = '#ff4a3a'; c.lineWidth = 2; c.beginPath(); c.ellipse(s.mx, s.my + 4, 22, 12, 0, 0, 7); c.stroke(); c.restore(); } } return; }
+  orig(c, e);
+})(drawEnemy);
 /* ================= input, menus and the loop ================= */
 const BODY_FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
 const DISPLAY_FONT = '"Grenze Gotisch", "Palatino Linotype", Georgia, serif';
@@ -9503,9 +9709,9 @@ async function renderBoard() {
       return;
     }
     if (boardTab === 'times') {
-      const list = (online ? await Cloud.query('bs_wins', 't', 'ASCENDING', 300) : (store('bs-wins') || [])).filter(w => w.d >= Math.max(EPOCH_START, BOARD_START)).slice(0, 25);
+      const list = (online ? await Cloud.query('bs_wins', 't', 'ASCENDING', 300) : (store('bs-wins') || [])).filter(w => w.d >= Math.max(EPOCH_START, BOARD_START)).slice(0, 5); // only the five fastest wins
       fill(['#', 'Giocatore', 'Personaggio', 'Tempo', 'Oggetti'], list.map((w, i) => ({me: PROF && w.name === PROF.display, cells: [i + 1, w.name, chName(w.c), fmtTime(w.t), w.items]})));
-      note.textContent = 'Solo le vittorie della versione ' + BOARD_VERSION + '.' + (list.length ? '' : ' Nessuna ancora: la prima è tua.');
+      note.textContent = 'Le cinque vittorie più veloci della versione ' + BOARD_VERSION + '.' + (list.length ? '' : ' Nessuna ancora: la prima è tua.');
     } else {
       let list = online ? await Cloud.query('bs_users', 'score', 'DESCENDING') : localPlayers().map(p => ({...p, score: profScore(p)})).sort((a, b) => b.score - a.score);
       list = list.filter(p => p.name !== 'ospite' && p.stats && p.stats.epoch === SAVE_EPOCH);
@@ -9848,6 +10054,7 @@ function resumeRun() {
     const depth = s.floor.depth;
     G.floor = {rooms, start: rooms[s.floor.start], depth, name: floorName(depth), theme: floorTheme(depth), curse: s.floor.curse};
     G.p = {...s.p, ch, hitOnDash: new Set()};
+    const dogs = G.p.items.filter(id => id === 'gatto' || id === 'bassotto').length; for (const pet of G.p.pets) if (pet.kind === 'gatto' && dogs > G.p.pets.filter(q => q.kind === 'cane').length) pet.kind = 'cane'; // runs saved while the dogs were drawn as cats
     Object.assign(G, {slow: 0, shake: 0, deathT: 0, fall: 0, hitstop: 0, trans: null, vs: 0, room: null, fadeIn: 30});
     LAST = {challenge: G.run.challenge, daily: G.run.daily, hard: G.run.hard, seed: G.run.daily ? G.run.seed : undefined};
     for (const id of SHEETS) $(id).hidden = true;
