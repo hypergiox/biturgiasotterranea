@@ -2232,7 +2232,7 @@ function drawPickup(c, pk, live) {
   if (pk.price && live) label(x, y + 30, priceOf(pk) + ' ¢', 14);
 }
 function drawPill(c, x, y, ci, s) {
-  const [a, b] = PILL_COLS[ci % PILL_COLS.length];
+  const n = PILL_COLS.length, [a, b] = PILL_COLS[(((ci | 0) % n) + n) % n]; // never without a colour
   c.save(); c.translate(x, y); c.rotate(-0.5); c.scale(s, s);
   c.fillStyle = a; rrect(c, -9, -4.5, 9, 9, [4.5, 0, 0, 4.5]); c.fill();
   c.fillStyle = b; rrect(c, 0, -4.5, 9, 9, [0, 4.5, 4.5, 0]); c.fill();
@@ -8330,7 +8330,7 @@ const MORE_ACTIVES = {
   libromorti: [4, 'Libro dei morti', 'Tre mosche per il piano', '#3a3a42', 'book,#2a2a30,#f0e8d8', p => { for (let i = 0; i < 3; i++) p.orbitals.push({kind: 'zanzara', a: i * 2, temp: true}); Snd.tone(200, 0.5, 'sawtooth', 0.06, 100); }],
   necro: [4, 'Libro nero', 'Ferisce tutta la stanza', '#1a1a1e', 'book,#1a1a1e,#d02a2a', () => { for (const e of G.enemies) if (e.hp > 0 && e.appear <= 0) damageEnemy(e, 40, 0, 0, true); G.shake = 12; G.flash = 0.5; Snd.boom(); }],
   belial: [3, 'Libro del diavolo', 'Più danno per la stanza', '#6a0a0a', 'book,#6a0a0a,#f5c400', p => { p.fx.diavolo = 1; Snd.power(); }],
-  dado20: [6, 'Dado da venti', 'Cambia i raccoglibili della stanza', '#f4f4f4', 'dice,#2a8ad8,#f4f4f4', () => { for (const pk of G.room.pickups) if (!pk.ped && !pk.price && MAGNETIC.has(pk.kind)) pk.kind = pick(['coin', 'nickel', 'heart', 'soul', 'bomb', 'key', 'pill', 'card', 'battery']); Snd.tone(900, 0.2, 'triangle', 0.08, 1400); }],
+  dado20: [6, 'Dado da venti', 'Cambia i raccoglibili della stanza', '#f4f4f4', 'dice,#2a8ad8,#f4f4f4', () => { for (const pk of G.room.pickups) if (!pk.ped && !pk.price && MAGNETIC.has(pk.kind)) { pk.kind = pick(['coin', 'nickel', 'heart', 'soul', 'bomb', 'key', 'pill', 'card', 'battery']); pk.c = ri(0, PILL_COLS.length - 1); pk.id = pick(CARDS).id; } Snd.tone(900, 0.2, 'triangle', 0.08, 1400); }], // a pill needs its colour and a card its face
   clessidra: [2, 'Clessidra', 'Il tempo rallenta', '#e8c890', 'hourglass,#e8c890', () => { G.slow = 300; Snd.tone(500, 0.8, 'sine', 0.12, 150); }],
   bombanatale: [1, 'Bomba di Natale', 'Una bomba gratis', '#d02a2a', 'bomb,#d02a2a,#3a8a3a', p => { G.bombs.push({x: p.x, y: p.y + 4, t: 80, mega: !!p.flags.megabomb}); Snd.fuse(); }],
   fiammiferone: [2, 'Fiammiferone', 'Un anello di fuoco', '#ff7a1a', 'candle,#d02a2a', p => { playerRing(p.x, p.y, 12, dmgOf(p), {burn: true, kind: 'fuoco'}); Snd.noise(0.3, 0.1, 1500); }],
@@ -9319,6 +9319,25 @@ drawEnemy = (orig => function (c, e) {
   if (e.bk && e.bk.hidden) { const s = e.bk.sig; if (s) { pixShadow(c, s.mx, s.my + 4, 14); for (let i = 0; i < 5; i++) circ(c, s.mx + Math.cos(i * 1.3 + G.tick * 0.2) * 9, s.my + Math.sin(i * 1.7) * 4, 3.5, i % 2 ? '#6a4a2a' : '#4a3020'); if (s.t > 80) { c.save(); c.globalAlpha = 0.6; c.strokeStyle = '#ff4a3a'; c.lineWidth = 2; c.beginPath(); c.ellipse(s.mx, s.my + 4, 22, 12, 0, 0, 7); c.stroke(); c.restore(); } } return; }
   orig(c, e);
 })(drawEnemy);
+
+/* ---------- safety nets: a pickup with a missing detail gets one, and a drawing that breaks can't leave the screen black ---------- */
+function fixPickup(pk) {
+  if (pk.kind === 'pill' && !(pk.c >= 0)) pk.c = ri(0, PILL_COLS.length - 1);
+  if (pk.kind === 'card' && !CARD[pk.id]) pk.id = pick(CARDS).id;
+  if (pk.kind === 'trinket' && !TRINKET[pk.id]) pk.id = pick(TRINKETS).id;
+  if ((pk.kind === 'item' && !ITEM[pk.id]) || (pk.kind === 'active' && !ACTIVES[pk.id])) { const it = ITEMS[ri(0, ITEMS.length - 1)]; pk.kind = 'item'; pk.id = it.id; }
+}
+drawPickup = (orig => function (c, pk, live) {
+  fixPickup(pk);
+  c.save(); try { orig(c, pk, live); } catch (err) { if (!pk._bad) { pk._bad = true; ERRS.push('disegno raccoglibile ' + pk.kind + ': ' + err.message); } } finally { c.restore(); }
+})(drawPickup);
+render = (orig => function () {
+  try { orig(); }
+  catch (err) { // put every canvas back as new, so the next frame draws cleanly instead of staying dark
+    for (const x of [ctx, BUF.c, LIVE.c]) { if (x.reset) x.reset(); else for (let i = 0; i < 64; i++) x.restore(); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.imageSmoothingEnabled = false; }
+    if ((G.renderErrs = (G.renderErrs || 0) + 1) < 5) ERRS.push('disegno: ' + err.message);
+  }
+})(render);
 /* ================= input, menus and the loop ================= */
 const BODY_FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
 const DISPLAY_FONT = '"Grenze Gotisch", "Palatino Linotype", Georgia, serif';
