@@ -10804,6 +10804,235 @@ function menuFxFrame(now) {
     P1(c, rx, ry - 2, 6, 2, '#4a3a34'); P1(c, rx + 5, ry - 3, 2, 2, '#4a3a34'); P1(c, rx + 6, ry - 3, 1, 1, '#ff4a4a'); P1(c, rx - 4, ry - 1 - f, 4, 1, '#8a6a6a'); P1(c, rx + 1 + f, ry, 1, 1, '#2a2020'); P1(c, rx + 4 - f, ry, 1, 1, '#2a2020'); }
 }
 menuFxReady = true; menuFx();
+/* ================= gamepad: brand names, hints, menus, on-screen keyboard, rumble ================= */
+// the controller is read through the standard mapping: 0 bottom, 1 right, 2 left, 3 top, 4/5 shoulders, 6/7 triggers, 9 start, 12-15 cross
+const PADUI = {brand: 'xbox', last: 'kb', seen: false, rumble: store('bs-rumble') !== false, hold: {}, osk: null, idx: 0};
+const PADNAMES = {
+  xbox: {name: 'Xbox', a: 'A', b: 'B', x: 'X', y: 'Y', lb: 'LB', rb: 'RB', lt: 'LT', rt: 'RT', start: 'Menu'},
+  ps: {name: 'PlayStation', a: '✕', b: '○', x: '□', y: '△', lb: 'L1', rb: 'R1', lt: 'L2', rt: 'R2', start: 'Options'},
+  nin: {name: 'Nintendo', a: 'B', b: 'A', x: 'Y', y: 'X', lb: 'L', rb: 'R', lt: 'ZL', rt: 'ZR', start: '+'}, // same places, Nintendo letters
+};
+function padBrand(id) {
+  id = (id || '').toLowerCase();
+  if (/045e|xbox|xinput/.test(id)) return 'xbox';
+  if (/054c|playstation|dualsense|dualshock|ps[345]|wireless controller/.test(id)) return 'ps';
+  if (/057e|nintendo|pro controller|joy-con|switch/.test(id)) return 'nin';
+  return 'xbox'; // Xbox, XInput and every unknown pad use the Xbox letters
+}
+const padN = () => PADNAMES[PADUI.brand];
+const padActive = () => PADUI.seen && PADUI.last === 'pad';
+function curPad() { const pads = navigator.getGamepads ? navigator.getGamepads() : []; return pads && [...pads].find(Boolean); }
+function setLast(src) {
+  if (PADUI.last === src) return;
+  PADUI.last = src; document.documentElement.classList.toggle('padnav', src === 'pad');
+  syncPadHints();
+}
+window.addEventListener('keydown', e => { if (!e.isTrusted) return; setLast('kb'); if (PADUI.osk && e.code === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); closeOSK(); } }, true);
+window.addEventListener('pointerdown', e => { if (e.isTrusted && !e.target.closest('#osk')) setLast('kb'); }, true);
+window.addEventListener('gamepadconnected', e => { PADUI.brand = padBrand(e.gamepad.id); PADUI.seen = true; syncPadHints(); });
+
+/* ---------- the words for the controls ---------- */
+function padLines() {
+  const n = padN();
+  return ['Levetta sinistra  muoviti', 'Levetta destra o croce  spara', n.a + ' oggetto · ' + n.b + ' bomba · ' + n.x + ' pillola · ' + n.start + ' pausa'];
+}
+drawHint = function () { // the start room speaks the language of the last thing you touched
+  const lines = padActive() ? padLines() : TOUCH ? ['Pollice sinistro: muoviti', 'Pollice destro: spara', 'Fulmine: oggetto attivo · Bomba · Pillola'] : ['W A S D  muoviti', 'Frecce  spara', 'Spazio oggetto · E bomba · Q pillola'];
+  lines.forEach((l, i) => label(CX, CY - 60 + i * 22, l, 15, 'rgba(239,227,207,.45)'));
+};
+const kbd = s => '<kbd>' + s + '</kbd>';
+function ctrlHTML() {
+  const n = padN(), rows = [];
+  const pad = '<div><h3>Gamepad ' + n.name + '</h3><dl>' +
+    '<dt>Muoviti</dt><dd>Levetta sinistra</dd><dt>Spara</dt><dd>Levetta destra o croce</dd>' +
+    '<dt>Oggetto attivo</dt><dd>' + kbd(n.a) + ' ' + kbd(n.rb) + ' ' + kbd(n.rt) + '</dd><dt>Bomba</dt><dd>' + kbd(n.b) + ' ' + kbd(n.lb) + ' ' + kbd(n.lt) + '</dd>' +
+    '<dt>Pillola o carta</dt><dd>' + kbd(n.x) + '</dd><dt>Pausa</dt><dd>' + kbd(n.start) + '</dd>' +
+    '<dt>Nei menù</dt><dd>Croce ' + kbd(n.a) + ' conferma ' + kbd(n.b) + ' indietro</dd></dl></div>';
+  const keys = '<div><h3>Tastiera</h3><dl>' +
+    '<dt>Muoviti</dt><dd>' + kbd('W') + kbd('A') + kbd('S') + kbd('D') + '</dd><dt>Spara</dt><dd>' + kbd('←') + kbd('↑') + kbd('↓') + kbd('→') + '</dd>' +
+    '<dt>Oggetto attivo</dt><dd>' + kbd('Spazio') + '</dd><dt>Bomba</dt><dd>' + kbd('E') + '</dd><dt>Pillola o carta</dt><dd>' + kbd('Q') + '</dd>' +
+    '<dt>Pausa</dt><dd>' + kbd('Esc') + ' ' + kbd('P') + '</dd><dt>Musica · suoni</dt><dd>' + kbd('M') + ' ' + kbd('N') + '</dd></dl></div>';
+  const touch = '<div><h3>Touch</h3><dl><dt>Muoviti</dt><dd>Pollice sinistro</dd><dt>Spara</dt><dd>Pollice destro</dd><dt>Azioni</dt><dd>Fulmine, bomba e pillola sullo schermo</dd></dl></div>';
+  rows.push(padActive() ? pad : TOUCH ? touch : keys); // only the controls in your hands: the pause stays short
+  return '<h3 class="ctitle">Comandi</h3><div class="cgrid">' + rows.join('') + '</div>';
+}
+function syncPadHints() {
+  const box = document.getElementById('pCtrl'); if (box && !$('pause').hidden) box.innerHTML = ctrlHTML();
+  const t = document.getElementById('padHint'), kb = document.querySelector('#title .note .kb');
+  if (t && kb) { const on = padActive(), n = padN(); t.hidden = !on; kb.hidden = on;
+    t.innerHTML = 'Levetta sinistra muovi &middot; levetta destra o croce spara &middot; ' + kbd(n.a) + ' oggetto attivo &middot; ' + kbd(n.b) + ' bomba &middot; ' + kbd(n.x) + ' pillola &middot; ' + kbd(n.start) + ' pausa'; }
+  const rb = document.getElementById('pRumble'); if (rb) { rb.hidden = !PADUI.seen; rb.textContent = 'Vibrazione: ' + (PADUI.rumble ? 'sì' : 'no'); }
+}
+{ // the boxes in the page: controls in the pause, the pad line under the title, the rumble switch
+  const box = document.createElement('div'); box.id = 'pCtrl'; box.className = 'pctrl'; $('pSeed').before(box);
+  const kb = document.querySelector('#title .note .kb');
+  if (kb) { const s = document.createElement('span'); s.id = 'padHint'; s.hidden = true; kb.after(s); }
+  const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'ghost'; rb.id = 'pRumble'; rb.hidden = true; $('pGfx').after(rb);
+  rb.addEventListener('click', () => { PADUI.rumble = !PADUI.rumble; store('bs-rumble', PADUI.rumble); syncPadHints(); if (PADUI.rumble) rumble(0.5, 0.5, 160, true); });
+  const st = document.createElement('style');
+  st.textContent = '.pctrl{width:min(620px,100%)}.pctrl .ctitle{margin:4px 0 6px;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}' +
+    '.pctrl .cgrid{display:block}.pctrl h3{margin:0 0 4px;font-size:12px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase}' +
+    '.pctrl dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,auto) minmax(110px,1fr));gap:2px 10px;margin:0;font-size:14px}.pctrl dt{color:var(--muted)}.pctrl dd{margin:0}' +
+    '.pctrl kbd,#padHint kbd{font-family:var(--body);background:var(--stone-2);border:1px solid var(--line);border-radius:3px;padding:0 5px;color:var(--paper);margin-right:2px}' +
+    'html.padnav button:focus,html.padnav input:focus,html.padnav textarea:focus,html.padnav a:focus{outline:3px solid var(--gold);outline-offset:2px}html.padnav label:focus-within{outline:3px solid var(--gold);outline-offset:2px}' +
+    '#osk{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:9999;background:#1a1210;border:3px solid #5a4636;box-shadow:0 0 0 3px #0b0807,0 10px 30px #000a;padding:10px;width:min(720px,calc(100vw - 32px));font-family:var(--body);color:var(--paper);image-rendering:pixelated}' +
+    '#osk .oskv{background:#0b0807;border:2px solid #3a2c22;min-height:44px;max-height:88px;overflow:auto;padding:6px 8px;margin-bottom:8px;white-space:pre-wrap;word-break:break-word;font-size:16px}#osk .oskv i{display:inline-block;width:8px;height:16px;background:var(--gold);vertical-align:-3px;animation:oskb 1s steps(1) infinite}@keyframes oskb{50%{opacity:0}}' +
+    '#osk .oskr{display:flex;gap:4px;justify-content:center;margin-bottom:4px}#osk button{flex:1 1 0;min-width:0;max-width:56px;height:38px;padding:0;background:#3a2c22;color:var(--paper);border:2px solid #5a4636;border-radius:0;font:700 17px var(--body);cursor:pointer}' +
+    '#osk button.w{max-width:none;flex:2 1 0;font-size:14px}#osk button.on{background:var(--gold);color:#1a1210;border-color:#fff3c4}#osk .oskh{font-size:12px;color:var(--muted);text-align:center;margin-top:4px}';
+  document.head.append(st);
+}
+pause = (orig => { const f = function () { orig(); syncPadHints(); }; f.reopen = () => { orig.reopen(); syncPadHints(); }; return f; })(pause);
+
+/* ---------- rumble ---------- */
+function rumble(strong, weak, ms, force) {
+  if (!PADUI.rumble || (!force && PADUI.last !== 'pad')) return;
+  const gp = curPad(); if (!gp) return;
+  try {
+    const v = gp.vibrationActuator;
+    if (v && v.playEffect) v.playEffect(v.effects && v.effects.includes && !v.effects.includes('dual-rumble') && v.effects.includes('trigger-rumble') ? 'trigger-rumble' : 'dual-rumble', {startDelay: 0, duration: ms, strongMagnitude: strong, weakMagnitude: weak}).catch(() => {});
+    else if (gp.hapticActuators && gp.hapticActuators[0]) gp.hapticActuators[0].pulse(Math.max(strong, weak), ms).catch(() => {});
+  } catch (e) {}
+}
+{ // the sounds already mark the moments worth feeling
+  const FEEL = {hurt: [0.9, 0.6, 240], boom: [1, 0.7, 380], kill: [0, 0.25, 50], item: [0.25, 0.6, 260], boss: [0.7, 0.35, 700], shock: [0.45, 0.8, 260], fall: [0.35, 0.3, 450], power: [0.2, 0.5, 200], unlock: [0, 0.35, 70], door: [0.15, 0.1, 90]};
+  let lastKill = 0;
+  for (const [k, [s, w, ms]] of Object.entries(FEEL)) {
+    const f0 = Snd[k]; if (typeof f0 !== 'function') continue;
+    Snd[k] = function (...a) {
+      if (G.state === 'play' || k === 'hurt') {
+        if (k === 'kill') { const now = performance.now(); if (now - lastKill > 90) { lastKill = now; rumble(s, w, ms); } } else rumble(s, w, ms);
+      }
+      return f0.apply(this, a);
+    };
+  }
+}
+
+/* ---------- moving through the menus ---------- */
+const FOCUSABLE = 'button, input:not([type=hidden]), textarea, select, a[href], [tabindex]:not([tabindex="-1"])';
+function openSheetEl() { const s = SHEETS.map(id => $(id)).filter(x => !x.hidden); return s[s.length - 1] || null; }
+function focusables(root) {
+  return [...root.querySelectorAll(FOCUSABLE)].filter(el => !el.disabled && !el.closest('[hidden]') && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'
+    && !(el.tagName === 'INPUT' && el.type === 'radio' && !el.checked && root.querySelector('input[type=radio][name="' + el.name + '"]:checked'))); // one stop per radio group
+}
+function padFocus(el) { el.focus({preventScroll: true}); el.scrollIntoView({block: 'nearest', inline: 'nearest'}); }
+function moveFocus(root, dx, dy) {
+  const list = focusables(root); if (!list.length) return;
+  const cur = document.activeElement;
+  if (!list.includes(cur)) { padFocus(list[0]); return; }
+  if (cur.type === 'radio' && dx) { // left and right walk the radio group
+    const g = [...root.querySelectorAll('input[type=radio][name="' + cur.name + '"]')], i = g.indexOf(cur) + dx;
+    if (g[i]) { g[i].checked = true; g[i].dispatchEvent(new Event('change', {bubbles: true})); padFocus(g[i]); return; }
+  }
+  const r = cur.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  let best = null, bs = Infinity;
+  for (const el of list) {
+    if (el === cur) continue;
+    const q = el.getBoundingClientRect(), ex = q.left + q.width / 2, ey = q.top + q.height / 2;
+    const along = dx ? (ex - cx) * dx : (ey - cy) * dy, side = dx ? Math.abs(ey - cy) : Math.abs(ex - cx);
+    const edge = dx ? (dx > 0 ? q.left - r.right : r.left - q.right) : (dy > 0 ? q.top - r.bottom : r.top - q.bottom);
+    if (along <= 4 || edge < -Math.min(r.width, r.height) / 2) continue;
+    const sc = Math.max(edge, 0) + side * (dx ? 3 : 1.5);
+    if (sc < bs) { bs = sc; best = el; }
+  }
+  if (best) padFocus(best);
+  else if (root.id === 'select' && dy > 0 && cur.id === 'selGo') padFocus($('seedIn')); // the seed sits beside the button
+}
+function padBack() { window.dispatchEvent(new KeyboardEvent('keydown', {code: 'Escape', key: 'Escape', bubbles: true})); }
+function padConfirm(root) {
+  const el = document.activeElement;
+  if (!root.contains(el) || el === document.body) { const l = focusables(root); if (l.length) padFocus(l[0]); return; }
+  if (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|password|search|email|)$/.test(el.type))) { openOSK(el); return; }
+  el.click();
+}
+function heldDir(b, a) { // the cross or the left stick, with key-like repeats
+  const x = (b[15] || a[0] > 0.6 ? 1 : 0) - (b[14] || a[0] < -0.6 ? 1 : 0), y = (b[13] || a[1] > 0.6 ? 1 : 0) - (b[12] || a[1] < -0.6 ? 1 : 0);
+  const key = x + ',' + y, now = performance.now(), h = PADUI.hold;
+  if (!x && !y) { h.key = null; return null; }
+  if (h.key !== key) { h.key = key; h.next = now + 380; return [x, y]; }
+  if (now >= h.next) { h.next = now + 120; return [x, y]; }
+  return null;
+}
+
+/* ---------- the on-screen keyboard ---------- */
+const OSK_ROWS = ['1234567890', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm', 'àèéìòù.,!?', "'-_:;()@#"];
+function openOSK(el) {
+  closeOSK();
+  const box = document.createElement('div'); box.id = 'osk'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Tastiera a schermo');
+  const o = PADUI.osk = {el, box, r: 1, c: 0, caps: el.id === 'userIn' || el.id === 'seedIn', keys: []};
+  box.innerHTML = '<div class="oskv"></div>';
+  const rows = OSK_ROWS.map(s => [...s].map(ch => ({ch, t: ch})));
+  rows.push([{ch: 'caps', t: 'Maiusc', w: 1}, {ch: ' ', t: 'Spazio', w: 1}, {ch: 'del', t: '⌫', w: 1}, {ch: 'ok', t: 'Fatto', w: 1}]);
+  for (const row of rows) {
+    const d = document.createElement('div'); d.className = 'oskr'; const kr = [];
+    for (const k of row) { const bt = document.createElement('button'); bt.type = 'button'; bt.tabIndex = -1; if (k.w) bt.className = 'w'; bt.dataset.ch = k.ch; bt.textContent = k.t;
+      bt.addEventListener('pointerdown', e => e.preventDefault()); bt.addEventListener('click', () => oskPress(k.ch)); d.append(bt); kr.push(bt); }
+    box.append(d); o.keys.push(kr);
+  }
+  const n = padN(), hint = document.createElement('div'); hint.className = 'oskh';
+  hint.textContent = n.a + ' scrivi · ' + n.b + ' cancella · ' + n.y + ' spazio · ' + n.x + ' maiuscole · ' + n.start + ' fatto';
+  box.append(hint); document.body.append(box);
+  o.sync = () => oskDraw(); el.addEventListener('input', o.sync);
+  el.focus({preventScroll: true}); oskDraw();
+}
+function closeOSK() { const o = PADUI.osk; if (!o) return; o.box.remove(); o.el.removeEventListener('input', o.sync); PADUI.osk = null; if (o.el.isConnected) padFocus(o.el); }
+function oskDraw() {
+  const o = PADUI.osk; if (!o) return;
+  o.keys.forEach((row, r) => row.forEach((bt, c) => { bt.classList.toggle('on', r === o.r && c === o.c); if (bt.dataset.ch.length === 1 && bt.dataset.ch !== ' ') bt.textContent = o.caps ? bt.dataset.ch.toUpperCase() : bt.dataset.ch; }));
+  const v = o.box.querySelector('.oskv'); v.textContent = o.el.type === 'password' ? '•'.repeat(o.el.value.length) : o.el.value; v.append(document.createElement('i')); v.scrollTop = v.scrollHeight;
+}
+function oskPress(ch) {
+  const o = PADUI.osk; if (!o) return; const el = o.el;
+  if (ch === 'ok') { closeOSK(); return; }
+  if (ch === 'caps') { o.caps = !o.caps; oskDraw(); return; }
+  if (ch === 'del') el.value = el.value.slice(0, -1);
+  else { const max = el.maxLength > 0 ? el.maxLength : 1e9; if (el.value.length < max) el.value += o.caps ? ch.toUpperCase() : ch; }
+  el.dispatchEvent(new Event('input', {bubbles: true})); oskDraw();
+}
+function oskPad(b, was, a) {
+  const o = PADUI.osk, d = heldDir(b, a);
+  if (d) { const [x, y] = d; if (y) { const pos = (o.c + 0.5) / o.keys[o.r].length; o.r = (o.r + y + o.keys.length) % o.keys.length; o.c = Math.min(o.keys[o.r].length - 1, Math.floor(pos * o.keys[o.r].length)); }
+    if (x) o.c = (o.c + x + o.keys[o.r].length) % o.keys[o.r].length; oskDraw(); }
+  if (b[0] && !was(0)) oskPress(o.keys[o.r][o.c].dataset.ch);
+  if (b[1] && !was(1)) oskPress('del');
+  if (b[3] && !was(3)) oskPress(' ');
+  if (b[2] && !was(2)) oskPress('caps');
+  if (b[9] && !was(9)) closeOSK();
+}
+
+/* ---------- the poll, every frame ---------- */
+pollPad = function () {
+  const gp = curPad();
+  if (!gp) { Pad.on = false; if (PADUI.osk && PADUI.last === 'pad') closeOSK(); return; }
+  Pad.on = true;
+  if (!PADUI.seen || PADUI.idx !== gp.index) { PADUI.seen = true; PADUI.idx = gp.index; PADUI.brand = padBrand(gp.id); syncPadHints(); }
+  const a = gp.axes, dz = v => Math.abs(v) < 0.2 ? 0 : v;
+  Pad.mx = dz(a[0] || 0); Pad.my = dz(a[1] || 0); Pad.sx = dz(a[2] || 0); Pad.sy = dz(a[3] || 0);
+  const b = gp.buttons.map(x => x.pressed), was = i => Pad.prev[i];
+  if (b.some((v, i) => v && !was(i)) || Math.hypot(Pad.mx, Pad.my) > 0.5 || Math.hypot(Pad.sx, Pad.sy) > 0.5) setLast('pad');
+  if (b[12] || b[13] || b[14] || b[15]) { Pad.sx = (b[15] ? 1 : 0) - (b[14] ? 1 : 0); Pad.sy = (b[13] ? 1 : 0) - (b[12] ? 1 : 0); }
+  const sheet = openSheetEl();
+  if (typeof FILM !== 'undefined' && FILM.on) { if ((b[0] && !was(0)) || (b[9] && !was(9))) filmTap(); }
+  else if (G.state === 'play' && !sheet) {
+    if ((b[0] && !was(0)) || (b[5] && !was(5)) || (b[7] && !was(7))) useActive();
+    if ((b[1] && !was(1)) || (b[4] && !was(4)) || (b[6] && !was(6))) placeBomb();
+    if (b[2] && !was(2)) usePill();
+    if (b[9] && !was(9)) pause();
+  } else if (PADUI.osk) oskPad(b, was, a);
+  else if (!sheet && (G.state === 'dead' || G.state === 'won')) { if (b[0] && !was(0)) startRun(false, {...LAST}); }
+  else if (sheet) {
+    const d = heldDir(b, a), act = document.activeElement;
+    if (sheet.id === 'select' && ((b[4] && !was(4)) || (b[5] && !was(5)))) turn(b[5] ? 1 : -1);
+    if (d) {
+      const onCar = sheet.id === 'select' && d[0] && !d[1] && (!sheet.contains(act) || ['selGo', 'carL', 'carR', 'carousel'].includes(act.id));
+      if (onCar) turn(d[0]); else moveFocus(sheet, d[0], d[1]);
+    }
+    if (Math.abs(Pad.sy) > 0.3 && !(b[12] || b[13])) { const sc = [...sheet.querySelectorAll('*')].find(x => x.scrollHeight > x.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(x).overflowY)) || sheet; sc.scrollBy(0, Pad.sy * 14); }
+    if (b[0] && !was(0)) padConfirm(sheet);
+    if (b[1] && !was(1)) { if (sheet.id === 'pause') resume(); else padBack(); }
+    if (b[9] && !was(9)) { if (sheet.id === 'pause') resume(); else if (sheet.id === 'select') { if (isUnlocked(CHARS[SEL].id)) startRun(); } else padConfirm(sheet); }
+  }
+  Pad.prev = b;
+};
 </script>
 
 </html>
